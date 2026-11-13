@@ -56,13 +56,13 @@ async function aggiungiSpesa() {
   const { nome, qta } = dividiProdotto(t);
   const x = { id: uuid(), gruppo_id: G.id, nome, quantita: qta, reparto: repartoDi(nome), comprato: false, aggiunto_da: CHI, created_at: new Date().toISOString() };
   D.spesa.push(x); $('nv').value = ''; vibra(); renderSpesa(); renderOggi(); $('nv').focus();
-  await scrivi(() => ST.ins('spesa', x));
+  if (await scrivi(() => ST.ins('spesa', x))) avvisaSpesa(nome);
 }
 async function spunta(id) {
   const x = D.spesa.find(i => i.id === id); if (!x) return;
   x.comprato = !x.comprato; x.modificato_da = CHI; vibra(); renderSpesa(); renderOggi();
   if (x.comprato) riempiDispensa(x.nome);
-  await scrivi(() => ST.upd('spesa', id, { comprato: x.comprato, modificato_da: CHI }));
+  if (await scrivi(() => ST.upd('spesa', id, { comprato: x.comprato, modificato_da: CHI })) && x.comprato) avvisaSpesa(x.nome, true);
 }
 function modificaSpesa(id) {
   const x = D.spesa.find(i => i.id === id); if (!x) return;

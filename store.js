@@ -21,7 +21,7 @@ function storeSupabase(url, key) {
     async accedi(email, password) { ok(await db.auth.signInWithPassword({ email, password })); },
     async impostaPassword(password) { ok(await db.auth.updateUser({ password })); },
     async esci() { await db.auth.signOut(); },
-    async gruppi() { return ok(await db.from('gruppi').select('id,nome,valuta').order('nome')); },
+    async gruppi() { return ok(await db.from('gruppi').select('id,nome,valuta,creato_da').order('nome')); },
     async creaGruppo(nome, valuta, nomeUtente) { return ok(await db.rpc('crea_gruppo', { nome_gruppo: nome, valuta_gruppo: valuta, nome_utente: nomeUtente })); },
     async unisciti(codice, nomeUtente) { return ok(await db.rpc('unisciti', { codice, nome_utente: nomeUtente })); },
     async aggiornaGruppo(id, campi) { ok(await db.from('gruppi').update(campi).eq('id', id)); },
@@ -47,7 +47,7 @@ function storeSupabase(url, key) {
     // Notifiche push: iscrizione di questo dispositivo e invio agli altri del gruppo
     async iscrivi(sub) { const j = sub.toJSON(); ok(await db.from('push_iscrizioni').upsert({ endpoint: j.endpoint, dati: j })); },
     async disiscrivi(endpoint) { ok(await db.from('push_iscrizioni').delete().eq('endpoint', endpoint)); },
-    async notifica(g, titolo, testo, scheda) { try { await db.functions.invoke('notifica', { body: { gruppo_id: g, titolo, testo, scheda } }); } catch (e) {} },
+    async notifica(g, titolo, testo, scheda, tipo, a) { try { const r = await db.functions.invoke('notifica', { body: { gruppo_id: g, titolo, testo, scheda, tipo, a } }); return (r.data && r.data.inviate) || 0; } catch (e) { return 0; } },
     ascolta(g, cb, stato) {
       this.smetti();
       const F = 'gruppo_id=eq.' + g;
@@ -115,7 +115,7 @@ function storeLocale() {
       D[t] = D[t].filter(x => x.id !== id); salva();
     },
     async delWhere(t, f) { D[t] = D[t].filter(r => !match(r, f)); salva(); },
-    async iscrivi() {}, async disiscrivi() {}, async notifica() {},
+    async iscrivi() {}, async disiscrivi() {}, async notifica() { return 0; },
     ascolta(g, cb, stato) { stato(false); },
     smetti() {}
   };

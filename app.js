@@ -141,7 +141,7 @@ async function apriGruppo(g) {
   chiudi(); ST.smetti(); live = false; D = VUOTO_D();
   await ricarica();
   ST.ascolta(g.id, cambiamento, s => { live = s; renderNav(); renderOggi(); renderPiano(); renderSpesa(); });
-  if (!IO) scegliPartecipante(); else setTimeout(promemoria, 1500);
+  if (!IO) scegliPartecipante(); else { setTimeout(promemoria, 1500); setTimeout(avviaNotifiche, 800); }
 }
 // Come in Tricount: ogni account corrisponde a una persona del gruppo
 function scegliPartecipante() {

@@ -9,7 +9,7 @@ const PROVIDER = [['nessuna', 'Nessuna'], ['gemini', 'Google Gemini (gratuito)']
 function renderImp() {
   const el = $('t-imp'); if (!el) return;
   const io = IO ? D.partecipanti.find(p => p.id === IO) : null, server = ST && ST.modo === 'supabase';
-  const ia = iaAttiva(), av = Object.assign({ tavola: true, spesa: true, conti: false }, LS.getJ('avvisi', {}));
+  const ia = iaAttiva(), av = avvisiDi(IO);
   const t = temaScelto();
   let h = `<div class="sub-cap"><button type="button" class="indietro" id="imB" aria-label="Torna a Gruppo">${ic('indietro', 22, 2)}</button><div><h1>Impostazioni</h1></div></div>`;
   if (ANTEPRIMA) h += '<div class="nota">Questa è l\'anteprima: i dati restano solo in questa pagina. L\'app vera si installa e si sincronizza tra i dispositivi.</div>';
@@ -17,10 +17,10 @@ function renderImp() {
   h += `<section aria-labelledby="aspetto" style="display:flex;flex-direction:column;gap:6px"><h2 id="aspetto" class="sez" style="margin:0">Aspetto</h2><div class="seg alto" role="radiogroup" aria-labelledby="aspetto">${TEMI.map(([k, n]) => `<button type="button" role="radio" data-tema="${k}" aria-checked="${t === k}" class="${t === k ? 'on' : ''}">${n}</button>`).join('')}</div></section>`;
   const sw = (k, label, hint) => `<div><span class="t"><b>${label}</b><small>${hint}</small></span><button type="button" class="switch" role="switch" aria-checked="${!!av[k]}" aria-label="${label}" data-av="${k}"></button></div>`;
   h += `<section aria-labelledby="notif" style="display:flex;flex-direction:column;gap:6px"><h2 id="notif" class="sez" style="margin:0">Notifiche</h2><div class="menu-righe">
-    ${sw('tavola', 'Ci sei a cena?', 'Te lo chiede ogni giorno dalle 17:00, quando apri l\'app')}
+    ${sw('tavola', 'Ci sei a cena?', 'Notifica ogni giorno alle 17:00, se non hai ancora risposto')}
     ${sw('spesa', 'Novità nella spesa', 'Quando qualcuno aggiunge o compra')}
-    ${sw('conti', 'Promemoria conti', 'Una volta a settimana, se c\'è un saldo')}
-    ${!ANTEPRIMA && G ? `<button type="button" id="imNot">${ic('campana', 20, 1.8)}<span class="t"><b>Avvisi sul telefono</b><small>${notificheAttive() ? (pushPossibile() ? 'Attivi anche ad app chiusa' : 'Attivi mentre l\'app è aperta') : ios() && !installata() ? 'Su iPhone servono con l\'app nella schermata Home' : 'Permetti all\'app di mostrare gli avvisi'}</small></span><span class="v ${notificheAttive() ? 'on' : ''}">${notificheAttive() ? 'Attivi' : 'Attiva'}</span>${ic('avanti', 18, 2)}</button>` : ''}</div></section>`;
+    ${sw('conti', 'Promemoria conti', 'Quando qualcuno ti ricorda un conto, e una volta a settimana se c\'è un saldo')}
+    ${!ANTEPRIMA && G ? `<button type="button" id="imNot">${ic('campana', 20, 1.8)}<span class="t"><b>Avvisi sul telefono</b><small>${notificheAttive() ? (pushPossibile() ? 'Attivi anche ad app chiusa' : 'Attivi mentre l\'app è aperta: per averli ad app chiusa va completata la configurazione del server') : LS.get('notifiche') === 'no' ? 'Spenti su questo telefono' : ios() && !installata() ? 'Su iPhone servono con l\'app nella schermata Home' : 'Permetti all\'app di mostrare gli avvisi'}</small></span><span class="v ${notificheAttive() ? 'on' : ''}">${notificheAttive() ? 'Attivi' : 'Attiva'}</span>${ic('avanti', 18, 2)}</button>` : ''}</div></section>`;
   h += `<section aria-labelledby="altro" style="display:flex;flex-direction:column;gap:6px"><h2 id="altro" class="sez" style="margin:0">App</h2><div class="menu-righe">
     ${!ANTEPRIMA ? `<button type="button" id="imIA"><span class="t"><b>Intelligenza artificiale</b></span><span class="v">${ia.prov === 'nessuna' ? 'Nessuna' : esc(NOMI_IA[ia.prov] || ia.prov) + (ia.condivisa ? ' · del gruppo' : '')}</span>${ic('avanti', 18, 2)}</button>` : ''}
     ${!(ANTEPRIMA && !cifreOk) ? `<button type="button" id="imPin"><span class="t"><b>PIN e Face ID</b></span><span class="v ${pinImpostato() ? 'on' : ''}">${pinImpostato() ? 'Attivo' : 'Non attivo'}</span>${ic('avanti', 18, 2)}</button>` : ''}
@@ -33,7 +33,7 @@ function renderImp() {
   legaSicurezza();
   $('imB').onclick = () => vai('gruppo');
   $('imAcc').onclick = foglioAccount;
-  el.querySelectorAll('[data-av]').forEach(b => b.onclick = () => { const v = Object.assign({ tavola: true, spesa: true, conti: false }, LS.getJ('avvisi', {})); v[b.dataset.av] = !v[b.dataset.av]; LS.setJ('avvisi', v); vibra(); renderImp(); });
+  el.querySelectorAll('[data-av]').forEach(b => b.onclick = () => { vibra(); salvaAvviso(b.dataset.av, !avvisoAttivo(b.dataset.av)); });
   if ($('imNot')) $('imNot').onclick = () => notificheAttive() ? conferma('Disattivare gli avvisi?', 'Non riceverai più avvisi su questo dispositivo.', 'Disattiva', disattivaNotifiche) : attivaNotifiche();
   if ($('imIA')) $('imIA').onclick = foglioIA;
   if ($('imPin')) $('imPin').onclick = foglioSicurezza;

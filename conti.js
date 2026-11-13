@@ -84,10 +84,23 @@ async function ricordaConto() {
   const s = Conti.saldi(D.movimenti, D.partecipanti), mio = IO ? (s[IO] || 0) : 0;
   if (mio <= 0) { vistaConti = 'saldi'; return renderConti(); }
   const verso = Conti.rimborsi(s).filter(r => r.a === IO);
-  const testo = verso.map(r => `${nomeP(r.da)}, nei conti di ${G.nome} su ${NOME_APP} mi devi ${eur(r.importo)}. Quando puoi, saldiamo?`).join('\n');
-  if (navigator.share) { try { await navigator.share({ title: NOME_APP, text: testo }); return; } catch (e) { if (e.name === 'AbortError') return; } }
-  try { await navigator.clipboard.writeText(testo); toast('Messaggio copiato: incollalo in chat ✓'); }
-  catch (e) { foglio(`<h2>Promemoria</h2><p class="q">Copia questo messaggio e mandalo:</p><textarea rows="4" readonly>${esc(testo)}</textarea>`); }
+  const b = $('ricorda'); if (b) { b.disabled = true; b.textContent = 'Invio…'; }
+  // Prima la notifica sul telefono di chi deve; a chi non ha l'app (o le notifiche spente) si manda un messaggio
+  const senza = [];
+  for (const r of verso) {
+    const n = await avvisaGruppo('Promemoria conti', `${CHI} ti ricorda che nei conti di ${G.nome} gli devi ${eur(r.importo)}.`, { tipo: 'conti', scheda: 'conti', a: [r.da] });
+    if (!n) senza.push(r);
+  }
+  renderConti();
+  const ok = verso.filter(r => !senza.includes(r));
+  if (ok.length) toast('Promemoria inviato a ' + ok.map(r => nomeP(r.da)).join(', ') + ' ✓');
+  if (!senza.length) return;
+  const testo = senza.map(r => `${nomeP(r.da)}, nei conti di ${G.nome} su ${NOME_APP} mi devi ${eur(r.importo)}. Quando puoi, saldiamo?`).join('\n');
+  const chi = senza.map(r => nomeP(r.da)).join(', ');
+  foglio(`<h2>Ricordaglielo</h2><p class="q" style="line-height:1.5;margin:4px 0 10px">${esc(chi)} non riceve le notifiche di ${NOME_APP} (non usa l'app o le ha spente). Mandagli questo messaggio:</p><textarea id="rcT" rows="4" readonly>${esc(testo)}</textarea>
+    <button class="btn" id="rcCond" type="button" style="margin-top:10px">${ic('condividi', 18, 2)}Invia il messaggio</button><button class="btn ghost" id="rcCopia" type="button">Copia</button>`);
+  $('rcCond').onclick = async () => { if (navigator.share) { try { await navigator.share({ title: NOME_APP, text: testo }); chiudi(); return; } catch (e) { if (e.name === 'AbortError') return; } } $('rcCopia').click(); };
+  $('rcCopia').onclick = async () => { try { await navigator.clipboard.writeText(testo); toast('Messaggio copiato ✓'); chiudi(); } catch (e) { $('rcT').select(); toast('Seleziona e copia il messaggio'); } };
 }
 
 function chipsConti() {
@@ -380,21 +393,7 @@ async function aggiungiPartecipante() {
   D.partecipanti.push(r); renderTutto();
   if (await scrivi(() => ST.ins('partecipanti', r))) toast(n + ' aggiunto ✓');
 }
-function modificaPartecipante(id) {
-  const p = D.partecipanti.find(x => x.id === id); if (!p) return;
-  foglio(`<h2>${esc(p.nome)}</h2><label class="lb" for="peN">Nome</label><input id="peN" value="${esc(p.nome)}" style="background:var(--card)">
-    <button class="btn" type="button" id="peS" style="margin-top:10px">Salva</button>
-    ${p.id === IO ? '<button class="btn ghost" type="button" id="peU">Non sono io</button>' : ''}
-    <button class="btn danger" type="button" id="peD">Togli dal gruppo</button>
-    <p class="by" style="margin-top:10px">Si può togliere solo chi non compare in nessuna spesa.</p>`);
-  $('peS').onclick = async () => { const n = $('peN').value.trim(); if (!n) return; p.nome = n; chiudi(); renderTutto(); await scrivi(() => ST.upd('partecipanti', id, { nome: n })); };
-  if ($('peU')) $('peU').onclick = async () => { chiudi(); if (await scrivi(() => ST.upd('partecipanti', id, { user_id: null }))) { await ricarica(); scegliPartecipante(); } };
-  $('peD').onclick = async () => {
-    if (D.movimenti.some(m => m.pagato_da === id || id in ((m.divisione || {}).parti || {}))) return toast(p.nome + ' compare in alcune spese: non si può togliere');
-    chiudi(); D.partecipanti = D.partecipanti.filter(x => x.id !== id); trovaIO(); renderTutto();
-    if (await scrivi(() => ST.del('partecipanti', id))) toast('Tolto dal gruppo');
-  };
-}
+function modificaPartecipante(id) { opzioniMembro(id); }
 function esportaCSV() {
   if (ANTEPRIMA) return toast('Nell\'app installata qui scarichi il file per Excel');
   const pp = D.partecipanti, n = c => (c / 100).toFixed(2).replace('.', ','), q = s => '"' + String(s ?? '').replace(/"/g, '""') + '"';

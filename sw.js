@@ -1,6 +1,6 @@
 // Service worker di Tablemates: apre l'app anche senza rete, la aggiorna e mostra le notifiche ad app chiusa.
 // Quando cambi i file, aumenta il numero di VERSIONE: i dispositivi scaricheranno la nuova versione.
-const VERSIONE = 'tablemates-9.0';
+const VERSIONE = 'tablemates-9.1';
 const FILE = [
   './', 'index.html', 'app.css', 'config.js', 'manifest.webmanifest',
   'supabase.js', 'pdf.min.js', 'pdf.worker.min.js', 'manrope-latin-wght-normal.woff2', 'manrope-latin-ext-wght-normal.woff2',
@@ -31,7 +31,8 @@ self.addEventListener('fetch', e => {
 self.addEventListener('push', e => {
   let d = {}; try { d = e.data ? e.data.json() : {}; } catch (er) { d = { titolo: 'Tablemates', testo: e.data ? e.data.text() : '' }; }
   e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(cl => {
-    if (cl.some(c => c.visibilityState === 'visible')) return; // app aperta davanti: l'avviso compare già dentro l'app
+    // app aperta davanti: gli avvisi normali compaiono già dentro l'app; promemoria e messaggi personali si mostrano sempre
+    if (!d.sempre && cl.some(c => c.visibilityState === 'visible')) return;
     return self.registration.showNotification(d.titolo || 'Tablemates', {
       body: d.testo || '', icon: 'icon-192.png', badge: 'favicon-32.png', tag: d.tag || 'tablemates', renotify: true, data: { scheda: d.scheda || '' }
     });

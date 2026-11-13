@@ -49,7 +49,6 @@ function renderPiano() {
   el.querySelectorAll('[data-prop]').forEach(b => b.onclick = () => proponiPiatto(personaPiano, giornoScelto(personaPiano), +b.dataset.prop, b));
   el.querySelectorAll('[data-ric]').forEach(d => d.onclick = () => apriRicetta(d.dataset.pid || personaPiano, +d.dataset.g, +d.dataset.ric));
   el.querySelectorAll('[data-salva]').forEach(b => b.onclick = () => salvaLink(+b.dataset.salva));
-  el.querySelectorAll('[data-fatto]').forEach(b => b.onclick = () => { const [iso, ...t] = b.dataset.fatto.split('|'); segnaFatto(personaPiano, iso, t.join('|')); });
   el.querySelectorAll('[data-alt]').forEach(b => b.onclick = () => { const [k, i] = b.dataset.alt.split('|').map(Number); vibra(); foglioAlternative(personaPiano, giornoScelto(personaPiano), k, i); });
   el.querySelectorAll('[data-sc]').forEach(b => b.onclick = () => {
     const [k, i, j] = b.dataset.sc.split('|').map(Number), gi = giornoScelto(personaPiano), g = pianoDi(personaPiano).giorni[gi], pa = g.pasti[k];
@@ -93,19 +92,19 @@ function vistaPersona(pid) {
   const chiave = pid + '|' + gi + '|';
   let aperto = pianoAperto.startsWith(chiave) ? pianoAperto.slice(chiave.length) : '';
   if (!aperto || !elenco.some(x => x.pa && x.pa.tipo === aperto)) {
-    const pros = gi === oggiIdx ? elenco.find(x => x.pa && !eFatto(pid, iso, x.pa.tipo) && minutiDi(oraDi(x.pa.tipo)) + 60 > ora) : null;
+    const pros = gi === oggiIdx ? elenco.find(x => x.pa && minutiDi(oraDi(x.pa.tipo)) + 60 > ora) : null;
     aperto = (pros || elenco.find(x => x.pa) || {}).tipo || '';
   }
   h += elenco.map(({ pa, k, tipo }) => {
     if (!pa) return `<div class="pc-chiuso vuoto-slot"><b>${esc(tipo)}</b><span class="st">Non previsto</span></div>`;
-    const fatto = eFatto(pid, iso, pa.tipo), n = pa.voci ? pa.voci.length : 0, x = r[k];
-    if (pa.tipo !== aperto) return `<button type="button" class="pc-chiuso" data-apri="${esc(chiave + pa.tipo)}" aria-expanded="false"><b>${esc(pa.tipo)}</b>${fatto ? `<span class="st fatto">${ic('spunta', 16, 2.4)}Fatto</span>` : `<span class="st">ore ${esc(oraDi(pa.tipo))}${n ? ' · ' + n + (n === 1 ? ' alimento' : ' alimenti') : ''}</span>`}</button>`;
+    const n = pa.voci ? pa.voci.length : 0, x = r[k];
+    if (pa.tipo !== aperto) return `<button type="button" class="pc-chiuso" data-apri="${esc(chiave + pa.tipo)}" aria-expanded="false"><b>${esc(pa.tipo)}</b><span class="st">ore ${esc(oraDi(pa.tipo))}${n ? ' · ' + n + (n === 1 ? ' alimento' : ' alimenti') : ''}</span></button>`;
     const notaLunga = pa.nota && pa.nota.length > 180;
-    return `<section class="pc-aperto" aria-labelledby="pc-${k}"><div class="tp"><h2 id="pc-${k}">${esc(pa.tipo)}</h2><span>${fatto ? 'Fatto · ' : ''}${n ? n + (n === 1 ? ' alimento' : ' alimenti') : 'ore ' + esc(oraDi(pa.tipo))}</span></div>` +
+    return `<section class="pc-aperto" aria-labelledby="pc-${k}"><div class="tp"><h2 id="pc-${k}">${esc(pa.tipo)}</h2><span>${n ? n + (n === 1 ? ' alimento' : ' alimenti') : 'ore ' + esc(oraDi(pa.tipo))}</span></div>` +
       (pa.voci ? htmlCibi(pid, gi, k, pa) : `<p style="margin:0;font-size:15px;line-height:1.5">${esc(pa.alimenti)}</p>${pa.alternative ? `<p class="q" style="margin:0">In alternativa: ${esc(pa.alternative)}</p>` : ''}`) +
       (pa.nota ? `<div class="avviso">${ic('info', 18, 2)}<div style="min-width:0"><div class="nota-lunga ${notaLunga ? 'chiusa' : ''}"><strong>Nota del nutrizionista:</strong> ${esc(pa.nota)}</div>${notaLunga ? '<button type="button" class="link" data-nl style="color:var(--warn-ic);padding:4px 0 0;font-size:13px">Leggi tutto</button>' : ''}</div></div>` : '') +
       (x ? `<button type="button" class="piatto" data-ric="${k}" data-g="${gi}"><span class="tt"><b>${esc(x.nome)}</b><span class="by" style="display:flex;align-items:center;gap:4px">${ic('orologio', 13, 2)}${esc(x.tempo || '')}${x.da ? ' · scelto da ' + esc(x.da) : ''}</span></span><span class="piccolo pieno">${ic('libro', 15, 2)}Ricetta</span></button>` : '') +
-      `<div class="pc-azioni">${fatto && !segnato(pid, iso, pa.tipo) ? `<span class="piccolo pieno" style="cursor:default">${ic('spunta', 15, 2.4)}Fatto</span>` : `<button type="button" class="piccolo ${fatto ? 'pieno' : ''}" data-fatto="${esc(iso + '|' + pa.tipo)}" aria-pressed="${fatto}">${ic('spunta', 15, 2.4)}${fatto ? 'Fatto' : 'Segna come fatto'}</button>`}
+      `<div class="pc-azioni">
         ${!x && haAI() ? `<button type="button" class="piccolo neutro" data-prop="${k}">${ic('scintille', 15, 2)}Proponi un piatto</button>` : ''}
         ${x && haAI() ? `<button type="button" class="piccolo neutro" data-re="${k}">${ic('scintille', 15, 2)}Altro piatto</button>` : ''}
         <a class="piccolo neutro" href="https://www.google.com/search?q=${encodeURIComponent('ricetta ' + testoRicerca({ alimenti: testoPasto(pid, gi, pa) }))}" target="_blank" rel="noopener">${ic('cerca', 15, 2)}Cerca ricetta</a>

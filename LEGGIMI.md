@@ -187,3 +187,11 @@ Quando modifichi un file, in `sw.js` aumenta il numero di `VERSIONE` (per esempi
 - **Ricetta a schermo intero** con ingredienti "In casa / Da comprare", "Metti i mancanti in spesa", ricette salvate e **Modalità cucina** (un passo alla volta, timer, schermo acceso, comandi a voce dove il telefono li supporta).
 - **Spesa + Dispensa**: livelli di quanto resta, "stanno finendo → in lista", la Dispensa si riempie quando spunti un prodotto.
 - **Conti**: "Giulia ti deve", Segna saldato, Ricordaglielo (messaggio da mandare), speso nel mese, la tua parte, ultimi movimenti; saldi, statistiche e conti restano a un tocco.
+
+## Novità della versione 9.1
+
+- **Amministratori**: chi crea il gruppo è Admin; può nominare altri amministratori ("+ Aggiungi amministratore del gruppo"), togliere persone, rinominare il gruppo e cambiarne la valuta. Il controllo è fatto dall'app.
+- **Notifiche attive per tutti**: al primo avvio l'app chiede il permesso (il telefono vuole un tocco). Ognuno spegne i tipi che non vuole in Impostazioni → Notifiche, e il server rispetta la scelta.
+- **Ricordaglielo**: manda una notifica solo a chi deve i soldi; se non la può ricevere (non usa l'app o l'ha spenta) l'app prepara un messaggio da inviare.
+- **Ci sei a cena?**: notifica ogni giorno alle 17 a chi non ha ancora risposto, sia ad app chiusa sia aperta (`supabase/promemoria.sql`).
+- **Pasti**: niente più "Fatto": ogni pasto resta visibile con orario e alimenti.

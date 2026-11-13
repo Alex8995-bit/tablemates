@@ -8,25 +8,12 @@ function oraDi(tipo) {
 const minutiDi = hhmm => { const [h, m] = String(hhmm).split(':').map(Number); return (h || 0) * 60 + (m || 0); };
 const etichettaCorta = tipo => /spuntino|merenda|arco/i.test(tipo) ? 'Spuntino' : tipo;
 const isoDi = d => { const x = new Date(d); x.setMinutes(x.getMinutes() - x.getTimezoneOffset()); return x.toISOString().slice(0, 10); };
-const avvisoAttivo = k => (Object.assign({ tavola: true, spesa: true, conti: false }, LS.getJ('avvisi', {})))[k];
 
-// Pasti segnati come fatti, per persona e per giorno
-const fattiDi = pid => D.stato['fatti:' + pid] || {};
-const segnato = (pid, iso, tipo) => (fattiDi(pid)[iso] || []).includes(tipo);
-// Un pasto è fatto se l'hai segnato, oppure se il suo orario è passato da più di un'ora (o il giorno è già passato)
+// Un pasto è passato se il suo orario è passato da più di un'ora (o il giorno è già passato): serve solo per le barre di Oggi
 function passato(iso, tipo) {
   if (!/^\d{4}-\d\d-\d\d$/.test(iso)) return false;
   const oggi = oggiISO(); if (iso < oggi) return true; if (iso > oggi) return false;
   const d = new Date(); return minutiDi(oraDi(tipo)) + 60 <= d.getHours() * 60 + d.getMinutes();
-}
-const eFatto = (pid, iso, tipo) => segnato(pid, iso, tipo) || passato(iso, tipo);
-async function segnaFatto(pid, iso, tipo) {
-  const tutti = { ...fattiDi(pid) }, lim = isoDi(Date.now() - 14 * 864e5);
-  Object.keys(tutti).forEach(k => { if (k < lim) delete tutti[k]; });
-  const l = new Set(tutti[iso] || []); if (l.has(tipo)) l.delete(tipo); else l.add(tipo);
-  tutti[iso] = [...l]; if (!tutti[iso].length) delete tutti[iso];
-  D.stato['fatti:' + pid] = tutti; vibra(); renderOggi(); renderPiano();
-  await scrivi(() => ST.salvaStato(G.id, 'fatti:' + pid, tutti));
 }
 
 // Presenze a tavola: ognuno scrive solo le sue (così due persone non si sovrascrivono)
@@ -68,10 +55,10 @@ function renderOggi() {
   if (piano?.giorni?.length) {
     gi = giornoDiOggi(piano); if (gi < 0) gi = giornoScelto(IO);
     pasti = pastiDelGiorno(piano.giorni[gi]);
-    prossimo = pasti.find(x => !eFatto(IO, iso, x.pa.tipo) && minutiDi(oraDi(x.pa.tipo)) + 60 > ora) || null;
+    prossimo = pasti.find(x => minutiDi(oraDi(x.pa.tipo)) + 60 > ora) || null;
     h += `<div class="barre" style="grid-template-columns:repeat(${pasti.length},minmax(0,1fr))" aria-label="Pasti di oggi">${pasti.map(x => {
-      const f = eFatto(IO, iso, x.pa.tipo), n = prossimo && x.pa.tipo === prossimo.pa.tipo;
-      return `<div><i class="${f ? 'fatto' : n ? 'dopo' : ''}"></i><span class="${n ? 'on' : ''}">${esc(etichettaCorta(x.pa.tipo))}${f ? '<span class="sr"> (fatto)</span>' : ''}</span></div>`;
+      const f = passato(iso, x.pa.tipo), n = prossimo && x.pa.tipo === prossimo.pa.tipo;
+      return `<div><i class="${f ? 'fatto' : n ? 'dopo' : ''}"></i><span class="${n ? 'on' : ''}">${esc(etichettaCorta(x.pa.tipo))}</span></div>`;
     }).join('')}</div>`;
   }
   // Prossimo pasto e presenza
@@ -94,7 +81,6 @@ function renderOggi() {
       <ul class="alim">${righeCibo(IO, gi, pa)}</ul>
       ${ric ? `<button type="button" class="idea" id="ogRic"><span class="ib">${ic('piatto', 28, 1.8)}</span><span class="it2"><small>Idea per ${momento}${ric.tempo ? ' · ' + esc(ric.tempo) : ''}</small><b>${esc(ric.nome)}</b></span>${ic('avanti', 20, 2)}</button>`
         : haAI() ? `<button type="button" class="idea" id="ogIdea"><span class="ib">${ic('scintille', 26, 1.8)}</span><span class="it2"><small>Idea per ${momento}</small><b>Proponi un piatto con questi alimenti</b></span>${ic('avanti', 20, 2)}</button>` : ''}
-      <div class="tavola-info" style="margin-top:-4px"><p></p><button type="button" id="ogFatto">${ic('spunta', 14, 2.6).replace('class="ic"', 'class="ic" style="display:inline;vertical-align:-2px;margin-right:4px"')}Segna come fatto</button></div>
       ${rigaTavola}</section>`;
   } else {
     h += `<section class="big" aria-labelledby="og-t"><span class="eyebrow">Per oggi è tutto</span><h2 id="og-t">Hai finito i pasti di oggi</h2><p class="q" style="margin:0;line-height:1.5">Domani trovi qui il primo pasto della giornata.</p><button type="button" class="link" id="ogPiano" style="align-self:flex-start">Apri il piano di domani</button>${rigaTavola}</section>`;
@@ -116,7 +102,6 @@ function renderOggi() {
   if ($('ogMan')) $('ogMan').onclick = () => editorPiano(IO);
   if ($('ogRic')) $('ogRic').onclick = () => apriRicetta(IO, gi, prossimo.k);
   if ($('ogIdea')) $('ogIdea').onclick = () => proponiPiatto(IO, gi, prossimo.k, $('ogIdea'));
-  if ($('ogFatto')) $('ogFatto').onclick = () => { segnaFatto(IO, iso, prossimo.pa.tipo); toast(prossimo.pa.tipo + ' segnato come fatto ✓'); };
   if ($('ogPiano')) $('ogPiano').onclick = () => { const p = pianoDi(IO), dom = giornoPerData(p, Date.now() + 864e5); if (dom >= 0) LS.set('giorno:' + IO, String(dom)); personaPiano = IO; vai('piano'); renderPiano(); };
   el.querySelectorAll('[data-pr]').forEach(b => b.onclick = () => segnaPresenza(IO, iso, quando, b.dataset.pr === 'si' ? (mia === true ? undefined : true) : (mia === false ? undefined : false)));
   if ($('ogSett')) $('ogSett').onclick = () => vai('presenze');
@@ -168,10 +153,6 @@ function renderPresenze() {
 function promemoria() {
   if (!G || !IO) return;
   const iso = oggiISO(), h = new Date().getHours();
-  if (avvisoAttivo('tavola') && h >= 17 && presDi(IO)[iso + '|c'] === undefined && LS.get('promTavola') !== iso) {
-    LS.set('promTavola', iso);
-    return toast('Ci sei a cena stasera?', { testo: 'Rispondi', fn: () => vai('oggi') });
-  }
   const s = Conti.saldi(D.movimenti, D.partecipanti)[IO] || 0, ult = +LS.get('promConti') || 0;
   if (avvisoAttivo('conti') && Math.abs(s) >= 1 && Date.now() - ult > 7 * 864e5) {
     LS.set('promConti', String(Date.now()));
