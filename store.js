@@ -50,6 +50,17 @@ function storeSupabase(url, key) {
     // Notifiche push: iscrizione di questo dispositivo e invio agli altri del gruppo
     async iscrivi(sub) { const j = sub.toJSON(); ok(await db.from('push_iscrizioni').upsert({ endpoint: j.endpoint, dati: j })); },
     async disiscrivi(endpoint) { ok(await db.from('push_iscrizioni').delete().eq('endpoint', endpoint)); },
+    // Funzione "cucina" sul server: intelligenza artificiale (Groq con la chiave del server) e importazione di ricette da un link
+    async cucina(corpo) {
+      const r = await db.functions.invoke('cucina', { body: corpo });
+      if (r.error) {
+        const ctx = r.error.context; let m = '';
+        try { m = (await ctx.clone().json()).errore || ''; } catch (e) {}
+        if (!m && ((ctx && ctx.status === 404) || /not found|Failed to send/i.test(r.error.message || ''))) m = 'La funzione "cucina" non è ancora pubblicata su Supabase.';
+        throw new Error(m || r.error.message || 'Il server non risponde. Riprova.');
+      }
+      return r.data;
+    },
     async notifica(g, titolo, testo, scheda, tipo, a) { try { const r = await db.functions.invoke('notifica', { body: { gruppo_id: g, titolo, testo, scheda, tipo, a } }); return (r.data && r.data.inviate) || 0; } catch (e) { return 0; } },
     ascolta(g, cb, stato) {
       this.smetti();
@@ -120,6 +131,7 @@ function storeLocale() {
     },
     async delWhere(t, f) { D[t] = D[t].filter(r => !match(r, f)); salva(); },
     async iscrivi() {}, async disiscrivi() {}, async notifica() { return 0; },
+    async cucina() { throw new Error('Serve il server Supabase: in modalità "solo su questo dispositivo" non è disponibile.'); },
     ascolta(g, cb, stato) { stato(false); },
     smetti() {}
   };

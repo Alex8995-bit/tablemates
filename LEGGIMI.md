@@ -128,6 +128,19 @@ Mentre l'app è aperta, gli avvisi su spese e pasti arrivano già. Per riceverli
 
 Su iPhone le notifiche funzionano solo con l'app aggiunta alla schermata Home (iOS 16.4 o successivo).
 
+## Passo 9 bis · Intelligenza artificiale per tutti, senza chiavi (consigliato)
+
+Con questo passo l'app crea piatti e ricette e importa ricette dai link senza che nessuno inserisca chiavi. La chiave Groq resta solo sul tuo server ed è gratuita.
+
+1. Vai su **console.groq.com/keys**, accedi e premi **Create API Key**. Copia la chiave (inizia con `gsk_`).
+2. In Supabase apri **Edge Functions → Secrets** e aggiungi il segreto `GROQ_API_KEY` con quella chiave.
+3. Apri **Edge Functions → Deploy a new function → Via Editor**.
+4. Chiama la funzione esattamente `cucina`. Cancella il codice di esempio, incolla tutto il contenuto di `tablemates/supabase/functions/cucina/index.ts` e premi **Deploy function**.
+5. Nella funzione `cucina` apri **Details** (o Settings), togli la spunta **Verify JWT** (o "Enforce JWT verification") e salva, come per `notifica`: il controllo dell'accesso lo fa la funzione.
+6. Riapri l'app: in **Impostazioni → Intelligenza artificiale** compare "Tablemates (server)".
+
+Ogni persona può fare al massimo 10 richieste al minuto e 120 all'ora: è un limite di sicurezza per non consumare la quota gratuita di Groq.
+
 ## Passo 10 · "Ehi Siri, cosa mangio?" (facoltativo, iPhone)
 
 1. Apri l'app **Comandi** e tocca **+**.
@@ -172,6 +185,7 @@ Quando modifichi un file, in `sw.js` aumenta il numero di `VERSIONE` (per esempi
 | `sw.js`, `manifest.webmanifest`, `icons/` | installazione e uso senza rete |
 | `supabase/schema.sql` | il database |
 | `supabase/functions/notifica/` | la funzione delle notifiche |
+| `supabase/functions/cucina/` | la funzione dell'intelligenza artificiale (Groq) e dell'importazione di ricette da un link |
 | `strumenti/chiavi-notifiche.html` | crea le chiavi delle notifiche |
 | `strumenti/crea_anteprima.py` | crea la versione dimostrativa |
 
@@ -187,6 +201,17 @@ Quando modifichi un file, in `sw.js` aumenta il numero di `VERSIONE` (per esempi
 - **Ricetta a schermo intero** con ingredienti "In casa / Da comprare", "Metti i mancanti in spesa", ricette salvate e **Modalità cucina** (un passo alla volta, timer, schermo acceso, comandi a voce dove il telefono li supporta).
 - **Spesa + Dispensa**: livelli di quanto resta, "stanno finendo → in lista", la Dispensa si riempie quando spunti un prodotto.
 - **Conti**: "Giulia ti deve", Segna saldato, Ricordaglielo (messaggio da mandare), speso nel mese, la tua parte, ultimi movimenti; saldi, statistiche e conti restano a un tocco.
+
+## Novità della versione 9.5
+- **Agenda** (nuova scheda): appuntamenti comuni o personali (giorno, dalle–alle, dove, per chi) e scadenze (mutuo, affitto, luce, gas, acqua, internet… con importo). Si ripetono ogni settimana, mese o anno. Le scadenze si segnano pagate (una rata alla volta) e si possono registrare nei Conti con un tocco. Scorri a sinistra per eliminare. In Oggi compaiono gli impegni di oggi e le scadenze dei prossimi 3 giorni che ti riguardano.
+- **Promemoria dell'agenda** come notifica sul telefono, anche ad app chiusa: a tutto il gruppo o solo alle persone scelte, all'orario scelto (15 minuti prima, 1 ora prima, il giorno prima…; per le scadenze alle 9 del giorno scelto). Si spengono da Impostazioni → Notifiche → Agenda. Serve aggiornare la funzione `notifica` ed eseguire di nuovo `supabase/promemoria.sql` (ora gira ogni 5 minuti).
+- **Piatto condiviso**: nella ricetta di un pasto scegli "Chi mangia questo piatto". Le dosi si sommano con le grammature della dieta di ognuno (chi non ha quell'alimento nel piano, o non ha una dieta, ha la stessa porzione); ricetta base, modalità cucina e spesa usano i totali.
+- Intro: ora si vede sempre all'avvio. PIN e Face ID aspettano la fine dell'intro; se riapri l'app dopo almeno 10 minuti l'intro riparte.
+
+## Novità della versione 9.4
+- Intelligenza artificiale dal tuo server (funzione `cucina` con la chiave Groq come segreto): nessuno deve più inserire chiavi e la chiave non è visibile a chi è nel gruppo. Una chiave personale, se c'è, ha la precedenza.
+- **Ricetta da un link**: incolli il link di una ricetta (GialloZafferano, Fatto in casa da Benedetta, Chef in camicia…) e l'app la importa; per un pasto del piano adatta le dosi alle tue grammature (con l'IA, oppure da sola per gli ingredienti che corrispondono). Resta sempre il collegamento alla ricetta originale. Le ricette scelte da te vanno nel ricettario personale (Piano → Ricette salvate).
+- Su Android puoi anche usare **Condividi → Tablemates** da Chrome o dall'app del sito.
 
 ## Novità della versione 9.3
 - Intro rifatta: logo più grande, le persone (spalle e testa insieme) si siedono una alla volta in senso orario con un piccolo rimbalzo, poi "Table" e "mates" entrano a bolla.

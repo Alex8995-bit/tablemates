@@ -158,7 +158,8 @@ function mostraBlocco() {
     else c.errore('PIN errato · ancora ' + (5 - t) + (5 - t === 1 ? ' tentativo' : ' tentativi'));
   }, { bio: usaBio, grande: true, onBio: tentaBio });
   if ((+LS.get('pinFino') || 0) > Date.now()) attesa(ctl);
-  else if (usaBio) setTimeout(tentaBio, 350);
+  // Face ID dopo l'intro: altrimenti la finestra di sistema la copre
+  else if (usaBio) (window.INTRO ? INTRO.fine : Promise.resolve()).then(() => setTimeout(tentaBio, 350));
   $('blD').onclick = () => {
     const rete = ST && ST.modo === 'supabase';
     foglio(`<h2>PIN dimenticato</h2><p class="q" style="line-height:1.5">${rete ? 'Per toglierlo esci dall\'account su questo dispositivo: poi rientri con la tua email e la password (o con il codice via email). Non perdi niente: i dati sono sul server.' : 'Questa app è usata solo su questo dispositivo, quindi per togliere il PIN vanno cancellati tutti i dati salvati qui: pasti, spesa e conti. Se vuoi evitarlo, riprova a ricordare il PIN.'}</p>

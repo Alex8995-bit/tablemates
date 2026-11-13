@@ -5,13 +5,13 @@ let D = VUOTO_D();
 let CHI = SS.get('chi'), IO = null;
 
 function renderNav() {
-  const voci = { oggi: ['oggi', 'Oggi'], piano: ['calendario', 'Piano'], spesa: ['sacchetto', 'Spesa'], conti: ['borsello', 'Conti'], gruppo: ['gruppo', 'Gruppo'], chat: ['scintille', 'Assistente'] };
+  const voci = { oggi: ['oggi', 'Oggi'], piano: ['calendario', 'Piano'], spesa: ['sacchetto', 'Spesa'], conti: ['borsello', 'Conti'], agenda: ['agenda', 'Agenda'], gruppo: ['gruppo', 'Gruppo'], chat: ['scintille', 'Assistente'] };
   document.querySelectorAll('nav.sezioni button[data-t]').forEach(b => { const [i, n] = voci[b.dataset.t]; b.innerHTML = `<span class="pl">${ic(i, 24, 1.8)}</span><span>${n}</span>`; });
   $('navMarchio').innerHTML = marchioCompleto(32);
   const io = IO ? D.partecipanti.find(p => p.id === IO) : null;
   $('navIo').innerHTML = io ? `${avatar(io, idxP(IO))}<span style="display:flex;flex-direction:column"><span>${esc(io.nome)}</span><span class="by">${ST && ST.modo === 'supabase' ? (live ? 'Sincronizzato' : 'Non collegato') : 'Solo su questo dispositivo'}</span></span>` : '';
 }
-function renderTutto() { renderNav(); renderOggi(); renderPiano(); renderSpesa(); renderConti(); renderGruppo(); renderPresenze(); renderChat(); renderImp(); }
+function renderTutto() { renderNav(); renderOggi(); renderPiano(); renderSpesa(); renderConti(); renderAgenda(); renderGruppo(); renderPresenze(); renderChat(); renderImp(); }
 const nomeP = id => (D.partecipanti.find(p => p.id === id) || {}).nome || '?';
 
 // Copia degli ultimi dati per aprire l'app anche senza rete (senza foto, per stare nello spazio del telefono)
@@ -165,7 +165,9 @@ function cambiamento(t, ev, r) {
     D.stato[r.id] = r.data;
     if (/^piano:/.test(r.id) && r.data && r.data.da && r.data.da !== CHI && JSON.stringify(prima) !== JSON.stringify(r.data))
       avvisoLocale('Pasti aggiornati', `${r.data.da} ha aggiornato la dieta di ${nomeP(r.id.slice(6))}`, 'piano');
-    renderOggi(); renderPiano(); renderPresenze(); renderSpesa(); renderGruppo(); renderChat(); renderImp(); snap(); return;
+    if (/^evento:/.test(r.id) && r.data && !r.data.eliminato && !prima && r.data.da && r.data.da !== CHI && avvisoAttivo('agenda') && (!r.data.chi || !r.data.chi.length || r.data.chi.includes(IO)))
+      avvisoLocale(r.data.tipo === 'scadenza' ? 'Nuova scadenza' : 'Nuovo appuntamento', `${r.data.da}: ${r.data.titolo}`, 'agenda');
+    renderOggi(); renderPiano(); renderPresenze(); renderSpesa(); renderAgenda(); renderGruppo(); renderChat(); renderImp(); snap(); return;
   }
   if (t === 'movimenti' && r && 'foto' in r) { r.ha_foto = !!r.foto; delete r.foto; }
   const arr = D[t]; if (!arr) return;
@@ -199,7 +201,10 @@ async function avvio() {
     if (via === 'codice' && !LS.get('pw') && ST.modo === 'supabase') await formPassword('Scegli una password');
   }
   await ripristinaChiaveIA();
+  controllaIAServer();
   await scegliGruppo();
+  const daImportare = SS.get('importa');
+  if (daImportare && G) { SS.del('importa'); vai('piano'); foglioImporta(null, daImportare); }
 }
 
 // ---------- Avvio ----------
@@ -213,6 +218,10 @@ async function avvio() {
     if (S('sbUrl') && S('sbKey')) LS.del('modo');
   }
   if (dom) SS.set('chiedi', dom);
+  // ricetta condivisa da un'altra app (Android: Condividi → Tablemates)
+  const cond = [q.get('condividi'), q.get('testo'), q.get('titolo')].map(x => (String(x || '').match(/https?:\/\/\S+/) || [])[0]).find(Boolean);
+  if (cond) SS.set('importa', cond);
+  if (cond || q.has('condividi') || q.has('testo')) history.replaceState(null, '', location.pathname);
   if (inv || dom || sq || q.get('srv')) history.replaceState(null, '', location.pathname);
   document.querySelectorAll('nav.sezioni button[data-t]').forEach(b => b.onclick = () => vai(b.dataset.t));
   renderNav();

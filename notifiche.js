@@ -4,7 +4,7 @@
 const pushPossibile = () => !ANTEPRIMA && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && !!S('vapidPublic') && ST && ST.modo === 'supabase';
 const notificheAttive = () => LS.get('notifiche') !== 'no' && 'Notification' in window && Notification.permission === 'granted';
 // Preferenze per tipo, salvate nel gruppo così le rispetta anche il server: tutte attive se la persona non ha scelto
-const AVVISI_BASE = { tavola: true, spesa: true, conti: true };
+const AVVISI_BASE = { tavola: true, spesa: true, conti: true, agenda: true };
 const avvisiDi = pid => Object.assign({}, AVVISI_BASE, (pid && D.stato['avvisi:' + pid]) || {});
 const avvisoAttivo = k => avvisiDi(IO)[k] !== false;
 async function salvaAvviso(k, v) {
@@ -60,7 +60,7 @@ function avviaNotifiche() {
 function avvisaGruppo(titolo, testo, opz = {}) {
   if (!G || !ST) return Promise.resolve(0);
   const tipo = opz.tipo || (/past|diet|piatt/i.test(titolo) ? 'piano' : 'conti');
-  return ST.notifica(G.id, titolo, testo, opz.scheda || (tipo === 'piano' ? 'piano' : tipo === 'spesa' ? 'spesa' : tipo === 'tavola' ? 'oggi' : 'conti'), tipo, opz.a);
+  return ST.notifica(G.id, titolo, testo, opz.scheda || (tipo === 'piano' ? 'piano' : tipo === 'spesa' ? 'spesa' : tipo === 'tavola' ? 'oggi' : tipo === 'agenda' ? 'agenda' : 'conti'), tipo, opz.a);
 }
 // Le modifiche alla spesa si raccolgono per qualche secondo e partono in un solo avviso
 let _codaSpesa = { agg: [], presi: [], t: null };

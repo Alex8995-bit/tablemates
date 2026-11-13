@@ -6,6 +6,8 @@ function iaAttiva() {
   if (prov && prov !== 'nessuna' && chiave) return { prov, chiave, condivisa: false };
   const g = (typeof D !== 'undefined' && D.stato && D.stato.ia) || null;
   if (g && g.prov && g.prov !== 'nessuna' && g.chiave) return { prov: g.prov, chiave: g.chiave, condivisa: true, da: g.da };
+  // nessuna chiave: si usa l'intelligenza artificiale del server (funzione "cucina" con la chiave Groq salvata su Supabase)
+  if (LS.get('iaServer') === 'si' && typeof ST !== 'undefined' && ST && ST.modo === 'supabase') return { prov: 'server', chiave: '', condivisa: true, da: 'server' };
   return { prov: 'nessuna', chiave: '', condivisa: false };
 }
 const AI = () => iaAttiva().prov;
@@ -25,7 +27,13 @@ function attesaIA(titolo, testo) {
     }
   };
 }
-const NOMI_IA = { gemini: 'Gemini', groq: 'Groq', openai: 'ChatGPT', claude: 'Claude' };
+const NOMI_IA = { gemini: 'Gemini', groq: 'Groq', openai: 'ChatGPT', claude: 'Claude', server: 'Tablemates (server)' };
+// All'accesso: il server ha l'intelligenza artificiale? (segreto GROQ_API_KEY nella funzione "cucina")
+async function controllaIAServer() {
+  if (ANTEPRIMA || !ST || ST.modo !== 'supabase') return;
+  try { const r = await ST.cucina({ azione: 'stato' }); const v = r && r.ia ? 'si' : 'no'; if (v !== LS.get('iaServer')) { LS.set('iaServer', v); renderTutto(); } }
+  catch (e) { if (/non è ancora pubblicata/.test(e.message) && LS.get('iaServer')) { LS.del('iaServer'); renderTutto(); } }
+}
 // Chiamata di rete con tempo massimo ed errori in italiano
 async function chiamaIA(prov, url, opz) {
   const nome = NOMI_IA[prov] || 'l\'IA', ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), 170000);
@@ -119,6 +127,12 @@ async function ia(parts) {
   }
   const txt = parts.filter(x => x.text).map(x => x.text).join('\n') + '\nRispondi SOLO con JSON valido.';
   const pdf = parts.find(x => x.inline_data)?.inline_data.data;
+  if (p === 'server') {
+    let testo = txt; if (pdf) testo += '\n\nTESTO ESTRATTO DAL PDF:\n' + await testoDaPDF(pdf);
+    const r = await ST.cucina({ azione: 'ia', testo });
+    if (!r || !r.dati) throw new Error('L\'intelligenza artificiale non ha risposto. Riprova.');
+    return r.dati;
+  }
   if (p === 'groq') {
     let testo = txt;
     if (pdf) testo += '\n\nTESTO ESTRATTO DAL PDF:\n' + await testoDaPDF(pdf);

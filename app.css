@@ -503,3 +503,29 @@ nav .marchio,nav .io{display:none}
 .sc>.sw{margin:0 -14px;border-bottom:0}
 .sc>.sw::after{content:"";position:absolute;left:14px;right:14px;bottom:0;border-bottom:1px solid var(--line);z-index:2;pointer-events:none}.sc>.sw:last-child::after{display:none}
 .sc>.sw>.sw-riga{padding-left:14px;padding-right:14px;box-sizing:border-box;width:100%}
+
+/* Collegamento alla ricetta originale */
+.fonte{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--acc-text);text-decoration:none;padding:10px 12px;border-radius:14px;background:var(--acc-soft)}.fonte span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Piatto condiviso */
+.chi-mangia h2{margin:0 0 10px;font-size:12px;font-weight:700;color:var(--sub);letter-spacing:.06em;text-transform:uppercase}
+.ingr .ir b small.parti{display:block;font-size:12px;font-weight:600;color:var(--sub);margin-top:2px}
+.ingr .ir:has(small.parti){padding:6px 0}
+
+/* Agenda */
+.ag-cal{display:flex;flex-direction:column;gap:10px;padding:14px}
+.ag-testa{display:flex;align-items:center;justify-content:space-between;gap:8px}.ag-testa h2{margin:0;font-size:17px;font-weight:800}
+.ag-sett,.ag-griglia{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}
+.ag-sett span{font-size:11px;font-weight:700;color:var(--sub);padding:2px 0}
+.ag-g{border:0;background:none;color:var(--tx);font:inherit;font-size:15px;font-weight:600;min-height:44px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;padding:0}
+.ag-g i{display:flex;gap:3px;height:5px}.ag-g em{width:5px;height:5px;border-radius:50%;background:var(--acc)}.ag-g em.s{background:#E8913A}
+.ag-g.oggi span{color:var(--acc-text);font-weight:800;box-shadow:inset 0 -2px 0 var(--acc)}
+.ag-g.sel{background:var(--acc);color:var(--acc-tx)}.ag-g.sel em{background:var(--acc-tx)}.ag-g.sel.oggi span{color:var(--acc-tx);box-shadow:none}
+.ag-riga{display:flex;align-items:center;gap:12px;min-height:62px;border:0;border-bottom:1px solid var(--line);background:none;width:100%;padding:8px 0;text-align:left;cursor:pointer;font:inherit;color:var(--tx)}.ag-riga:last-child{border-bottom:0}
+.ag-ora{width:46px;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;text-align:center}.ag-ora b{font-size:15px;font-weight:800}.ag-ora small{font-size:11px;font-weight:600;color:var(--sub);line-height:1.2}
+.ag-riga.scad .ag-ora{height:40px;width:40px;margin:0 3px;border-radius:12px;background:var(--warn-bg);color:var(--warn-strong)}
+.ag-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.ag-t b{font-size:15px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ag-t small{font-size:12px;color:var(--sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ag-imp{display:flex;flex-direction:column;align-items:flex-end;gap:2px}.ag-imp b{font-size:15px}.ag-imp small{font-size:12px;font-weight:700;color:var(--acc-text)}.ag-imp small.tardi{color:var(--neg)}
+.ag-riga.fatta .ag-t b{text-decoration:line-through;color:var(--sub)}
+.coppia{display:grid;grid-template-columns:1fr 1fr;gap:10px}.coppia>div{min-width:0}
+.riga-check{display:flex;gap:10px;align-items:center;margin:12px 0 2px;font-size:15px;font-weight:600}.riga-check input{width:20px;height:20px;margin:0;accent-color:var(--acc)}
+.sez-riga .link{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}

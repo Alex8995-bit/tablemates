@@ -43,8 +43,9 @@ const CUOCO = (() => {
     return String(pa.alimenti || '').split(/[;\n]|,(?![^(]*\))/).map(t => t.trim()).filter(Boolean).map(t => LETTORE.voceDaTesto ? LETTORE.voceDaTesto(t) : { nome: t });
   }
 
-  function crea(pid, gi, pa) {
-    const vv = voci(pid, gi, pa).filter(v => v && v.nome);
+  // altreVoci: dosi già sommate (piatto condiviso con altre persone)
+  function crea(pid, gi, pa, altreVoci) {
+    const vv = (altreVoci || voci(pid, gi, pa)).filter(v => v && v.nome);
     const g = {}; vv.forEach(v => { const t = tipoDi(v.nome); (g[t] = g[t] || []).push(v); });
     const usati = new Set(), has = k => !!(g[k] && g[k].length), L = k => { (g[k] || []).forEach(v => usati.add(v)); return g[k] || []; };
     const lista = k => elenco(L(k).map(conQ));

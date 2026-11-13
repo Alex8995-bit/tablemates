@@ -49,6 +49,7 @@ function renderPiano() {
   el.querySelectorAll('[data-prop]').forEach(b => b.onclick = () => proponiPiatto(personaPiano, giornoScelto(personaPiano), +b.dataset.prop));
   el.querySelectorAll('[data-ric]').forEach(d => d.onclick = () => apriRicetta(d.dataset.pid || personaPiano, +d.dataset.g, +d.dataset.ric));
   el.querySelectorAll('[data-salva]').forEach(b => b.onclick = () => salvaLink(+b.dataset.salva));
+  el.querySelectorAll('[data-imp]').forEach(b => b.onclick = () => foglioImporta({ pid: personaPiano, gi: giornoScelto(personaPiano), k: +b.dataset.imp }));
   el.querySelectorAll('[data-alt]').forEach(b => b.onclick = () => { const [k, i] = b.dataset.alt.split('|').map(Number); vibra(); foglioAlternative(personaPiano, giornoScelto(personaPiano), k, i); });
   el.querySelectorAll('[data-sc]').forEach(b => b.onclick = () => {
     const [k, i, j] = b.dataset.sc.split('|').map(Number), gi = giornoScelto(personaPiano), g = pianoDi(personaPiano).giorni[gi], pa = g.pasti[k];
@@ -70,7 +71,7 @@ function vistaPersona(pid) {
   if (!piano || !piano.giorni || !piano.giorni.length) {
     return `<div class="card vuoto">${ic('documento', 32)}<b>${pid === IO ? 'Non hai ancora inserito il tuo piano' : esc(p.nome) + ' non ha ancora un piano'}</b><br>Carica il PDF del nutrizionista oppure scrivilo a mano. Prima di salvare puoi controllare tutto.</div>
       <div style="display:flex;flex-direction:column;gap:8px"><button class="btn" id="up2" type="button">${ic('carica', 18)}Carica il PDF della dieta</button><button class="btn bordo" id="man" type="button" style="margin:0">${ic('matita', 18)}Scrivi il piano a mano</button></div>` +
-      (pref ? `<button class="riga-link" type="button" id="pref">${ic('segnalibro', 22, 1.8)}<span><b>Ricette salvate</b><small>${pref} ${pref === 1 ? 'ricetta' : 'ricette'}</small></span>${ic('avanti', 18, 2)}</button>` : '');
+      (pref || (ST && ST.modo === 'supabase' && !ANTEPRIMA) ? `<button class="riga-link" type="button" id="pref">${ic('segnalibro', 22, 1.8)}<span><b>Ricette salvate</b><small>${pref ? pref + ' ' + (pref === 1 ? 'ricetta' : 'ricette') + ' · ' : ''}importa anche da un link</small></span>${ic('avanti', 18, 2)}</button>` : '');
   }
   const gi = giornoScelto(pid), g = piano.giorni[gi], r = ricetteDi(pid)[gi] || [], oggiIdx = giornoDiOggi(piano);
   // Giorni: la settimana L–D se il piano usa i giorni della settimana, altrimenti "Giorno 1, 2…"
@@ -109,13 +110,13 @@ function vistaPersona(pid) {
         ${x && haAI() ? `<button type="button" class="piccolo neutro" data-re="${k}">${ic('scintille', 15, 2)}Altro piatto</button>` : ''}
         <a class="piccolo neutro" href="https://www.google.com/search?q=${encodeURIComponent('ricetta ' + testoRicerca({ alimenti: testoPasto(pid, gi, pa) }))}" target="_blank" rel="noopener">${ic('cerca', 15, 2)}Cerca ricetta</a>
         ${pa.link ? `<a class="piccolo neutro" href="${esc(pa.link)}" target="_blank" rel="noopener">${ic('libro', 15, 2)}Ricetta salvata</a>` : ''}
-        <button type="button" class="piccolo neutro" data-salva="${k}">${ic('link', 15, 2)}${pa.link ? 'Cambia link' : 'Salva link'}</button></div>
+        ${ST && ST.modo === 'supabase' && !ANTEPRIMA ? `<button type="button" class="piccolo neutro" data-imp="${k}">${ic('link', 15, 2)}Ricetta da un link</button>` : `<button type="button" class="piccolo neutro" data-salva="${k}">${ic('link', 15, 2)}${pa.link ? 'Cambia link' : 'Salva link'}</button>`}</div>
       ${pa.link_da ? `<span class="by">Link salvato da ${esc(pa.link_da)}</span>` : ''}</section>`;
   }).join('');
   h += `<div style="display:flex;flex-direction:column;gap:8px">` +
     (haVoci(piano) ? `<button class="btn" id="spD" type="button">${ic('sacchetto', 18)}Crea la lista della spesa dalla dieta</button>` : '') +
     `<button class="btn ${haVoci(piano) ? 'ghost' : ''}" id="gen" type="button" style="margin:0">${ic('scintille', 18)}${r.length ? 'Rigenera i piatti di ' + esc(g.giorno) : 'Proponi i piatti di ' + esc(g.giorno)}</button>` + '</div>' +
-    (pref ? `<button class="riga-link" type="button" id="pref">${ic('segnalibro', 22, 1.8)}<span><b>Ricette salvate</b><small>${pref} ${pref === 1 ? 'ricetta' : 'ricette'}</small></span>${ic('avanti', 18, 2)}</button>` : '') +
+    (pref || (ST && ST.modo === 'supabase' && !ANTEPRIMA) ? `<button class="riga-link" type="button" id="pref">${ic('segnalibro', 22, 1.8)}<span><b>Ricette salvate</b><small>${pref ? pref + ' ' + (pref === 1 ? 'ricetta' : 'ricette') + ' · ' : ''}importa anche da un link</small></span>${ic('avanti', 18, 2)}</button>` : '') +
     `<p class="by" style="text-align:center;margin:0 0 12px">Piano ${piano.da ? 'inserito da ' + esc(piano.da) : ''} · ${piano.giorni.length} ${piano.giorni.length === 1 ? 'giorno' : 'giorni'}${nome === 'Tu' ? '' : ' · ' + esc(nome)}</p>`;
   return h;
 }

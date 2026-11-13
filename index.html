@@ -37,7 +37,25 @@
 <p class="intro-nome"><span class="i-table">Table</span><span class="i-mates">mates</span></p>
 </div>
 </div>
-<script>(function(){var e=document.getElementById('intro');try{if(sessionStorage.getItem('introVista')){e.remove();return}sessionStorage.setItem('introVista','1')}catch(x){}var fatto=false,via=function(){if(fatto)return;fatto=true;e.classList.add('esce');setTimeout(function(){e.remove()},500)};var rid=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;setTimeout(via,rid?900:5300);e.addEventListener('click',via)})();</script>
+<script>
+// Intro all'avvio e quando si riapre l'app dopo un po'. Finché gira, PIN e Face ID aspettano (window.INTRO.fine).
+(function(){
+  var modello = document.getElementById('intro').outerHTML, chiudiFine = null, nascosta = 0;
+  var I = window.INTRO = { attiva: false, fine: Promise.resolve() };
+  function avvia(e) {
+    I.attiva = true; I.fine = new Promise(function (r) { chiudiFine = r; });
+    var fatto = false, via = function () { if (fatto) return; fatto = true; e.classList.add('esce'); setTimeout(function () { e.remove(); I.attiva = false; chiudiFine(); }, 500); };
+    var rid = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    setTimeout(via, rid ? 900 : 5300); e.addEventListener('click', via);
+  }
+  I.mostra = function () { if (document.getElementById('intro') || I.salta) return; document.body.insertAdjacentHTML('afterbegin', modello); avvia(document.getElementById('intro')); };
+  // riaperta dopo almeno 10 minuti in secondo piano: è come un nuovo avvio
+  document.addEventListener('visibilitychange', function () { if (document.hidden) { nascosta = Date.now(); return; } if (nascosta && Date.now() - nascosta >= 600000) I.mostra(); });
+  var e = document.getElementById('intro');
+  try { if (sessionStorage.getItem('introVista')) { I.salta = sessionStorage.getItem('introVista') === 'test'; e.remove(); return; } sessionStorage.setItem('introVista', '1'); } catch (x) {}
+  avvia(e);
+})();
+</script>
 <div class="offline" id="offline" hidden>Sei offline: vedi gli ultimi dati salvati, le modifiche non vengono registrate.</div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <main class="wrap">
@@ -45,6 +63,7 @@
 <section id="t-piano" hidden></section>
 <section id="t-spesa" hidden></section>
 <section id="t-conti" hidden></section>
+<section id="t-agenda" hidden></section>
 <section id="t-gruppo" hidden></section>
 <section id="t-presenze" hidden></section>
 <section id="t-chat" hidden></section>
@@ -56,6 +75,7 @@
 <button type="button" data-t="piano"></button>
 <button type="button" data-t="spesa"></button>
 <button type="button" data-t="conti"></button>
+<button type="button" data-t="agenda"></button>
 <button type="button" data-t="gruppo"></button>
 <button type="button" data-t="chat" class="pc"></button>
 <div class="io" id="navIo"></div>
@@ -79,6 +99,7 @@
 <script src="dieta.js"></script>
 <script src="cuoco.js"></script>
 <script src="scorri.js"></script>
+<script src="agenda.js"></script>
 <script src="ricetta.js"></script>
 <script src="spesa.js"></script>
 <script src="conti.js"></script>

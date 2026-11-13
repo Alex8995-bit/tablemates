@@ -98,6 +98,7 @@ function renderOggi() {
   const s = Conti.saldi(D.movimenti, D.partecipanti), mio = IO ? (s[IO] || 0) : 0, rr = Conti.rimborsi(s);
   const verso = mio > 0 ? rr.filter(r => r.a === IO) : rr.filter(r => r.da === IO);
   const chiConti = verso.length === 1 ? nomeP(mio > 0 ? verso[0].da : verso[0].a) : '';
+  h += htmlAgendaOggi();
   h += `<div class="tiles">
     <button type="button" class="tile2" id="ogSp">${ic('sacchetto', 24, 1.8)}<b>${daPrendere.length ? daPrendere.length + ' da prendere' : 'Lista vuota'}</b><span>${daAltri.length ? daAltri.length + (daAltri.length === 1 ? ' aggiunto da ' : ' aggiunti da ') + esc(nomiAltri.length === 1 ? nomiAltri[0] : 'altri') : daPrendere.length ? 'Nella lista della spesa' : 'Aggiungi quello che manca'}</span></button>
     <button type="button" class="tile2" id="ogCo">${ic('borsello', 24, 1.8)}<b class="num ${mio > 0 ? 'pos' : mio < 0 ? 'neg' : ''}">${mio ? (mio > 0 ? '+ ' : '− ') + eur(Math.abs(mio)) : 'In pari'}</b><span>${mio > 0 ? (chiConti ? esc(chiConti) + ' ti deve' : 'Ti devono') : mio < 0 ? (chiConti ? 'Devi a ' + esc(chiConti) : 'Devi') : 'Nessun conto da saldare'}</span></button></div>
@@ -137,6 +138,8 @@ function renderOggi() {
   if ($('ogPiano')) $('ogPiano').onclick = () => { const p = pianoDi(IO), dom = giornoPerData(p, Date.now() + 864e5); if (dom >= 0) LS.set('giorno:' + IO, String(dom)); personaPiano = IO; vai('piano'); renderPiano(); };
   el.querySelectorAll('[data-pr]').forEach(b => b.onclick = () => segnaPresenza(IO, iso, quando, b.dataset.pr === 'si' ? (mia === true ? undefined : true) : (mia === false ? undefined : false)));
   if ($('ogSett')) $('ogSett').onclick = () => vai('presenze');
+  if ($('ogAg')) $('ogAg').onclick = () => vai('agenda');
+  el.querySelectorAll('[data-ev]').forEach(b => b.onclick = () => { agendaGiorno = b.dataset.d; vai('agenda'); renderAgenda(); apriVoceAgenda(b.dataset.ev, b.dataset.d); });
   $('ogSp').onclick = () => vai('spesa'); $('ogCo').onclick = () => vai('conti'); $('ogChat').onclick = () => vai('chat');
 }
 
