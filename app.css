@@ -427,7 +427,7 @@ nav .marchio,nav .io{display:none}
  .due{display:flex;gap:20px;align-items:flex-start}.due>.princ{flex:999 1 480px;min-width:0}.due>.lato{flex:1 1 320px;min-width:0}
  .barra-giu{left:248px}.pagina,.cucina{left:248px}
 }
-@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}*:not(.intro):not(.intro *){animation:none!important}}
 
 /* Blocco con PIN */
 .blocco{position:fixed;inset:0;z-index:200;background:var(--bg);display:flex;flex-direction:column;justify-content:center;overflow-y:auto;
@@ -492,7 +492,6 @@ nav .marchio,nav .io{display:none}
  68%{transform:scale(1.03,.99) translateX(2.5px) rotate(1.5deg)}
  82%{transform:scale(.995) translateX(-1px) rotate(-.5deg)}
  100%{opacity:1;transform:none}}
-@media (prefers-reduced-motion:reduce){.intro *{animation:none!important;opacity:1!important;stroke-dashoffset:0!important}}
 /* Scorri a sinistra per eliminare */
 .sw{position:relative;overflow:hidden;border-bottom:1px solid var(--line);transition:height .22s ease}.sw:last-child{border-bottom:0}
 .sw>.sw-riga{position:relative;z-index:1;background:var(--card);border-bottom:0!important;touch-action:pan-y;-webkit-user-select:none;user-select:none}

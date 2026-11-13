@@ -52,8 +52,8 @@
   function avvia(e) {
     I.attiva = true; I.fine = new Promise(function (r) { chiudiFine = r; });
     var fatto = false, via = function () { if (fatto) return; fatto = true; e.classList.add('esce'); setTimeout(function () { e.remove(); I.attiva = false; chiudiFine(); }, 500); };
-    var rid = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-    setTimeout(via, rid ? 900 : 5300); e.addEventListener('click', via);
+    // l'intro dura sempre quanto serve all'animazione, anche con "Riduci movimento" attivo sull'iPhone (un tocco la salta)
+    setTimeout(via, 5300); e.addEventListener('click', via);
   }
   I.mostra = function () { if (document.getElementById('intro') || I.salta) return; document.body.insertAdjacentHTML('afterbegin', modello); avvia(document.getElementById('intro')); };
   // riaperta dopo almeno 10 minuti in secondo piano: è come un nuovo avvio

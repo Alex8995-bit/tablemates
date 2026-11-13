@@ -202,6 +202,9 @@ Quando modifichi un file, in `sw.js` aumenta il numero di `VERSIONE` (per esempi
 - **Spesa + Dispensa**: livelli di quanto resta, "stanno finendo → in lista", la Dispensa si riempie quando spunti un prodotto.
 - **Conti**: "Giulia ti deve", Segna saldato, Ricordaglielo (messaggio da mandare), speso nel mese, la tua parte, ultimi movimenti; saldi, statistiche e conti restano a un tocco.
 
+## Novità della versione 9.8
+- **Intro anche con "Riduci movimento"**: se sull'iPhone è attivo (Impostazioni → Accessibilità → Movimento), l'app mostrava solo il logo fermo e passava subito oltre. Ora l'animazione parte sempre; un tocco la salta. Il resto dell'app continua a rispettare l'impostazione.
+
 ## Novità della versione 9.7
 - **Intro**: parte a ogni apertura dell'app (prima partiva una sola volta per sessione, e su iPhone l'app resta spesso in memoria).
 - **App ferma come un'app vera**: niente zoom con il pizzico o il doppio tocco, niente spostamenti laterali della pagina, i campi di testo non ingrandiscono più lo schermo quando ci scrivi.
