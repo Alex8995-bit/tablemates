@@ -36,6 +36,13 @@ function renderConti() {
   $('fab').onclick = () => formMovimento(null, filtroConto ? { conto_id: filtroConto, categoria: filtroVoce } : {});
   el.querySelectorAll('tr[data-m]').forEach(r => r.onkeydown = e => { if (e.key === 'Enter') r.click(); });
   el.querySelectorAll('[data-m]').forEach(b => b.onclick = () => formMovimento(D.movimenti.find(m => m.id === b.dataset.m)));
+  scorriElimina([...el.querySelectorAll('.sc > .mov[data-m]')], (r, ripristina) => {
+    const m = D.movimenti.find(x => x.id === r.dataset.m); if (!m) return ripristina();
+    conferma('Eliminare questa voce?', `"${m.titolo}" verrà tolta dai conti di tutto il gruppo.`, 'Elimina', async () => {
+      D.movimenti = D.movimenti.filter(x => x.id !== m.id); renderConti();
+      if (await scrivi(() => ST.del('movimenti', m.id))) toast('Eliminata');
+    }, true, ripristina);
+  });
   if ($('cerca')) { $('cerca').value = cercaConti; $('cerca').oninput = e => { cercaConti = e.target.value; const p = e.target.selectionStart; renderConti(); $('cerca').focus(); $('cerca').setSelectionRange(p, p); }; }
   el.querySelectorAll('[data-rimb]').forEach(b => b.onclick = () => segnaRimborso(JSON.parse(b.dataset.rimb)));
   el.querySelectorAll('[data-pe]').forEach(b => b.onclick = () => modificaPartecipante(b.dataset.pe));

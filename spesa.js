@@ -21,6 +21,7 @@ function renderSpesa() {
   $('add').onclick = aggiungiSpesa; $('nv').onkeydown = e => { if (e.key === 'Enter') aggiungiSpesa(); };
   el.querySelectorAll('[data-sk]').forEach(b => b.onclick = () => spunta(b.dataset.sk));
   el.querySelectorAll('[data-se]').forEach(b => b.onclick = () => modificaSpesa(b.dataset.se));
+  scorriElimina([...el.querySelectorAll('.sp-riga')], r => eliminaSpesa(r.querySelector('[data-se]').dataset.se, true), 'Togli dalla lista');
   if ($('clr')) $('clr').onclick = () => conferma('Togliere i prodotti presi?', 'I prodotti spuntati verranno tolti dalla lista per tutti.', 'Togli', svuota);
   if ($('reg')) $('reg').onclick = () => {
     const nomi = D.spesa.filter(x => x.comprato).map(x => x.nome + (x.quantita ? ' (' + x.quantita + ')' : ''));
@@ -78,7 +79,13 @@ function modificaSpesa(id) {
   };
   $('seD').onclick = () => { chiudi(); eliminaSpesa(id); };
 }
-async function eliminaSpesa(id) { D.spesa = D.spesa.filter(i => i.id !== id); renderSpesa(); renderOggi(); await scrivi(() => ST.del('spesa', id)); }
+async function eliminaSpesa(id, annullabile) {
+  const x = D.spesa.find(i => i.id === id);
+  D.spesa = D.spesa.filter(i => i.id !== id); renderSpesa(); renderOggi();
+  if (await scrivi(() => ST.del('spesa', id)) && annullabile && x) toast('Tolto dalla lista: ' + x.nome, { testo: 'Annulla', fn: async () => {
+    const c = { ...x }; delete c.id; delete c.created_at; if (await scrivi(() => ST.ins('spesa', [c]))) ricarica();
+  } });
+}
 async function svuota() { D.spesa = D.spesa.filter(i => !i.comprato); renderSpesa(); renderOggi(); await scrivi(() => ST.delWhere('spesa', { gruppo_id: G.id, comprato: true })); }
 
 // ---------- Dispensa ----------
@@ -117,12 +124,18 @@ function collegaDispensa(el, valD, foc) {
   $('dAdd').onclick = aggiungi; $('dv').onkeydown = e => { if (e.key === 'Enter') aggiungi(); };
   el.querySelectorAll('[data-dz]').forEach(b => b.onclick = () => { LS.set('zona', b.dataset.dz); renderSpesa(); });
   el.querySelectorAll('[data-dl]').forEach(b => {
-    let pressione = null, lungo = false;
-    b.onpointerdown = () => { lungo = false; pressione = setTimeout(() => { lungo = true; modificaDispensa(+b.dataset.dl); }, 550); };
+    let pressione = null, lungo = false, px = 0, py = 0;
+    b.onpointerdown = e => { lungo = false; px = e.clientX; py = e.clientY; pressione = setTimeout(() => { lungo = true; modificaDispensa(+b.dataset.dl); }, 550); };
+    b.onpointermove = e => { if (Math.abs(e.clientX - px) > 8 || Math.abs(e.clientY - py) > 8) clearTimeout(pressione); };
     b.onpointerup = b.onpointerleave = () => clearTimeout(pressione);
     b.oncontextmenu = e => { e.preventDefault(); modificaDispensa(+b.dataset.dl); };
     b.onclick = () => { if (lungo) return; const d = dispensa(), it = d.items[+b.dataset.dl]; it.livello = it.livello === 0 ? 4 : it.livello - 1; vibra(); salvaDispensa({ items: d.items }); };
   });
+  scorriElimina([...el.querySelectorAll('.disp-riga')], async r => {
+    const i = +r.dataset.dl, d = dispensa(), [tolto] = d.items.splice(i, 1); if (!tolto) return;
+    await salvaDispensa({ items: d.items });
+    toast('Tolto dalla dispensa: ' + tolto.nome, { testo: 'Annulla', fn: () => { const d2 = dispensa(); d2.items.splice(Math.min(i, d2.items.length), 0, tolto); salvaDispensa({ items: d2.items }); } });
+  }, 'Togli dalla dispensa');
   if ($('dAgg')) $('dAgg').onclick = async () => {
     const bassi = dispensa().items.filter(x => x.livello <= 1 && !D.spesa.some(s => !s.comprato && senzaAccenti(s.nome) === senzaAccenti(x.nome)));
     if (!bassi.length) return toast('Sono già tutte nella lista');

@@ -188,6 +188,20 @@ Quando modifichi un file, in `sw.js` aumenta il numero di `VERSIONE` (per esempi
 - **Spesa + Dispensa**: livelli di quanto resta, "stanno finendo → in lista", la Dispensa si riempie quando spunti un prodotto.
 - **Conti**: "Giulia ti deve", Segna saldato, Ricordaglielo (messaggio da mandare), speso nel mese, la tua parte, ultimi movimenti; saldi, statistiche e conti restano a un tocco.
 
+## Novità della versione 9.3
+- Intro rifatta: logo più grande, le persone (spalle e testa insieme) si siedono una alla volta in senso orario con un piccolo rimbalzo, poi "Table" e "mates" entrano a bolla.
+- Groq di nuovo funzionante: Groq ha ritirato Llama 4 Scout e Llama 3.3 (luglio-agosto 2026); ora l'app usa GPT-OSS 120B, GPT-OSS 20B e Qwen 3.8.
+- Ricetta base senza IA: "Proponi un piatto" e "Proponi i piatti del giorno" funzionano sempre, con gli alimenti e le grammature del piano (anche modalità cucina, timer e spesa). Se l'IA non risponde compare "Usa la ricetta base".
+- La chiave IA resta salvata (sul telefono e nel tuo account): si vede mascherata, con Modifica ed Elimina.
+- Scorri da destra a sinistra per eliminare (lista della spesa, dispensa, conti): cestino bianco su fondo rosso, con Annulla.
+- Inviti: se config.js è vuoto, il link porta con sé il server, così chi lo apre non deve inserire URL.
+
+## Novità della versione 9.2
+- Intro all'apertura: il tavolo si compone, arrivano le persone, poi compare "Table" e dopo "mates" (si salta con un tocco; una volta per apertura).
+- Oggi: i pasti si scorrono avanti e indietro (dito, frecce o barre in alto); parte dal prossimo pasto.
+- "Proponi un piatto" apre subito la ricetta; se l'IA non risponde compare il motivo.
+- Gemini: nuovi modelli e messaggio chiaro quando chiede crediti (in quel caso usa Groq, gratuito).
+
 ## Novità della versione 9.1
 
 - **Amministratori**: chi crea il gruppo è Admin; può nominare altri amministratori ("+ Aggiungi amministratore del gruppo"), togliere persone, rinominare il gruppo e cambiarne la valuta. Il controllo è fatto dall'app.

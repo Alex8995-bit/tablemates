@@ -4,7 +4,7 @@ addEventListener('beforeinstallprompt', e => { e.preventDefault(); installaEvt =
 addEventListener('appinstalled', () => { installaEvt = null; toast('App installata ✓'); renderImp(); });
 const installata = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 const ios = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-const PROVIDER = [['nessuna', 'Nessuna'], ['gemini', 'Google Gemini (gratuito)'], ['groq', 'Groq (gratuito)'], ['openai', 'ChatGPT (OpenAI)'], ['claude', 'Claude (Anthropic)']];
+const PROVIDER = [['nessuna', 'Nessuna'], ['groq', 'Groq (gratuito, consigliato)'], ['gemini', 'Google Gemini'], ['openai', 'ChatGPT (OpenAI)'], ['claude', 'Claude (Anthropic)']];
 
 function renderImp() {
   const el = $('t-imp'); if (!el) return;
@@ -64,37 +64,73 @@ function foglioOrari() {
   $('orS').onclick = () => { const n = {}; $('pop').querySelectorAll('[data-or]').forEach(i => { if (i.value) n[i.dataset.or] = i.value; }); LS.setJ('orari', n); chiudi(); toast('Orari salvati ✓'); renderTutto(); };
   $('orR').onclick = () => { LS.del('orari'); chiudi(); renderTutto(); };
 }
-function foglioIA() {
-  const gr = D.stato && D.stato.ia, pers = LS.get('aiProv') && LS.get('aiProv') !== 'nessuna' && LS.get('gKey');
-  foglio(`<h2>Intelligenza artificiale</h2><p class="q" style="margin:0 0 6px;line-height:1.5">Serve per proporre piatti e ricette, per l'Assistente e per leggere i PDF che l'app non riconosce da sola. È facoltativa.</p>
-    ${gr && gr.chiave ? `<div class="nota" style="margin:6px 0 10px">Il gruppo usa ${esc((PROVIDER.find(p => p[0] === gr.prov) || [])[1] || gr.prov)}, condivisa da ${esc(gr.da || '?')}.${pers ? ' Su questo dispositivo usi invece la tua chiave personale.' : ''}</div>` : ''}
-    <label class="lb" for="ap">Servizio</label><select id="ap">${PROVIDER.map(([v, n]) => `<option value="${v}" ${((LS.get('aiProv') === 'off' ? 'nessuna' : LS.get('aiProv')) || (gr ? gr.prov : 'nessuna')) === v ? 'selected' : ''}>${n}</option>`).join('')}</select>
-    <p class="by" id="aph" style="margin:6px 0 0;line-height:1.45"></p>
-    <label class="lb" for="gk">Chiave API</label><input id="gk" type="password" placeholder="Incolla la chiave" value="${esc(LS.get('gKey') || '')}" autocomplete="off">
-    ${G && ST && ST.modo === 'supabase' ? `<label style="display:flex;gap:10px;align-items:flex-start;margin:10px 0 4px;font-size:14px;line-height:1.45"><input type="checkbox" id="share" style="width:20px;height:20px;margin:2px 0 0;flex:none;accent-color:var(--acc)" ${gr && gr.chiave && gr.chiave === LS.get('gKey') ? 'checked' : ''}><span>Condividi con tutto il gruppo: chi entra con un invito userà questa intelligenza artificiale senza inserire nulla. Le persone del gruppo potranno vedere la chiave.</span></label>` : ''}
-    <button class="btn" id="sv" type="button" style="margin-top:8px">Salva</button>
-    ${gr && gr.chiave ? '<button class="btn danger" id="svX" type="button">Smetti di condividerla con il gruppo</button>' : ''}`);
-  const SUGG = { gemini: 'Chiave gratuita su aistudio.google.com/apikey. Legge direttamente il PDF, anche se è una scansione.', groq: 'Chiave gratuita su console.groq.com/keys. Legge solo PDF con testo selezionabile (non scansioni o foto).', openai: 'A pagamento. Chiave su platform.openai.com/api-keys.', claude: 'A pagamento. Chiave su console.anthropic.com.' };
-  const mostra = () => { $('aph').textContent = SUGG[$('ap').value] || ''; };
-  $('ap').addEventListener('change', mostra); mostra();
-  $('sv').onclick = async () => {
-    const prov = $('ap').value, chiave = $('gk').value.trim(), cond = $('share') && $('share').checked;
-    if (prov !== 'nessuna' && !chiave) return toast('Incolla la chiave API');
-    if (cond && chiave && prov !== 'nessuna') {
-      D.stato.ia = { prov, chiave, da: CHI };
-      if (!(await scrivi(() => ST.salvaStato(G.id, 'ia', D.stato.ia)))) return;
-      LS.del('aiProv'); LS.del('gKey'); // si usa quella del gruppo
-      toast('Salvata e condivisa con il gruppo ✓');
-    } else { LS.set('aiProv', prov === 'nessuna' ? 'off' : prov); LS.set('gKey', chiave); toast(prov === 'nessuna' ? 'Intelligenza artificiale disattivata su questo dispositivo' : 'Salvata su questo dispositivo ✓'); }
-    chiudi(); renderTutto();
-  };
-  if ($('svX')) $('svX').onclick = () => conferma('Smettere di condividerla?', 'Chi non ha una sua chiave non potrà più usare l\'intelligenza artificiale.', 'Smetti di condividere', async () => {
+// Chiave mascherata: si vedono solo inizio e fine
+const chiaveCorta = k => !k ? '' : k.length <= 10 ? '••••' : k.slice(0, 4) + '••••' + k.slice(-4);
+async function salvaChiavePersonale(prov, chiave) {
+  if (prov && chiave) { LS.set('aiProv', prov); LS.set('gKey', chiave); } else if (prov === 'off') { LS.set('aiProv', 'off'); LS.del('gKey'); } else { LS.del('aiProv'); LS.del('gKey'); }
+  // copia nel proprio account, così resta anche cambiando telefono o se il browser cancella i dati
+  try { await ST.salvaChiaveIA(prov ? { prov, chiave: chiave || '' } : null); return true; } catch (e) { return false; }
+}
+// All'accesso: se su questo telefono la chiave non c'è più, si riprende quella salvata nell'account
+async function ripristinaChiaveIA() {
+  if (!ST || LS.get('gKey') || LS.get('aiProv') === 'off') return;
+  try { const v = await ST.chiaveIA(); if (v && v.prov === 'off') LS.set('aiProv', 'off'); else if (v && v.prov && v.chiave) { LS.set('aiProv', v.prov); LS.set('gKey', v.chiave); } } catch (e) {}
+}
+function foglioIA(modifica) {
+  const gr = D.stato && D.stato.ia, provP = LS.get('aiProv'), chiaveP = LS.get('gKey');
+  const pers = provP && provP !== 'nessuna' && provP !== 'off' && chiaveP;
+  const nomeProv = v => (PROVIDER.find(p => p[0] === v) || [])[1] || v;
+  const SUGG = { gemini: 'Chiave su aistudio.google.com/apikey. Legge anche i PDF scansionati, ma ora può richiedere crediti a pagamento.', groq: 'Chiave gratuita su console.groq.com/keys. Crea piatti e ricette senza costi. Legge solo PDF con testo selezionabile (non scansioni o foto).', openai: 'A pagamento. Chiave su platform.openai.com/api-keys.', claude: 'A pagamento. Chiave su console.anthropic.com.' };
+  const intro = `<h2>Intelligenza artificiale</h2><p class="q" style="margin:0 0 6px;line-height:1.5">Serve per proporre piatti e ricette, per l'Assistente e per leggere i PDF che l'app non riconosce da sola. È facoltativa: senza, l'app propone comunque una ricetta base con gli alimenti del pasto.</p>
+    ${gr && gr.chiave ? `<div class="nota" style="margin:6px 0 10px">Il gruppo usa ${esc(nomeProv(gr.prov))}, condivisa da ${esc(gr.da || '?')}.${pers && chiaveP !== gr.chiave ? ' Su questo dispositivo usi invece la tua chiave personale.' : ''}</div>` : ''}`;
+  if (pers && !modifica) {
+    foglio(intro + `<div class="menu-righe" style="margin-top:6px"><div><span class="t" style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><b>${esc(nomeProv(provP))}</b><small class="num" style="color:var(--sub)">Chiave salvata · ${esc(chiaveCorta(chiaveP))}</small></span>${ic('spunta', 20, 2.4).replace('class="ic"', 'class="ic" style="color:var(--acc-text)"')}</div></div>
+      <p class="by" style="margin:8px 0 12px;line-height:1.45">Resta salvata su questo telefono e nel tuo account: non devi reinserirla.</p>
+      <button class="btn" id="iaMod" type="button">${ic('matita', 18)}Modifica chiave</button>
+      <button class="btn danger" id="iaDel" type="button">${ic('cestino', 18)}Elimina chiave</button>
+      ${gr && gr.chiave && gr.chiave === chiaveP ? '<button class="btn ghost" id="svX" type="button">Smetti di condividerla con il gruppo</button>' : ''}`);
+    $('iaMod').onclick = () => foglioIA(true);
+    $('iaDel').onclick = () => conferma('Eliminare la chiave?', 'Verrà tolta da questo telefono e dal tuo account.' + (gr && gr.chiave && gr.chiave !== chiaveP ? ' Userai quella del gruppo.' : ''), 'Elimina', async () => {
+      if (gr && gr.chiave === chiaveP && G) { D.stato.ia = { prov: 'nessuna', chiave: '', da: CHI }; await scrivi(() => ST.salvaStato(G.id, 'ia', D.stato.ia)); }
+      await salvaChiavePersonale(null); toast('Chiave eliminata'); renderTutto();
+    }, true);
+  } else {
+    const sel = (provP === 'off' ? 'nessuna' : provP) || (gr && gr.chiave ? gr.prov : 'groq');
+    foglio(intro + `<label class="lb" for="ap">Servizio</label><select id="ap">${PROVIDER.map(([v, n]) => `<option value="${v}" ${sel === v ? 'selected' : ''}>${n}</option>`).join('')}</select>
+      <p class="by" id="aph" style="margin:6px 0 0;line-height:1.45"></p>
+      <div id="gkBox"><label class="lb" for="gk">Chiave API</label><div style="display:flex;gap:8px"><input id="gk" type="password" placeholder="Incolla la chiave" value="${esc(chiaveP || '')}" autocomplete="off" spellcheck="false" style="flex:1;min-width:0"><button class="btn ghost" id="gkV" type="button" style="width:auto;margin:0;padding:0 14px" aria-label="Mostra la chiave">${ic('occhio', 18)}</button></div></div>
+      ${G && ST && ST.modo === 'supabase' ? `<label id="shBox" style="display:flex;gap:10px;align-items:flex-start;margin:10px 0 4px;font-size:14px;line-height:1.45"><input type="checkbox" id="share" style="width:20px;height:20px;margin:2px 0 0;flex:none;accent-color:var(--acc)" ${gr && gr.chiave && gr.chiave === chiaveP ? 'checked' : ''}><span>Condividi con tutto il gruppo: chi entra con un invito userà questa intelligenza artificiale senza inserire nulla. Le persone del gruppo potranno vedere la chiave.</span></label>` : ''}
+      <button class="btn" id="sv" type="button" style="margin-top:8px">Salva</button>
+      ${modifica ? '<button class="btn ghost" id="iaAnn" type="button">Annulla</button>' : ''}`);
+    const mostra = () => { const v = $('ap').value; $('aph').textContent = SUGG[v] || ''; $('gkBox').hidden = v === 'nessuna'; if ($('shBox')) $('shBox').hidden = v === 'nessuna'; };
+    $('ap').addEventListener('change', mostra); mostra();
+    $('gkV').onclick = () => { const i = $('gk'); i.type = i.type === 'password' ? 'text' : 'password'; };
+    if ($('iaAnn')) $('iaAnn').onclick = () => foglioIA();
+    $('sv').onclick = async () => {
+      const prov = $('ap').value, chiave = $('gk').value.trim().replace(/\s+/g, ''), cond = $('share') && $('share').checked && !$('shBox').hidden;
+      if (prov !== 'nessuna' && !chiave) return toast('Incolla la chiave API');
+      $('sv').disabled = true;
+      if (prov === 'nessuna') { await salvaChiavePersonale('off'); chiudi(); toast('Intelligenza artificiale disattivata su questo dispositivo'); return renderTutto(); }
+      const nelConto = await salvaChiavePersonale(prov, chiave);
+      if (cond && G) { D.stato.ia = { prov, chiave, da: CHI }; if (!(await scrivi(() => ST.salvaStato(G.id, 'ia', D.stato.ia)))) { $('sv').disabled = false; return; } }
+      else if (G && gr && gr.chiave && gr.chiave === chiaveP && $('share')) { D.stato.ia = { prov: 'nessuna', chiave: '', da: CHI }; await scrivi(() => ST.salvaStato(G.id, 'ia', D.stato.ia)); }
+      chiudi(); toast(cond ? 'Chiave salvata e condivisa con il gruppo ✓' : nelConto && ST.modo === 'supabase' ? 'Chiave salvata ✓ (anche nel tuo account)' : 'Chiave salvata su questo dispositivo ✓'); renderTutto();
+    };
+  }
+  if ($('svX')) $('svX').onclick = () => conferma('Smettere di condividerla?', 'Chi non ha una sua chiave non potrà più usare l\'intelligenza artificiale. Tu continui a usarla.', 'Smetti di condividere', async () => {
     D.stato.ia = { prov: 'nessuna', chiave: '', da: CHI }; await scrivi(() => ST.salvaStato(G.id, 'ia', D.stato.ia)); renderTutto();
   }, true);
 }
+// Link di invito: se il server non è scritto in config.js, viaggia nel link (la chiave publishable è pubblica per natura),
+// così chi lo apre entra subito senza inserire URL o chiavi
+function linkInvito(cod) {
+  let l = location.origin + location.pathname + '?invito=' + encodeURIComponent(cod);
+  if (!(window.CFG && CFG.sbUrl && CFG.sbKey) && S('sbUrl') && S('sbKey')) l += '&srv=' + encodeURIComponent(btoa(JSON.stringify({ u: S('sbUrl'), k: S('sbKey') })));
+  return l;
+}
 async function invita() {
   try {
-    const cod = await ST.codiceInvito(G.id), link = location.origin + location.pathname + '?invito=' + cod;
+    const cod = await ST.codiceInvito(G.id), link = linkInvito(cod);
     if (navigator.share) { try { await navigator.share({ title: NOME_APP, text: `Entra nel gruppo "${G.nome}" su ${NOME_APP}`, url: link }); return; } catch (e) { if (e.name === 'AbortError') return; } }
     foglio(`<h2>Invita nel gruppo</h2><p class="q" style="line-height:1.5">Manda questo link a chi vuoi far entrare in "${esc(G.nome)}". Entrerà con la sua email${D.stato.ia && D.stato.ia.chiave ? ' e userà la stessa intelligenza artificiale del gruppo' : ''}.</p><input id="lnk" readonly value="${esc(link)}" style="background:var(--card)"><button class="btn" id="cp" type="button" style="margin-top:8px">Copia link</button>`);
     $('cp').onclick = async () => { try { await navigator.clipboard.writeText(link); toast('Link copiato ✓'); } catch (e) { $('lnk').select(); toast('Seleziona e copia il link'); } };

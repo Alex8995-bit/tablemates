@@ -198,6 +198,7 @@ async function avvio() {
     const via = await loginEmail(); UTENTE = await ST.sessione();
     if (via === 'codice' && !LS.get('pw') && ST.modo === 'supabase') await formPassword('Scegli una password');
   }
+  await ripristinaChiaveIA();
   await scegliGruppo();
 }
 
@@ -205,9 +206,14 @@ async function avvio() {
 (function () {
   const q = new URLSearchParams(location.search);
   const inv = q.get('invito'), dom = q.get('chiedi'), sq = q.get('scheda');
-  if (inv) SS.set('invito', inv);
+  if (inv) {
+    SS.set('invito', inv);
+    // l'invito porta con sé il server: niente URL da inserire, e si esce dalla modalità "solo su questo dispositivo"
+    try { const srv = JSON.parse(atob(q.get('srv') || '')); if (/^https:\/\/[^/]+$/.test(srv.u) && srv.k) { LS.set('sbUrl', srv.u); LS.set('sbKey', srv.k); } } catch (e) {}
+    if (S('sbUrl') && S('sbKey')) LS.del('modo');
+  }
   if (dom) SS.set('chiedi', dom);
-  if (inv || dom || sq) history.replaceState(null, '', location.pathname);
+  if (inv || dom || sq || q.get('srv')) history.replaceState(null, '', location.pathname);
   document.querySelectorAll('nav.sezioni button[data-t]').forEach(b => b.onclick = () => vai(b.dataset.t));
   renderNav();
   avviaBlocco();

@@ -18,7 +18,11 @@ function attesaIA(titolo, testo) {
   return {
     fine() { window._atTesto = null; chiudi(); },
     testo(m) { if ($('atT')) $('atT').textContent = m; },
-    errore(m) { if (!$('atT')) return toast(m); $('atG').hidden = true; $('atT').textContent = m; $('atT').style.color = 'var(--neg)'; $('atX').hidden = false; $('atX').onclick = chiudi; }
+    errore(m, alt) {
+      if (!$('atT')) return toast(m, alt);
+      $('atG').hidden = true; $('atT').textContent = m; $('atT').style.color = 'var(--neg)'; $('atX').hidden = false; $('atX').onclick = chiudi;
+      if (alt) { const b = document.createElement('button'); b.className = 'btn'; b.type = 'button'; b.id = 'atAlt'; b.style.marginTop = '12px'; b.textContent = alt.testo; b.onclick = () => { chiudi(); alt.fn(); }; $('atX').before(b); $('atX').className = 'btn ghost'; $('atX').style.marginTop = '0'; }
+    }
   };
 }
 const NOMI_IA = { gemini: 'Gemini', groq: 'Groq', openai: 'ChatGPT', claude: 'Claude' };
@@ -31,8 +35,10 @@ async function chiamaIA(prov, url, opz) {
   let j = null; try { j = await r.json(); } catch (e) {}
   if (!r.ok) {
     const m = (j && (j.error?.message || j.message)) || '';
+    if ([400, 403, 404].includes(r.status) && /model|not found|no longer|not available|deprecat|not supported/i.test(m) && !/api.?key/i.test(m)) { const e = new Error(nome + ': modello non disponibile (' + m.slice(0, 120) + ')'); e.stato = 404; throw e; }
+    if (prov === 'gemini' && (/prepay|credits?.{0,20}(depleted|required|exhaust)|free.?tier|limit: ?0|enable billing|billing/i.test(m) || r.status === 402)) throw new Error('Gemini ora richiede crediti a pagamento per questa chiave. Per usare l\'app senza spendere passa a Groq (gratuito): Impostazioni → Intelligenza artificiale → Groq.');
     if (/credit balance|insufficient.?quota|billing/i.test(m)) throw new Error('L\'account di ' + nome + ' non ha credito. Aggiungi credito dalla sezione di fatturazione (Billing) del suo sito e riprova.');
-    if (r.status === 429 || /quota|rate.?limit|exhaust/i.test(m)) throw new Error('Hai finito le richieste gratuite di ' + nome + ' per ora. Riprova tra qualche minuto o domani.');
+    if (r.status === 429 || /quota|rate.?limit|exhaust/i.test(m)) throw new Error('Hai finito le richieste gratuite di ' + nome + ' per ora. Riprova tra qualche minuto o domani.' + (prov === 'gemini' ? ' Se succede sempre, Gemini potrebbe richiedere crediti: passa a Groq (gratuito) da Impostazioni → Intelligenza artificiale.' : ''));
     if (r.status === 401 || r.status === 403 || /api.?key|credential|permission/i.test(m)) throw new Error('La chiave di ' + nome + ' non è valida o non ha il permesso. Controlla di averla copiata intera, senza spazi.');
     if (r.status === 503 || r.status === 500 || r.status === 529 || /high demand|overloaded|unavailable/i.test(m)) { const e = new Error(nome + ' è molto richiesto in questo momento.'); e.stato = 503; e.riprova = true; throw e; }
     if (r.status === 413 || /too large|exceeds|size/i.test(m)) throw new Error('Il file è troppo grande per ' + nome + '. Prova con un PDF più leggero.');
@@ -46,8 +52,10 @@ function leggiJSON(t, troncata) {
   try { if (a >= 0 && b > a) return JSON.parse(t.slice(a, b + 1)); } catch (e) {}
   throw new Error(troncata ? 'La dieta è troppo lunga per una sola lettura. Caricala a pezzi (meno giorni per volta) oppure inseriscila a mano.' : 'L\'IA ha risposto in un formato che non riesco a leggere. Riprova.');
 }
-const MODELLI_GEMINI = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest'];
-const MODELLI_GROQ = ['meta-llama/llama-4-scout-17b-16e-instruct', 'llama-3.3-70b-versatile'];
+// Modelli in ordine di preferenza: se uno non è disponibile per la chiave (ritirato o riservato a chi lo usava già) si passa al successivo
+const MODELLI_GEMINI = ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-flash-latest', 'gemini-3.5-flash-lite', 'gemini-2.5-flash'];
+// Groq ha ritirato Llama 4 Scout e Llama 3.3 per il piano gratuito (luglio-agosto 2026): ora GPT-OSS e Qwen
+const MODELLI_GROQ = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b'];
 const MODELLI_CLAUDE = ['claude-sonnet-5-5', 'claude-sonnet-4-5'];
 const PAUSE_RIPROVA = window.PAUSE_RIPROVA || [4000, 10000, 20000];
 const attendi = ms => new Promise(r => setTimeout(r, ms));
@@ -121,10 +129,10 @@ async function ia(parts) {
         try {
           const j = await chiamaIA(p, 'https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + K },
-            body: JSON.stringify({ model: modello, response_format: { type: 'json_object' }, temperature: 0.4, max_tokens: 8000, messages: [{ role: 'user', content: testo }] })
+            body: JSON.stringify(Object.assign({ model: modello, response_format: { type: 'json_object' }, temperature: 0.4, max_tokens: 12000, messages: [{ role: 'user', content: testo }] }, /gpt-oss/.test(modello) ? { reasoning_effort: 'low' } : {}))
           });
           return leggiJSON(j.choices?.[0]?.message?.content || '', j.choices?.[0]?.finish_reason === 'length');
-        } catch (e) { ultimo = e; if (e.riprova) sovraccarico = true; else if (!(e.stato === 404 || (e.stato === 400 && /model/i.test(e.message)))) throw e; }
+        } catch (e) { ultimo = e; if (e.riprova) sovraccarico = true; else if (!(e.stato === 404 || (e.stato === 400 && /model|json|generate/i.test(e.message)))) throw e; }
       }
       if (!sovraccarico || giro >= PAUSE_RIPROVA.length) break;
       if (window._atTesto) window._atTesto('Groq è molto richiesto: riprovo tra pochi secondi… (tentativo ' + (giro + 2) + ' di ' + (PAUSE_RIPROVA.length + 1) + ')');

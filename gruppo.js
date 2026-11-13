@@ -84,7 +84,7 @@ function renderGruppo() {
   });
   if ($('grInv')) $('grInv').onclick = invita;
   if ($('grCopia')) $('grCopia').onclick = async () => {
-    try { const cod = await ST.codiceInvito(G.id), link = location.origin + location.pathname + '?invito=' + cod; await navigator.clipboard.writeText(link); toast('Link copiato ✓'); }
+    try { const cod = await ST.codiceInvito(G.id), link = linkInvito(cod); await navigator.clipboard.writeText(link); toast('Link copiato ✓'); }
     catch (e) { invita(); }
   };
   $('grNuovo').onclick = async () => { try { schermataGruppi(await ST.gruppi()); } catch (e) { toast(e.message); } };

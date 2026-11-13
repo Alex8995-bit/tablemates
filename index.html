@@ -20,6 +20,24 @@
 <link rel="stylesheet" href="app.css">
 </head>
 <body>
+<div class="intro" id="intro" aria-hidden="true">
+<div class="intro-in">
+<svg class="intro-logo" viewBox="0 0 100 100" width="196" height="196">
+<defs><clipPath id="iTaglio"><rect width="100" height="100" rx="23"/></clipPath></defs>
+<rect class="i-fondo" width="100" height="100" rx="23" fill="#1E7A4C"/>
+<g clip-path="url(#iTaglio)">
+<circle class="i-tavolo" cx="50" cy="50" r="19" fill="#FFFFFF"/>
+<circle class="i-anello" cx="50" cy="50" r="10" fill="none" stroke="#BFE3CC" stroke-width="3"/>
+<g class="i-p i-p1"><path d="M34.5 20.9A33 33 0 0 1 65.5 20.9" fill="none" stroke="#8FD0A8" stroke-width="10" stroke-linecap="round"/><circle class="i-testa" cx="50" cy="19" r="6.5" fill="#FFFFFF" stroke="#1E7A4C" stroke-width="2.5"/></g>
+<g class="i-p i-p2"><path d="M34.5 20.9A33 33 0 0 1 65.5 20.9" fill="none" stroke="#8FD0A8" stroke-width="10" stroke-linecap="round" transform="rotate(90 50 50)"/><circle class="i-testa" cx="81" cy="50" r="6.5" fill="#FFFFFF" stroke="#1E7A4C" stroke-width="2.5"/></g>
+<g class="i-p i-p3"><path d="M34.5 20.9A33 33 0 0 1 65.5 20.9" fill="none" stroke="#F4B266" stroke-width="10" stroke-linecap="round" transform="rotate(180 50 50)"/><circle class="i-testa" cx="50" cy="81" r="6.5" fill="#FFFFFF" stroke="#1E7A4C" stroke-width="2.5"/></g>
+<g class="i-p i-p4"><path d="M34.5 20.9A33 33 0 0 1 65.5 20.9" fill="none" stroke="#8FD0A8" stroke-width="10" stroke-linecap="round" transform="rotate(270 50 50)"/><circle class="i-testa" cx="19" cy="50" r="6.5" fill="#FFFFFF" stroke="#1E7A4C" stroke-width="2.5"/></g>
+</g>
+</svg>
+<p class="intro-nome"><span class="i-table">Table</span><span class="i-mates">mates</span></p>
+</div>
+</div>
+<script>(function(){var e=document.getElementById('intro');try{if(sessionStorage.getItem('introVista')){e.remove();return}sessionStorage.setItem('introVista','1')}catch(x){}var fatto=false,via=function(){if(fatto)return;fatto=true;e.classList.add('esce');setTimeout(function(){e.remove()},500)};var rid=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;setTimeout(via,rid?900:5300);e.addEventListener('click',via)})();</script>
 <div class="offline" id="offline" hidden>Sei offline: vedi gli ultimi dati salvati, le modifiche non vengono registrate.</div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <main class="wrap">
@@ -59,6 +77,8 @@
 <script src="oggi.js"></script>
 <script src="piano.js"></script>
 <script src="dieta.js"></script>
+<script src="cuoco.js"></script>
+<script src="scorri.js"></script>
 <script src="ricetta.js"></script>
 <script src="spesa.js"></script>
 <script src="conti.js"></script>

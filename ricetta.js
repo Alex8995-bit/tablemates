@@ -29,7 +29,12 @@ async function apriRicetta(pid, gi, k) {
       x.ricetta = await ia([{ text: 'Scrivi la ricetta completa del piatto "' + x.nome + '" per questo pasto di dieta. ' + REGOLE + ' Riporta ogni ingrediente con la grammatura della dieta, nel formato "Ingrediente quantità" (es. "Petto di pollo 150 g"). Passaggi chiari e dettagliati, da 4 a 8; se un passaggio ha un tempo di cottura scrivilo in minuti (es. "8 min"). JSON: {"tempo":"","porzioni":"","difficolta":"","ingredienti":[""],"passaggi":[""],"consigli":""}. Pasto: ' + pastoPerIA(pid, gi, p) }]);
       D.stato['ricette:' + pid] = ric; if ($('pagina')?.querySelector('[data-ricetta]')) mostraRicettaPagina(x, { pid, gi, k });
       await salvaRicette(pid);
-    } catch (e) { toast(e.message); if ($('rcCorpo')) $('rcCorpo').innerHTML = `<p class="q">${esc(e.message)}</p>`; }
+    } catch (e) {
+      if ($('rcCorpo')) {
+        $('rcCorpo').innerHTML = `<p class="q" style="color:var(--neg);line-height:1.5;margin:0">${esc(e.message)}</p><button type="button" class="btn" id="rcBase">Usa la ricetta base (senza IA)</button>`;
+        $('rcBase').onclick = async () => { const b = CUOCO.crea(pid, gi, pianoDi(pid).giorni[gi].pasti[k]); b.da = x.da || CHI; ric[gi][k] = b; D.stato['ricette:' + pid] = ric; renderPiano(); renderOggi(); mostraRicettaPagina(b, { pid, gi, k }); await salvaRicette(pid); };
+      } else toast(e.message);
+    }
   }
 }
 
@@ -45,7 +50,7 @@ function mostraRicettaPagina(x, ctx) {
       ${IO ? `<button type="button" class="indietro salva" id="rcS" aria-label="${salvata ? 'Togli dalle ricette salvate' : 'Salva ricetta'}" aria-pressed="${salvata}" style="right:16px;left:auto">${salvata ? ic('segnalibro', 20, 2).replace('fill="none"', 'fill="currentColor"') : ic('segnalibro', 20, 2)}</button>` : ''}
       ${ILLU_PIATTO}</div>
     <div class="r-corpo"><div style="display:flex;flex-direction:column;gap:10px"><h1 id="rcT">${esc(x.nome)}</h1>
-      <div class="etich">${tempo ? `<span>${esc(tempo)}</span>` : ''}${R && R.porzioni ? `<span>${esc(/\d+$/.test(R.porzioni) ? R.porzioni + (R.porzioni === '1' ? ' persona' : ' persone') : R.porzioni)}</span>` : ''}${R && R.difficolta ? `<span>${esc(R.difficolta)}</span>` : ''}${ctx ? `<span class="ok">${ic('spunta', 14, 2.6)}Rispetta il piano</span>` : ''}</div></div>
+      <div class="etich">${tempo ? `<span>${esc(tempo)}</span>` : ''}${R && R.porzioni ? `<span>${esc(/\d+$/.test(R.porzioni) ? R.porzioni + (R.porzioni === '1' ? ' persona' : ' persone') : R.porzioni)}</span>` : ''}${R && R.difficolta ? `<span>${esc(R.difficolta)}</span>` : ''}${ctx ? `<span class="ok">${ic('spunta', 14, 2.6)}Rispetta il piano</span>` : ''}${x.base ? '<span>Ricetta base</span>' : ''}</div></div>
       <div id="rcCorpo" style="display:flex;flex-direction:column;gap:16px">${!R && haAI() && ctx ? `<div class="vuoto"><div class="giro"></div><br>Preparo la ricetta con gli alimenti del piano…</div>` : ''}
       ${ingr.length ? `<section class="ingr" aria-labelledby="rcI"><h2 id="rcI">${ctx ? 'Ingredienti dal piano' : 'Ingredienti'}</h2>${ingr.map(i => `<div class="ir"><b>${esc(i.nome)}</b>${tag(i.st)}<span class="qt">${esc(i.qta)}</span></div>`).join('')}</section>` : ''}
       ${passi.length ? `<section class="passi" aria-labelledby="rcP"><h2 id="rcP">Procedimento</h2>${passi.map((t, n) => `<div class="passo"><i>${n + 1}</i><span>${esc(t)}</span></div>`).join('')}</section>` : ''}

@@ -44,6 +44,7 @@ function gruppoAvatars() {
   return `<button type="button" class="avs" id="ogG" aria-label="Gruppo ${esc(G.nome)}, ${pp.length} ${pp.length === 1 ? 'membro' : 'membri'}">${pp.slice(0, 4).map((p, i) => avatar(p, i)).join('')}</button>`;
 }
 
+let ogVisto = '';
 function renderOggi() {
   const el = $('t-oggi'); if (!el) return;
   const d = new Date(), dataTxt = d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -56,9 +57,9 @@ function renderOggi() {
     gi = giornoDiOggi(piano); if (gi < 0) gi = giornoScelto(IO);
     pasti = pastiDelGiorno(piano.giorni[gi]);
     prossimo = pasti.find(x => minutiDi(oraDi(x.pa.tipo)) + 60 > ora) || null;
-    h += `<div class="barre" style="grid-template-columns:repeat(${pasti.length},minmax(0,1fr))" aria-label="Pasti di oggi">${pasti.map(x => {
+    h += `<div class="barre" style="grid-template-columns:repeat(${pasti.length},minmax(0,1fr))" role="tablist" aria-label="Pasti di oggi">${pasti.map((x, i) => {
       const f = passato(iso, x.pa.tipo), n = prossimo && x.pa.tipo === prossimo.pa.tipo;
-      return `<div><i class="${f ? 'fatto' : n ? 'dopo' : ''}"></i><span class="${n ? 'on' : ''}">${esc(etichettaCorta(x.pa.tipo))}</span></div>`;
+      return `<button type="button" role="tab" data-ogv="${i}" aria-label="${esc(x.pa.tipo)}, ore ${esc(oraDi(x.pa.tipo))}"><i class="${f ? 'fatto' : n ? 'dopo' : ''}"></i><span>${esc(etichettaCorta(x.pa.tipo))}</span></button>`;
     }).join('')}</div>`;
   }
   // Prossimo pasto e presenza
@@ -74,16 +75,22 @@ function renderOggi() {
   } else if (!piano?.giorni?.length) {
     h += `<section class="big" aria-labelledby="og-t"><span class="eyebrow">Il tuo piano</span><h2 id="og-t">Nessun piano alimentare</h2><p class="q" style="margin:0;line-height:1.5">Carica il PDF del nutrizionista oppure scrivilo a mano: qui vedrai il prossimo pasto con le quantità.</p>
       <div class="riga"><button class="btn" type="button" id="ogUp" style="flex:1">${ic('carica', 18)}Carica PDF</button><button class="btn bordo" type="button" id="ogMan" style="flex:1;margin:0">${ic('matita', 18)}A mano</button></div>${rigaTavola}</section>`;
-  } else if (prossimo) {
-    const { pa, k } = prossimo, ric = (ricetteDi(IO)[gi] || [])[k];
-    const momento = /cena/i.test(pa.tipo) ? 'stasera' : /pranzo/i.test(pa.tipo) ? 'pranzo' : 'oggi';
-    h += `<section class="big" aria-labelledby="og-t"><div class="tp"><span class="eyebrow">Prossimo pasto</span><span class="ora">ore ${esc(oraDi(pa.tipo))}</span></div><h2 id="og-t">${esc(pa.tipo)}</h2>
-      <ul class="alim">${righeCibo(IO, gi, pa)}</ul>
-      ${ric ? `<button type="button" class="idea" id="ogRic"><span class="ib">${ic('piatto', 28, 1.8)}</span><span class="it2"><small>Idea per ${momento}${ric.tempo ? ' · ' + esc(ric.tempo) : ''}</small><b>${esc(ric.nome)}</b></span>${ic('avanti', 20, 2)}</button>`
-        : haAI() ? `<button type="button" class="idea" id="ogIdea"><span class="ib">${ic('scintille', 26, 1.8)}</span><span class="it2"><small>Idea per ${momento}</small><b>Proponi un piatto con questi alimenti</b></span>${ic('avanti', 20, 2)}</button>` : ''}
-      ${rigaTavola}</section>`;
   } else {
-    h += `<section class="big" aria-labelledby="og-t"><span class="eyebrow">Per oggi è tutto</span><h2 id="og-t">Hai finito i pasti di oggi</h2><p class="q" style="margin:0;line-height:1.5">Domani trovi qui il primo pasto della giornata.</p><button type="button" class="link" id="ogPiano" style="align-self:flex-start">Apri il piano di domani</button>${rigaTavola}</section>`;
+    // Tutti i pasti di oggi, uno per volta: si scorre col dito, con le frecce o toccando le barre in alto
+    const iPros = prossimo ? pasti.indexOf(prossimo) : -1;
+    const slide = (x, i) => {
+      const { pa, k } = x, ric = (ricetteDi(IO)[gi] || [])[k];
+      const momento = /cena/i.test(pa.tipo) ? 'stasera' : /pranzo/i.test(pa.tipo) ? 'pranzo' : 'oggi';
+      const etich = i === iPros ? 'Prossimo pasto' : passato(iso, pa.tipo) ? 'Già passato' : 'Più tardi';
+      return `<div class="og-slide" role="group" aria-roledescription="pasto" aria-label="${esc(pa.tipo)}, ${i + 1} di ${pasti.length}"><div class="tp"><span class="eyebrow ${i === iPros ? '' : 'spento'}">${etich}</span><span class="ora">ore ${esc(oraDi(pa.tipo))}</span></div><h2>${esc(pa.tipo)}</h2>
+        <ul class="alim">${righeCibo(IO, gi, pa)}</ul>
+        ${ric ? `<button type="button" class="idea" data-ogric="${k}"><span class="ib">${ic('piatto', 28, 1.8)}</span><span class="it2"><small>Idea per ${momento}${ric.tempo ? ' · ' + esc(ric.tempo) : ''}</small><b>${esc(ric.nome)}</b></span>${ic('avanti', 20, 2)}</button>`
+          : true ? `<button type="button" class="idea" data-ogidea="${k}"><span class="ib">${ic('scintille', 26, 1.8)}</span><span class="it2"><small>Idea per ${momento}</small><b>Proponi un piatto con questi alimenti</b></span>${ic('avanti', 20, 2)}</button>` : ''}</div>`;
+    };
+    h += `<section class="big og-card" aria-label="Pasti di oggi"><div class="og-scorri" id="ogScorri" tabindex="0">${pasti.map(slide).join('')}</div>
+      <div class="og-nav"><button type="button" class="og-freccia" id="ogPrev" aria-label="Pasto precedente">${ic('indietro', 20, 2.2)}</button><span class="og-punti" aria-hidden="true">${pasti.map(() => '<i></i>').join('')}</span><button type="button" class="og-freccia" id="ogNext" aria-label="Pasto successivo">${ic('avanti', 20, 2.2)}</button></div>
+      ${prossimo ? '' : '<p class="q" style="margin:-6px 0 0;font-size:13px">Per oggi è tutto. <button type="button" class="link" id="ogPiano" style="font-size:13px;padding:0">Apri il piano di domani</button></p>'}
+      ${rigaTavola}</section>`;
   }
   // Riquadri spesa e conti
   const daPrendere = D.spesa.filter(x => !x.comprato), daAltri = daPrendere.filter(x => x.aggiunto_da && x.aggiunto_da !== CHI);
@@ -100,23 +107,52 @@ function renderOggi() {
   if ($('ogChi')) $('ogChi').onclick = scegliPartecipante;
   if ($('ogUp')) $('ogUp').onclick = () => { personaPiano = IO; $('pdf').click(); };
   if ($('ogMan')) $('ogMan').onclick = () => editorPiano(IO);
-  if ($('ogRic')) $('ogRic').onclick = () => apriRicetta(IO, gi, prossimo.k);
-  if ($('ogIdea')) $('ogIdea').onclick = () => proponiPiatto(IO, gi, prossimo.k, $('ogIdea'));
+  el.querySelectorAll('[data-ogric]').forEach(b => b.onclick = () => apriRicetta(IO, gi, +b.dataset.ogric));
+  el.querySelectorAll('[data-ogidea]').forEach(b => b.onclick = () => proponiPiatto(IO, gi, +b.dataset.ogidea));
+  const sc = $('ogScorri');
+  if (sc) {
+    const n = pasti.length, larg = () => sc.clientWidth || 1;
+    const attuale = () => Math.max(0, Math.min(n - 1, Math.round(sc.scrollLeft / larg())));
+    const segna = i => {
+      el.querySelectorAll('.og-punti i').forEach((p, j) => p.classList.toggle('on', j === i));
+      el.querySelectorAll('[data-ogv]').forEach((b, j) => { b.classList.toggle('on', j === i); b.setAttribute('aria-selected', j === i); });
+      $('ogPrev').disabled = i === 0; $('ogNext').disabled = i === n - 1; ogVisto = pasti[i].pa.tipo;
+    };
+    const vaiA = (i, liscio) => { sc.scrollTo({ left: i * larg(), behavior: liscio && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' }); segna(i); };
+    // si riparte dal pasto che stavi guardando, altrimenti dal prossimo (o dall'ultimo se la giornata è finita)
+    const iv = pasti.findIndex(x => x.pa.tipo === ogVisto), i0 = iv >= 0 ? iv : prossimo ? pasti.indexOf(prossimo) : n - 1;
+    requestAnimationFrame(() => vaiA(i0, false)); segna(i0);
+    // se la scheda era nascosta (larghezza 0) o cambia larghezza, si rimette sul pasto giusto appena diventa visibile
+    let largPrima = sc.clientWidth;
+    if (window.ResizeObserver) new ResizeObserver(() => {
+      const w = sc.clientWidth; if (!w || w === largPrima) return; largPrima = w;
+      const i = Math.max(0, pasti.findIndex(x => x.pa.tipo === ogVisto)); sc.scrollTo({ left: i * w, behavior: 'auto' }); segna(i);
+    }).observe(sc);
+    let t; sc.addEventListener('scroll', () => { clearTimeout(t); t = setTimeout(() => { if (sc.clientWidth) segna(attuale()); }, 80); }, { passive: true });
+    $('ogPrev').onclick = () => vaiA(Math.max(0, attuale() - 1), true);
+    $('ogNext').onclick = () => vaiA(Math.min(n - 1, attuale() + 1), true);
+    sc.onkeydown = e => { if (e.key === 'ArrowLeft') { e.preventDefault(); $('ogPrev').click(); } if (e.key === 'ArrowRight') { e.preventDefault(); $('ogNext').click(); } };
+    el.querySelectorAll('[data-ogv]').forEach(b => b.onclick = () => { vibra(); vaiA(+b.dataset.ogv, true); });
+  }
   if ($('ogPiano')) $('ogPiano').onclick = () => { const p = pianoDi(IO), dom = giornoPerData(p, Date.now() + 864e5); if (dom >= 0) LS.set('giorno:' + IO, String(dom)); personaPiano = IO; vai('piano'); renderPiano(); };
   el.querySelectorAll('[data-pr]').forEach(b => b.onclick = () => segnaPresenza(IO, iso, quando, b.dataset.pr === 'si' ? (mia === true ? undefined : true) : (mia === false ? undefined : false)));
   if ($('ogSett')) $('ogSett').onclick = () => vai('presenze');
   $('ogSp').onclick = () => vai('spesa'); $('ogCo').onclick = () => vai('conti'); $('ogChat').onclick = () => vai('chat');
 }
 
-// Un piatto per un pasto, proposto dall'intelligenza artificiale con gli alimenti del piano
-async function proponiPiatto(pid, gi, k, b) {
+// Un piatto per un pasto, proposto dall'intelligenza artificiale con gli alimenti del piano; poi si apre la ricetta
+async function proponiPiatto(pid, gi, k) {
   const pa = pianoDi(pid).giorni[gi].pasti[k];
-  if (b) { b.disabled = true; const t = b.querySelector('b'); if (t) t.textContent = 'Cerco un piatto…'; }
+  const metti = async x => { x.da = CHI; const ric = ricetteDi(pid); ric[gi] = ric[gi] || []; ric[gi][k] = x; D.stato['ricette:' + pid] = ric; renderOggi(); renderPiano(); apriRicetta(pid, gi, k); await salvaRicette(pid); };
+  // senza intelligenza artificiale (o se non risponde) la ricetta base si crea qui, con gli alimenti del pasto
+  const base = () => metti(CUOCO.crea(pid, gi, pa));
+  if (!haAI()) return base();
+  const att = attesaIA('Cerco un piatto per ' + pa.tipo.toLowerCase(), 'Uso solo gli alimenti e le grammature del piano. Di solito bastano pochi secondi.');
   try {
     const x = await ia([{ text: 'Proponi un piatto per questo pasto. ' + REGOLE + ' JSON: {"nome":"","tempo":"es. 15 min","preparazione":""}. Pasto: ' + pastoPerIA(pid, gi, pa) }]);
-    x.da = CHI; const ric = ricetteDi(pid); ric[gi] = ric[gi] || []; ric[gi][k] = x; D.stato['ricette:' + pid] = ric;
-    renderOggi(); renderPiano(); await salvaRicette(pid);
-  } catch (e) { toast(e.message); renderOggi(); }
+    if (!x || !x.nome) throw new Error('L\'intelligenza artificiale non ha proposto nessun piatto. Riprova.');
+    att.fine(); await metti(x);
+  } catch (e) { att.errore(e.message, { testo: 'Usa la ricetta base (senza IA)', fn: base }); renderOggi(); renderPiano(); }
 }
 
 // ---------- A tavola: la settimana ----------

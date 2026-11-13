@@ -15,7 +15,7 @@ const SS = {
 };
 const S = k => LS.get(k) || (window.CFG && window.CFG[k]) || '';
 const ANTEPRIMA = !!window.ANTEPRIMA;
-window.VERSIONE = '9.1';
+window.VERSIONE = '9.3';
 const NOME_APP = 'Tablemates';
 const REPARTI = ['Frutta e verdura','Carne e pesce','Latticini e uova','Pane e cereali','Dispensa','Surgelati','Bevande','Casa e igiene','Altro'];
 const vibra = () => { try { navigator.vibrate && navigator.vibrate(10); } catch(e){} };
@@ -35,10 +35,13 @@ function foglio(html, opz = {}){
 }
 function chiudi(){ $('pop').innerHTML = ''; }
 // Conferma dentro l'app (al posto di confirm())
-function conferma(titolo, testo, siTesto, fn, pericoloso){
+function conferma(titolo, testo, siTesto, fn, pericoloso, annulla){
   foglio(`<h2>${esc(titolo)}</h2><p class="q" style="line-height:1.45">${esc(testo)}</p><button class="btn ${pericoloso ? 'danger' : ''}" id="cfS" type="button">${esc(siTesto)}</button><button class="btn ghost" id="cfN" type="button">Annulla</button>`);
+  let fatto = false;
   $('cfN').onclick = chiudi;
-  $('cfS').onclick = () => { chiudi(); fn(); };
+  $('cfS').onclick = () => { fatto = true; chiudi(); fn(); };
+  // se il foglio si chiude senza confermare (Annulla, X o tocco fuori) si avvisa chi l'ha aperto
+  if (annulla) { const pop = $('pop'), oss = new MutationObserver(() => { if (!pop.querySelector('#cfS')) { oss.disconnect(); if (!fatto) annulla(); } }); oss.observe(pop, { childList: true, subtree: true }); }
 }
 // Domanda con campo di testo (al posto di prompt())
 function chiedi(titolo, testo, valore, siTesto, fn, tipo){
