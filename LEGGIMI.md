@@ -136,7 +136,7 @@ Con questo passo l'app crea piatti e ricette e importa ricette dai link senza ch
 2. In Supabase apri **Edge Functions → Secrets** e aggiungi il segreto `GROQ_API_KEY` con quella chiave.
 3. Apri **Edge Functions → Deploy a new function → Via Editor**.
 4. Chiama la funzione esattamente `cucina`. Cancella il codice di esempio, incolla tutto il contenuto di `tablemates/supabase/functions/cucina/index.ts` e premi **Deploy function**.
-5. Nella funzione `cucina` apri **Details** (o Settings), togli la spunta **Verify JWT** (o "Enforce JWT verification") e salva, come per `notifica`: il controllo dell'accesso lo fa la funzione.
+5. Nella funzione `cucina` apri **Details** (o Settings), lascia **spuntata** *Verify JWT with legacy secret*: `cucina` la chiama solo l'app, con la sessione dell'utente, quindi il controllo in più non dà problemi (la funzione verifica comunque l'utente da sola).
 6. Riapri l'app: in **Impostazioni → Intelligenza artificiale** compare "Tablemates (server)".
 
 Ogni persona può fare al massimo 10 richieste al minuto e 120 all'ora: è un limite di sicurezza per non consumare la quota gratuita di Groq.
@@ -201,6 +201,16 @@ Quando modifichi un file, in `sw.js` aumenta il numero di `VERSIONE` (per esempi
 - **Ricetta a schermo intero** con ingredienti "In casa / Da comprare", "Metti i mancanti in spesa", ricette salvate e **Modalità cucina** (un passo alla volta, timer, schermo acceso, comandi a voce dove il telefono li supporta).
 - **Spesa + Dispensa**: livelli di quanto resta, "stanno finendo → in lista", la Dispensa si riempie quando spunti un prodotto.
 - **Conti**: "Giulia ti deve", Segna saldato, Ricordaglielo (messaggio da mandare), speso nel mese, la tua parte, ultimi movimenti; saldi, statistiche e conti restano a un tocco.
+
+## Novità della versione 9.7
+- **Intro**: parte a ogni apertura dell'app (prima partiva una sola volta per sessione, e su iPhone l'app resta spesso in memoria).
+- **App ferma come un'app vera**: niente zoom con il pizzico o il doppio tocco, niente spostamenti laterali della pagina, i campi di testo non ingrandiscono più lo schermo quando ci scrivi.
+- **Aggiornamenti senza errori strani**: l'app prende sempre i file più recenti e si aggiorna da sola alla prima apertura dopo un caricamento su GitHub. Gli errori tecnici (come "TypeError") non compaiono più a schermo. La causa più probabile era un mix tra file vecchi e nuovi dopo un aggiornamento.
+
+## Novità della versione 9.6
+- **Mangiamo insieme**: in Oggi, sotto il pasto, tocca "Mangiamo insieme…", scegli il giorno e con chi. Lo stesso piatto compare nel pasto di tutti, con le dosi adattate alle grammature del piano di ognuno (chi non ha quell'alimento nel piano, o non ha una dieta, ha la stessa porzione). I piani non cambiano: vale solo per quel pasto e quel giorno.
+- Gli altri ricevono una notifica e vedono "Mangi insieme a …" nel loro pasto. Chi non può più venire tocca "Non mangio insieme": se resta una sola persona, o se esce chi ha proposto, il pasto torna normale per tutti.
+- I prossimi giorni in cui mangi insieme a qualcuno compaiono in Oggi, nel riquadro "Mangiamo insieme".
 
 ## Novità della versione 9.5
 - **Agenda** (nuova scheda): appuntamenti comuni o personali (giorno, dalle–alle, dove, per chi) e scadenze (mutuo, affitto, luce, gas, acqua, internet… con importo). Si ripetono ogni settimana, mese o anno. Le scadenze si segnano pagate (una rata alla volta) e si possono registrare nei Conti con un tocco. Scorri a sinistra per eliminare. In Oggi compaiono gli impegni di oggi e le scadenze dei prossimi 3 giorni che ti riguardano.

@@ -20,13 +20,22 @@ function statoIngrediente(nome) {
   return disp.length ? 'compra' : '';
 }
 
+// La ricetta completa di un piatto, con le grammature del pasto
+function ricettaIA(x, pid, gi, p) {
+  return ia([{ text: 'Scrivi la ricetta completa del piatto "' + x.nome + '" per questo pasto di dieta. ' + REGOLE + ' Riporta ogni ingrediente con la grammatura della dieta, nel formato "Ingrediente quantità" (es. "Petto di pollo 150 g"). Passaggi chiari e dettagliati, da 4 a 8; se un passaggio ha un tempo di cottura scrivilo in minuti (es. "8 min"). JSON: {"tempo":"","porzioni":"","difficolta":"","ingredienti":[""],"passaggi":[""],"consigli":""}. Pasto: ' + pastoPerIA(pid, gi, p) }]);
+}
+
 async function apriRicetta(pid, gi, k) {
-  const ric = ricetteDi(pid), x = ric[gi]?.[k]; if (!x) return; vibra();
+  const ric = ricetteDi(pid), x = ric[gi]?.[k]; if (!x) return;
+  // se questo pasto è condiviso con altri, si apre il piatto insieme (dosi sommate)
+  const ins = typeof insiemiMiei === 'function' && insiemiMiei().find(e => e.da === pid && e.gi === gi && e.k === k);
+  if (ins) return apriInsieme(ins);
+  vibra();
   mostraRicettaPagina(x, { pid, gi, k });
   if (!x.ricetta && haAI()) {
     try {
       const p = pianoDi(pid).giorni[gi].pasti[k];
-      x.ricetta = await ia([{ text: 'Scrivi la ricetta completa del piatto "' + x.nome + '" per questo pasto di dieta. ' + REGOLE + ' Riporta ogni ingrediente con la grammatura della dieta, nel formato "Ingrediente quantità" (es. "Petto di pollo 150 g"). Passaggi chiari e dettagliati, da 4 a 8; se un passaggio ha un tempo di cottura scrivilo in minuti (es. "8 min"). JSON: {"tempo":"","porzioni":"","difficolta":"","ingredienti":[""],"passaggi":[""],"consigli":""}. Pasto: ' + pastoPerIA(pid, gi, p) }]);
+      x.ricetta = await ricettaIA(x, pid, gi, p);
       D.stato['ricette:' + pid] = ric; if ($('pagina')?.querySelector('[data-ricetta]')) mostraRicettaPagina(x, { pid, gi, k });
       await salvaRicette(pid);
     } catch (e) {
@@ -98,6 +107,7 @@ function mostraRicettaPagina(x, ctx) {
   if ($('rcS')) $('rcS').onclick = () => salvaPreferita(x, ctx);
   $('pagina').querySelectorAll('[data-comm]').forEach(b => b.onclick = async () => {
     const p = b.dataset.comm, l = comm.includes(p) ? comm.filter(z => z !== p) : comm.concat(p); vibra();
+    if (x.insieme) return cambiaInsieme(x, p);
     x.commensali = l; mostraRicettaPagina(x, ctx);
     const ric = ricetteDi(ctx.pid); if (ric[ctx.gi] && ric[ctx.gi][ctx.k] === x) await salvaRicette(ctx.pid);
   });

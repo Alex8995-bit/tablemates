@@ -15,7 +15,7 @@ const SS = {
 };
 const S = k => LS.get(k) || (window.CFG && window.CFG[k]) || '';
 const ANTEPRIMA = !!window.ANTEPRIMA;
-window.VERSIONE = '9.5';
+window.VERSIONE = '9.7';
 const NOME_APP = 'Tablemates';
 const REPARTI = ['Frutta e verdura','Carne e pesce','Latticini e uova','Pane e cereali','Dispensa','Surgelati','Bevande','Casa e igiene','Altro'];
 const vibra = () => { try { navigator.vibrate && navigator.vibrate(10); } catch(e){} };
@@ -92,3 +92,7 @@ function scarica(nome, testo, tipo){
   a.href = URL.createObjectURL(b); a.download = nome; document.body.appendChild(a); a.click();
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
 }
+
+// Errori imprevisti del codice: non compaiono mai a schermo come testo tecnico
+window.addEventListener('error', e => { console.warn('Tablemates:', e.message); e.preventDefault(); });
+window.addEventListener('unhandledrejection', e => { console.warn('Tablemates:', e.reason); e.preventDefault(); });

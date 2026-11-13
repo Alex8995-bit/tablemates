@@ -19,7 +19,7 @@ function snap() { if (G && ST && ST.modo === 'supabase') LS.setJ('snap_' + G.id,
 async function scrivi(fn, errore) {
   if (!navigator.onLine && ST.modo === 'supabase') { toast('Sei offline: modifica non salvata'); await ricarica(); return false; }
   try { await fn(); snap(); return true; }
-  catch (e) { toast((errore || 'Non salvato') + ': ' + e.message); await ricarica(); return false; }
+  catch (e) { toast((errore || 'Non salvato') + ': ' + (e instanceof TypeError || /undefined|null|is not|Load failed|Failed to fetch/i.test(e.message || '') ? 'riprova tra un attimo' : e.message)); await ricarica(); return false; }
 }
 async function ricarica() {
   if (!G) return;

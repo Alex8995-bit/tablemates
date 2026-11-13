@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <script>try{var t=localStorage.getItem("tema");if(t==="chiaro")document.documentElement.setAttribute("data-theme","light");else if(t==="scuro")document.documentElement.setAttribute("data-theme","dark")}catch(e){}</script>
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Tablemates</title>
 <meta name="description" content="Pasti, lista della spesa e conti condivisi per famiglie e coinquilini.">
 <meta name="theme-color" content="#F4F6F3" media="(prefers-color-scheme: light)">
@@ -38,6 +38,13 @@
 </div>
 </div>
 <script>
+// L'app resta ferma come un'app: niente pizzico per ingrandire, niente doppio tocco che zooma
+(function(){ var b = function (e) { e.preventDefault(); };
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (n) { document.addEventListener(n, b, { passive: false }); });
+  document.addEventListener('touchmove', function (e) { if (e.touches && e.touches.length > 1) e.preventDefault(); }, { passive: false });
+})();
+</script>
+<script>
 // Intro all'avvio e quando si riapre l'app dopo un po'. Finché gira, PIN e Face ID aspettano (window.INTRO.fine).
 (function(){
   var modello = document.getElementById('intro').outerHTML, chiudiFine = null, nascosta = 0;
@@ -52,7 +59,8 @@
   // riaperta dopo almeno 10 minuti in secondo piano: è come un nuovo avvio
   document.addEventListener('visibilitychange', function () { if (document.hidden) { nascosta = Date.now(); return; } if (nascosta && Date.now() - nascosta >= 600000) I.mostra(); });
   var e = document.getElementById('intro');
-  try { if (sessionStorage.getItem('introVista')) { I.salta = sessionStorage.getItem('introVista') === 'test'; e.remove(); return; } sessionStorage.setItem('introVista', '1'); } catch (x) {}
+  // l'intro parte a ogni apertura dell'app (solo i test la saltano)
+  try { if (sessionStorage.getItem('introVista') === 'test') { I.salta = true; e.remove(); return; } } catch (x) {}
   avvia(e);
 })();
 </script>
@@ -101,6 +109,7 @@
 <script src="scorri.js"></script>
 <script src="agenda.js"></script>
 <script src="ricetta.js"></script>
+<script src="insieme.js"></script>
 <script src="spesa.js"></script>
 <script src="conti.js"></script>
 <script src="chat.js"></script>

@@ -79,13 +79,17 @@ function renderOggi() {
     // Tutti i pasti di oggi, uno per volta: si scorre col dito, con le frecce o toccando le barre in alto
     const iPros = prossimo ? pasti.indexOf(prossimo) : -1;
     const slide = (x, i) => {
-      const { pa, k } = x, ric = (ricetteDi(IO)[gi] || [])[k];
+      const { pa, k } = x, ric = (ricetteDi(IO)[gi] || [])[k], ins = insiemeDi(iso, pa.tipo);
       const momento = /cena/i.test(pa.tipo) ? 'stasera' : /pranzo/i.test(pa.tipo) ? 'pranzo' : 'oggi';
       const etich = i === iPros ? 'Prossimo pasto' : passato(iso, pa.tipo) ? 'Già passato' : 'Più tardi';
       return `<div class="og-slide" role="group" aria-roledescription="pasto" aria-label="${esc(pa.tipo)}, ${i + 1} di ${pasti.length}"><div class="tp"><span class="eyebrow ${i === iPros ? '' : 'spento'}">${etich}</span><span class="ora">ore ${esc(oraDi(pa.tipo))}</span></div><h2>${esc(pa.tipo)}</h2>
         <ul class="alim">${righeCibo(IO, gi, pa)}</ul>
-        ${ric ? `<button type="button" class="idea" data-ogric="${k}"><span class="ib">${ic('piatto', 28, 1.8)}</span><span class="it2"><small>Idea per ${momento}${ric.tempo ? ' · ' + esc(ric.tempo) : ''}</small><b>${esc(ric.nome)}</b></span>${ic('avanti', 20, 2)}</button>`
-          : true ? `<button type="button" class="idea" data-ogidea="${k}"><span class="ib">${ic('scintille', 26, 1.8)}</span><span class="it2"><small>Idea per ${momento}</small><b>Proponi un piatto con questi alimenti</b></span>${ic('avanti', 20, 2)}</button>` : ''}</div>`;
+        ${ins ? `<p class="ins-b">${ic('utenti', 16, 2)}<span>Mangi insieme a <b>${esc(ins.chi.filter(p => p !== IO).map(nomeP).join(', '))}</b></span></p>
+        <button type="button" class="idea" data-oginsieme="${esc(ins.id)}"><span class="ib">${ic('piatto', 28, 1.8)}</span><span class="it2"><small>Piatto insieme · dosi adattate a te</small><b>${esc((ricetteDi(ins.da)[ins.gi] || [])[ins.k]?.nome || pa.tipo)}</b></span>${ic('avanti', 20, 2)}</button>
+        <button type="button" class="link" data-ogesci="${esc(ins.id)}" style="align-self:flex-start">Non mangio insieme</button>`
+        : ric ? `<button type="button" class="idea" data-ogric="${k}"><span class="ib">${ic('piatto', 28, 1.8)}</span><span class="it2"><small>Idea per ${momento}${ric.tempo ? ' · ' + esc(ric.tempo) : ''}</small><b>${esc(ric.nome)}</b></span>${ic('avanti', 20, 2)}</button>`
+          : true ? `<button type="button" class="idea" data-ogidea="${k}"><span class="ib">${ic('scintille', 26, 1.8)}</span><span class="it2"><small>Idea per ${momento}</small><b>Proponi un piatto con questi alimenti</b></span>${ic('avanti', 20, 2)}</button>` : ''}
+        ${!ins && D.partecipanti.length > 1 ? `<button type="button" class="link" data-ogcomb="${esc(pa.tipo)}" style="align-self:flex-start">${ic('utenti', 16, 2)} Mangiamo insieme…</button>` : ''}</div>`;
     };
     h += `<section class="big og-card" aria-label="Pasti di oggi"><div class="og-scorri" id="ogScorri" tabindex="0">${pasti.map(slide).join('')}</div>
       <div class="og-nav"><button type="button" class="og-freccia" id="ogPrev" aria-label="Pasto precedente">${ic('indietro', 20, 2.2)}</button><span class="og-punti" aria-hidden="true">${pasti.map(() => '<i></i>').join('')}</span><button type="button" class="og-freccia" id="ogNext" aria-label="Pasto successivo">${ic('avanti', 20, 2.2)}</button></div>
@@ -98,6 +102,7 @@ function renderOggi() {
   const s = Conti.saldi(D.movimenti, D.partecipanti), mio = IO ? (s[IO] || 0) : 0, rr = Conti.rimborsi(s);
   const verso = mio > 0 ? rr.filter(r => r.a === IO) : rr.filter(r => r.da === IO);
   const chiConti = verso.length === 1 ? nomeP(mio > 0 ? verso[0].da : verso[0].a) : '';
+  h += htmlInsiemeProssimi();
   h += htmlAgendaOggi();
   h += `<div class="tiles">
     <button type="button" class="tile2" id="ogSp">${ic('sacchetto', 24, 1.8)}<b>${daPrendere.length ? daPrendere.length + ' da prendere' : 'Lista vuota'}</b><span>${daAltri.length ? daAltri.length + (daAltri.length === 1 ? ' aggiunto da ' : ' aggiunti da ') + esc(nomiAltri.length === 1 ? nomiAltri[0] : 'altri') : daPrendere.length ? 'Nella lista della spesa' : 'Aggiungi quello che manca'}</span></button>
@@ -109,6 +114,10 @@ function renderOggi() {
   if ($('ogUp')) $('ogUp').onclick = () => { personaPiano = IO; $('pdf').click(); };
   if ($('ogMan')) $('ogMan').onclick = () => editorPiano(IO);
   el.querySelectorAll('[data-ogric]').forEach(b => b.onclick = () => apriRicetta(IO, gi, +b.dataset.ogric));
+  el.querySelectorAll('[data-oginsieme]').forEach(b => b.onclick = () => { const e = Object.assign({ id: b.dataset.oginsieme }, D.stato[b.dataset.oginsieme]); apriInsieme(e); });
+  el.querySelectorAll('[data-ogesci]').forEach(b => b.onclick = () => esciDaInsieme(b.dataset.ogesci));
+  el.querySelectorAll('[data-ogcomb]').forEach(b => b.onclick = () => foglioInsieme(b.dataset.ogcomb));
+  el.querySelectorAll('[data-insp]').forEach(b => b.onclick = () => apriInsieme(Object.assign({ id: b.dataset.insp }, D.stato[b.dataset.insp])));
   el.querySelectorAll('[data-ogidea]').forEach(b => b.onclick = () => proponiPiatto(IO, gi, +b.dataset.ogidea));
   const sc = $('ogScorri');
   if (sc) {
