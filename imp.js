@@ -38,12 +38,16 @@ function renderImp() {
     : installaEvt ? `<p class="q" style="margin:0 0 10px">Aggiungila al computer o al telefono: si apre in una finestra sua, come un'app.</p><button class="btn" id="inst" type="button">${ic('scarica', 18)}Installa ${NOME_APP}</button>`
     : ios() ? '<p class="q" style="margin:0;line-height:1.5">Su iPhone e iPad: apri questa pagina in Safari, tocca Condividi e poi <b>Aggiungi alla schermata Home</b>.</p>'
     : '<p class="q" style="margin:0;line-height:1.5">Su PC con Chrome o Edge: clicca l\'icona di installazione a destra nella barra degli indirizzi. Su Android: menu ⋮ → <b>Installa app</b>.</p>') + '</div>';
+  h += htmlAspetto() + htmlSicurezza();
   // Account
   h += `<h2 class="sez">Account</h2><div class="card"><p class="q" style="margin:0 0 10px">${ST && ST.modo === 'supabase' ? 'Accesso con ' + esc(LS.get('email') || 'email') + ' · nome: ' + esc(CHI) : 'Solo su questo dispositivo · nome: ' + esc(CHI || '—')}</p>
     <button class="btn ghost" id="nome" type="button">Cambia nome</button>
+    ${ST && ST.modo === 'supabase' && !ANTEPRIMA ? `<button class="btn ghost" id="pwBtn" type="button">${ic('lucchetto', 18)}${LS.get('pw') ? 'Cambia password' : 'Imposta una password'}</button>` : ''}
     ${ANTEPRIMA ? '' : ST && ST.modo === 'supabase' ? `<button class="btn bordo" id="esci" type="button">${ic('esci', 18)}Esci dall'account</button>` : '<button class="btn bordo" id="coll" type="button">Collega il server per condividere</button>'}</div>
     <p class="by" style="text-align:center;margin:16px 0 30px">${NOME_APP} · versione ${window.VERSIONE || ''}</p>`;
   el.innerHTML = h;
+  legaSicurezza();
+  if ($('pwBtn')) $('pwBtn').onclick = async () => { await formPassword(LS.get('pw') ? 'Nuova password' : 'Scegli una password'); renderImp(); };
   if ($('invG')) $('invG').onclick = invita;
   if ($('modG')) $('modG').onclick = modificaGruppo;
   if ($('cambiaG')) $('cambiaG').onclick = async () => { try { schermataGruppi(await ST.gruppi()); } catch (e) { toast(e.message); } };

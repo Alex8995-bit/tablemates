@@ -93,25 +93,48 @@ function chiSei() {
 }
 function loginEmail() {
   return new Promise(ok => {
-    schermo(`<h1>Accedi</h1><p class="q" style="margin:4px 0 10px" id="lgT">Inserisci la tua email: ti mandiamo un codice.</p>
-      <input id="lgE" type="email" placeholder="La tua email" autocomplete="email" value="${esc(LS.get('email'))}" style="background:var(--card)">
-      <input id="lgC" hidden inputmode="numeric" autocomplete="one-time-code" placeholder="Codice ricevuto via email" style="background:var(--card)">
-      <button class="btn" id="lgB" type="button">Invia codice</button>
-      <button class="btn ghost" id="lgX" type="button">Cambia server o usa senza account</button>`);
-    let fase = 1;
-    $('lgX').onclick = () => { LS.del('sbUrl'); LS.del('sbKey'); benvenuto(); };
-    $('lgB').onclick = async () => {
+    let modo = LS.get('pw') ? 'pw' : 'codice', fase = 1;
+    const disegna = () => {
+      const em = $('lgE') ? $('lgE').value : LS.get('email');
+      if (modo === 'pw') schermo(`<h1>Accedi</h1><p class="q" style="margin:4px 0 10px">Entra con la tua email e la tua password.</p>
+        <input id="lgE" type="email" placeholder="La tua email" autocomplete="username" value="${esc(em)}" style="background:var(--card)">
+        <input id="lgP" type="password" placeholder="Password" autocomplete="current-password" style="background:var(--card)">
+        <button class="btn" id="lgB" type="button">Entra</button>
+        <button class="btn ghost" id="lgM" type="button">Primo accesso o password dimenticata: ricevi un codice</button>
+        <button class="btn bordo" id="lgX" type="button">Cambia server o usa senza account</button>`);
+      else schermo(`<h1>Accedi</h1><p class="q" style="margin:4px 0 10px" id="lgT">${fase === 1 ? 'Inserisci la tua email: ti mandiamo un codice.' : 'Controlla la posta e scrivi il codice.'}</p>
+        <input id="lgE" type="email" placeholder="La tua email" autocomplete="email" value="${esc(em)}" style="background:var(--card)">
+        <input id="lgC" ${fase === 1 ? 'hidden' : ''} inputmode="numeric" autocomplete="one-time-code" placeholder="Codice ricevuto via email" style="background:var(--card)">
+        <button class="btn" id="lgB" type="button">${fase === 1 ? 'Invia codice' : 'Entra'}</button>
+        <button class="btn ghost" id="lgM" type="button">Ho già una password</button>
+        <button class="btn bordo" id="lgX" type="button">Cambia server o usa senza account</button>`);
+      $('lgX').onclick = () => { LS.del('sbUrl'); LS.del('sbKey'); benvenuto(); };
+      $('lgM').onclick = () => { modo = modo === 'pw' ? 'codice' : 'pw'; fase = 1; disegna(); };
+      $("lgB").onclick = procedi;
+      const invio = e => { if (e.key === "Enter") procedi(); };
+      ['lgE', 'lgP', 'lgC'].forEach(i => { if ($(i)) $(i).onkeydown = invio; });
+    };
+    const procedi = async () => {
       const em = $('lgE').value.trim().toLowerCase(); if (!em) return;
       $('lgB').disabled = true;
       try {
+        if (modo === 'pw') {
+          const pw = $('lgP').value; if (!pw) { $('lgB').disabled = false; return toast('Scrivi la password'); }
+          try { await ST.accedi(em, pw); } catch (e) { throw new Error(/invalid|credentials/i.test(e.message) ? 'Email o password non corrette' : e.message); }
+          LS.set('email', em); chiudi(); ok('pw'); return;
+        }
         if (fase === 1) {
           await ST.inviaCodice(em); LS.set('email', em); fase = 2;
           $('lgC').hidden = false; $('lgC').focus();
           $('lgT').textContent = 'Controlla la posta e scrivi il codice.'; $('lgB').textContent = 'Entra';
-        } else { await ST.verifica(em, $('lgC').value.trim()); chiudi(); ok(); return; }
-      } catch (e) { toast(fase === 1 ? e.message : 'Codice non valido'); }
+        } else {
+          try { await ST.verifica(em, $('lgC').value.trim()); } catch (e) { throw new Error('Codice non valido'); }
+          chiudi(); ok('codice'); return;
+        }
+      } catch (e) { toast(e.message); }
       if ($('lgB')) $('lgB').disabled = false;
     };
+    disegna();
   });
 }
 async function scegliGruppo() {
@@ -199,7 +222,10 @@ async function avvio() {
   } else return benvenuto();
   if (!CHI) await chiSei();
   UTENTE = await ST.sessione().catch(() => null);
-  if (!UTENTE) { await loginEmail(); UTENTE = await ST.sessione(); }
+  if (!UTENTE) {
+    const via = await loginEmail(); UTENTE = await ST.sessione();
+    if (via === 'codice' && !LS.get('pw') && ST.modo === 'supabase') await formPassword('Scegli una password');
+  }
   await scegliGruppo();
 }
 
@@ -213,6 +239,7 @@ async function avvio() {
   document.querySelectorAll('nav.sezioni button[data-t]').forEach(b => b.onclick = () => vai(b.dataset.t));
   $('navPiu').onclick = menuAggiungi; $('navAltro').onclick = menuAltro;
   renderNav();
+  avviaBlocco();
   const sch = sq || LS.get('scheda'); if (sch && $('t-' + sch)) vai(sch);
   // App installabile: service worker e avviso di nuova versione
   if ('serviceWorker' in navigator && !ANTEPRIMA && location.protocol !== 'file:') {

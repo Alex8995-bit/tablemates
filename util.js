@@ -15,7 +15,7 @@ const SS = {
 };
 const S = k => LS.get(k) || (window.CFG && window.CFG[k]) || '';
 const ANTEPRIMA = !!window.ANTEPRIMA;
-window.VERSIONE = '6.0';
+window.VERSIONE = '7.1';
 const NOME_APP = 'Tablemates';
 const REPARTI = ['Frutta e verdura','Carne e pesce','Latticini e uova','Pane e cereali','Dispensa','Surgelati','Bevande','Casa e igiene','Altro'];
 const vibra = () => { try { navigator.vibrate && navigator.vibrate(10); } catch(e){} };

@@ -133,6 +133,16 @@ Su iPhone le notifiche funzionano solo con l'app aggiunta alla schermata Home (i
 4. Aggiungi l'azione **Apri URL**.
 5. Chiama il comando "Cosa mangio".
 
+## Password, PIN e tema (dalla versione 7.0)
+
+- **Password:** al primo accesso col codice l'app ti propone di sceglierne una (almeno 8 caratteri). Poi rientri con email e password. Se la dimentichi, tocca "Primo accesso o password dimenticata", entra con il codice e scegline una nuova in **Impostazioni → Account**.
+- **PIN:** in **Impostazioni → Sicurezza → Imposta un PIN** (4 o 6 cifre). Ti viene chiesto quando riapri l'app e dopo il tempo che scegli. Dopo 5 errori i tasti si fermano per qualche secondo.
+- **Face ID o impronta:** si attiva nella stessa sezione, se il telefono lo permette. Serve il PIN come alternativa.
+- **PIN dimenticato:** tocca "PIN dimenticato", esci dall'account e rientri con la password. I dati sono sul server e non si perdono.
+- **Tema:** **Impostazioni → Aspetto**: Automatico, Chiaro o Scuro.
+
+Il PIN protegge l'app su quel telefono. Non sostituisce la password dell'account, che protegge i dati sul server.
+
 ## Come si usa
 
 - **Pasti:** in alto scegli **Tutti** per vedere cosa mangia ognuno oggi, oppure il nome di una persona per vedere e modificare la sua dieta. Se chiami i giorni con i nomi della settimana (Lunedì, Martedì…), l'app ti mostra da sola quelli di oggi.
@@ -141,7 +151,7 @@ Su iPhone le notifiche funzionano solo con l'app aggiunta alla schermata Home (i
 
 ## Aggiornare l'app
 
-Quando modifichi un file, in `sw.js` aumenta il numero di `VERSIONE` (per esempio `tablemates-6.1`) e ricarica i file su GitHub. Sui dispositivi compare "Nuova versione disponibile → Aggiorna".
+Quando modifichi un file, in `sw.js` aumenta il numero di `VERSIONE` (per esempio `tablemates-7.1`) e ricarica i file su GitHub. Sui dispositivi compare "Nuova versione disponibile → Aggiorna".
 
 ## Problemi comuni
 

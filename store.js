@@ -18,6 +18,8 @@ function storeSupabase(url, key) {
     async sessione() { const { data } = await db.auth.getSession(); return data.session ? { id: data.session.user.id, email: data.session.user.email } : null; },
     async inviaCodice(email) { ok(await db.auth.signInWithOtp({ email })); },
     async verifica(email, token) { ok(await db.auth.verifyOtp({ email, token, type: 'email' })); },
+    async accedi(email, password) { ok(await db.auth.signInWithPassword({ email, password })); },
+    async impostaPassword(password) { ok(await db.auth.updateUser({ password })); },
     async esci() { await db.auth.signOut(); },
     async gruppi() { return ok(await db.from('gruppi').select('id,nome,valuta').order('nome')); },
     async creaGruppo(nome, valuta, nomeUtente) { return ok(await db.rpc('crea_gruppo', { nome_gruppo: nome, valuta_gruppo: valuta, nome_utente: nomeUtente })); },
@@ -72,7 +74,7 @@ function storeLocale() {
   return {
     modo: 'locale',
     async sessione() { return { id: 'locale', email: '' }; },
-    async inviaCodice() {}, async verifica() {}, async esci() {},
+    async inviaCodice() {}, async verifica() {}, async accedi() {}, async impostaPassword() {}, async esci() {},
     async gruppi() { return D.gruppi.map(g => ({ id: g.id, nome: g.nome, valuta: g.valuta })).sort((a, b) => a.nome.localeCompare(b.nome)); },
     async creaGruppo(nome, valuta, nomeUtente) {
       const id = uuid();

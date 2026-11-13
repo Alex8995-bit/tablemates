@@ -1,10 +1,10 @@
 // Service worker di Tablemates: apre l'app anche senza rete, la aggiorna e mostra le notifiche ad app chiusa.
 // Quando cambi i file, aumenta il numero di VERSIONE: i dispositivi scaricheranno la nuova versione.
-const VERSIONE = 'tablemates-6.0';
+const VERSIONE = 'tablemates-7.1';
 const FILE = [
   './', 'index.html', 'app.css', 'config.js', 'manifest.webmanifest',
   'supabase.js', 'plus-jakarta-sans-latin-wght-normal.woff2', 'plus-jakarta-sans-latin-ext-wght-normal.woff2',
-  'util.js', 'icone.js', 'conti-calc.js', 'store.js', 'ai.js', 'notifiche.js', 'piano.js', 'spesa.js', 'conti.js', 'chat.js', 'imp.js', 'app.js',
+  'util.js', 'icone.js', 'sicurezza.js', 'conti-calc.js', 'store.js', 'ai.js', 'notifiche.js', 'piano.js', 'spesa.js', 'conti.js', 'chat.js', 'imp.js', 'app.js',
   'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png', 'favicon-32.png'
 ];
 self.addEventListener('install', e => {

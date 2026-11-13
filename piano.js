@@ -122,7 +122,8 @@ function salvaLink(k) {
 
 async function analizzaPDF(f) {
   const pid = personaPiano, nome = nomeP(pid);
-  toast('Leggo la dieta di ' + (pid === IO ? 'te' : nome) + '…');
+  if (f.size > 14 * 1024 * 1024) return toast('Il PDF è troppo grande (' + Math.round(f.size / 1048576) + ' MB): prova con uno sotto i 14 MB.');
+  const att = attesaIA('Leggo la dieta di ' + (pid === IO ? 'te' : nome), 'Può servire fino a un minuto. Tieni aperta l\'app.');
   try {
     const b64 = await new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result.split(',')[1]); fr.readAsDataURL(f); });
     const out = await ia([{ inline_data: { mime_type: 'application/pdf', data: b64 } }, { text: 'Estrai fedelmente la dieta da questo PDF, senza inventare nulla e senza aggiungere giorni o pasti non presenti. Includi TUTTI i giorni, TUTTI i pasti e TUTTE le alternative previste. Se i giorni corrispondono ai giorni della settimana, usa il loro nome (Lunedì, Martedì…). JSON: {"giorni":[{"giorno":"nome breve del giorno","pasti":[{"tipo":"Colazione/Spuntino/Pranzo/Merenda/Cena","alimenti":"alimenti e grammature come scritti","alternative":"alternative previste o stringa vuota"}]}]}' }]);
@@ -131,10 +132,10 @@ async function analizzaPDF(f) {
     renderPiano();
     if (await salvaPiano(pid, out)) {
       await scrivi(() => ST.salvaStato(G.id, 'ricette:' + pid, {}));
-      toast('Dieta caricata ✓ Controlla che corrisponda al PDF');
+      att.fine(); toast('Dieta caricata ✓ Controlla che corrisponda al PDF');
       avvisaGruppo('Nuova dieta', `${CHI} ha caricato la dieta di ${pid === IO ? CHI : nome}`);
-    }
-  } catch (e) { toast(e.message); }
+    } else att.fine();
+  } catch (e) { att.errore(e.message); }
 }
 
 async function generaGiorno() {

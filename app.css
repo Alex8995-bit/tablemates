@@ -221,3 +221,29 @@ nav .marchio,nav .io{display:none}
  .kpi.tre{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* Blocco con PIN */
+.blocco{position:fixed;inset:0;z-index:200;background:var(--bg);display:flex;flex-direction:column;justify-content:center;overflow-y:auto;
+ padding:max(24px,env(safe-area-inset-top,0px)) max(20px,env(safe-area-inset-right,0px)) max(24px,env(safe-area-inset-bottom,0px)) max(20px,env(safe-area-inset-left,0px))}
+.blocco .in{max-width:340px;width:100%;margin:0 auto;display:flex;flex-direction:column;align-items:center;text-align:center}
+.blocco .marchio{display:flex;align-items:center;gap:10px;margin-bottom:22px}
+.blocco h1{font-size:26px;margin-bottom:6px}
+.blocco #blK,.blocco .btn{width:100%}
+.punti{display:flex;justify-content:center;gap:14px;margin:14px 0 6px;min-height:16px}
+.punti span{width:14px;height:14px;border-radius:50%;border:2px solid var(--ck);transition:background .12s,border-color .12s}
+.punti span.on{background:var(--acc);border-color:var(--acc)}
+.punti.scuoti{animation:scuoti .35s}
+@keyframes scuoti{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+.err{min-height:20px;margin:0 0 6px;color:var(--neg);font-size:13px;font-weight:600;text-align:center}
+.tasti{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;justify-items:center;max-width:280px;margin:0 auto}
+.tasti button{width:68px;height:68px;border-radius:50%;border:0;background:var(--card);color:var(--tx);font-size:26px;font-weight:600;cursor:pointer;box-shadow:var(--ombra);display:grid;place-items:center;padding:0}
+.tasti button:active{background:var(--acc2)}
+.tasti button:disabled{opacity:.4;cursor:default}
+.tasti button[data-bio],.tasti button[data-x]{background:transparent;box-shadow:none;color:var(--sub)}
+.tasti.grande button{width:76px;height:76px;font-size:28px}
+@media (prefers-reduced-motion:reduce){.punti.scuoti{animation:none}}
+
+.giro{width:38px;height:38px;margin:6px auto 0;border-radius:50%;border:4px solid var(--acc2);border-top-color:var(--acc);animation:giro .8s linear infinite}
+.giro[hidden]{display:none}
+@keyframes giro{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.giro{animation-duration:2.4s}}
