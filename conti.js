@@ -1,5 +1,5 @@
 // Scheda Conti (come Tricount): più conti (Casa, Viaggi, Extra…) con le loro voci, ma un unico saldo e uniche statistiche.
-let vistaConti = LS.get('contiVista') || 'spese', cercaConti = '', filtroConto = LS.get('filtroConto') || '', filtroVoce = '';
+let vistaConti = 'home', cercaConti = '', filtroConto = LS.get('filtroConto') || '', filtroVoce = '';
 const VG = () => (G && G.valuta) || 'EUR';
 const eur = (c, v) => Conti.soldi(c, v || VG());
 const contoDi = id => D.conti.find(c => c.id === id) || null;
@@ -19,35 +19,75 @@ function renderConti() {
   const el = $('t-conti');
   if (!G) { el.innerHTML = '<div class="testa"><h1>Conti</h1></div><div class="vuoto">Accedi e scegli un gruppo per iniziare.</div>'; return; }
   if (filtroConto && !contoDi(filtroConto)) filtroConto = '';
-  const s = Conti.saldi(D.movimenti, D.partecipanti), st = Conti.statistiche(D.movimenti, IO), mio = IO ? (s[IO] || 0) : 0;
-  const daPareggiare = Conti.rimborsi(s).length;
-  let h = `<div class="testa con-azioni"><div style="display:flex;flex-direction:column;gap:2px"><p>${esc(G.nome)} · ${D.partecipanti.length} ${D.partecipanti.length === 1 ? 'persona' : 'persone'} · ${VG()}</p><h1>Conti</h1></div>
-    <div class="azioni-pc"><button class="btn bordo" type="button" id="csvPc">${ic('scarica', 17)}Esporta per Excel</button><button class="btn" type="button" id="fabPc">${ic('piu', 17, 2.4)}Nuova spesa</button></div></div>`;
-  h += `<section class="riepilogo" aria-label="Riepilogo di tutti i conti"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
-      <div style="display:flex;flex-direction:column;gap:4px"><small>${!IO ? 'Il tuo saldo' : mio > 0 ? 'Ti devono' : mio < 0 ? 'Devi' : 'Sei in pari'}</small>
-      <span class="grande num" style="color:${mio > 0 ? 'var(--ink-pos)' : mio < 0 ? 'var(--ink-neg)' : 'var(--ink-tx)'}">${IO ? (mio > 0 ? '+' : mio < 0 ? '−' : '') + eur(Math.abs(mio)) : '—'}</span></div>
-      ${daPareggiare ? `<button type="button" class="piccolo" data-v="saldi">Pareggia${ic('destra', 14, 2.2)}</button>` : ''}</div>
-      <div style="display:flex;gap:10px"><div class="box"><small>Spese di tutti i conti</small><b class="num">${eur(st.totale)}</b></div><div class="box"><small>La tua parte</small><b class="num">${IO ? eur(st.mio) : '—'}</b></div></div></section>`;
-  h += `<div class="seg" role="tablist" aria-label="Vista">${[['spese', 'Spese'], ['saldi', 'Saldi'], ['stat', 'Statistiche']].map(([k, n]) => `<button type="button" role="tab" data-v="${k}" class="${vistaConti === k ? 'on' : ''}" aria-selected="${vistaConti === k}">${n}</button>`).join('')}</div>`;
-  if (vistaConti === 'spese') h += vistaSpese(s);
-  else if (vistaConti === 'saldi') h += vistaSaldi(s);
-  else h += vistaStat(st);
-  h += `<button class="fab" id="fab" type="button">${ic('piu', 20, 2.4)}Nuova spesa</button><div style="height:80px"></div>`;
+  const s = Conti.saldi(D.movimenti, D.partecipanti), st = Conti.statistiche(D.movimenti, IO);
+  let h;
+  if (vistaConti === 'home') h = homeConti(s);
+  else {
+    const titoli = { spese: ['Movimenti', 'Tutte le spese, i rimborsi e le entrate'], saldi: ['Saldi', 'Chi deve a chi e le persone del gruppo'], stat: ['Statistiche', 'Dove vanno i soldi del gruppo'] };
+    h = `<div class="sub-cap"><button type="button" class="indietro" id="coB" aria-label="Torna a Conti">${ic('indietro', 22, 2)}</button><div><h1>${titoli[vistaConti][0]}</h1><p>${titoli[vistaConti][1]}</p></div></div>` +
+      (vistaConti === 'spese' ? vistaSpese(s) : vistaConti === 'saldi' ? vistaSaldi(s) : vistaStat(st));
+  }
+  h += `<button class="fab2" id="fab" type="button" aria-label="Aggiungi una spesa">${ic('piu', 22, 2.2)}Spesa</button><div style="height:72px"></div>`;
   el.innerHTML = h;
-  el.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { vistaConti = b.dataset.v; LS.set('contiVista', vistaConti); renderConti(); });
+  if ($('coB')) $('coB').onclick = () => { vistaConti = 'home'; renderConti(); scrollTo(0, 0); };
+  el.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { vistaConti = b.dataset.v; renderConti(); scrollTo(0, 0); });
   el.querySelectorAll('[data-fc]').forEach(b => b.onclick = () => { filtroConto = b.dataset.fc; filtroVoce = ''; LS.set('filtroConto', filtroConto); renderConti(); });
   el.querySelectorAll('[data-fv]').forEach(b => b.onclick = () => { filtroVoce = filtroVoce === b.dataset.fv ? '' : b.dataset.fv; renderConti(); });
-  $('fab').onclick = $('fabPc').onclick = () => formMovimento(null, filtroConto ? { conto_id: filtroConto, categoria: filtroVoce } : {});
-  $('csvPc').onclick = esportaCSV;
+  $('fab').onclick = () => formMovimento(null, filtroConto ? { conto_id: filtroConto, categoria: filtroVoce } : {});
   el.querySelectorAll('tr[data-m]').forEach(r => r.onkeydown = e => { if (e.key === 'Enter') r.click(); });
   el.querySelectorAll('[data-m]').forEach(b => b.onclick = () => formMovimento(D.movimenti.find(m => m.id === b.dataset.m)));
   if ($('cerca')) { $('cerca').value = cercaConti; $('cerca').oninput = e => { cercaConti = e.target.value; const p = e.target.selectionStart; renderConti(); $('cerca').focus(); $('cerca').setSelectionRange(p, p); }; }
   el.querySelectorAll('[data-rimb]').forEach(b => b.onclick = () => segnaRimborso(JSON.parse(b.dataset.rimb)));
   el.querySelectorAll('[data-pe]').forEach(b => b.onclick = () => modificaPartecipante(b.dataset.pe));
   if ($('pAdd')) { $('pAdd').onclick = aggiungiPartecipante; $('pNome').onkeydown = e => { if (e.key === 'Enter') aggiungiPartecipante(); }; }
-  if ($('csv')) $('csv').onclick = esportaCSV;
+  el.querySelectorAll('#csv,#csv2').forEach(b => b.onclick = esportaCSV);
   if ($('chiP')) $('chiP').onclick = scegliPartecipante;
   el.querySelectorAll('[data-gc]').forEach(b => b.onclick = () => gestisciConto(b.dataset.gc));
+  if ($('saldato')) $('saldato').onclick = () => { const r = JSON.parse($('saldato').dataset.r || 'null'); if (r) segnaRimborso(r); else { vistaConti = 'saldi'; renderConti(); } };
+  if ($('ricorda')) $('ricorda').onclick = ricordaConto;
+}
+
+// Schermata principale: saldo, il mese, gli ultimi movimenti
+function homeConti(s) {
+  const mio = IO ? (s[IO] || 0) : 0, rr = Conti.rimborsi(s);
+  const verso = mio > 0 ? rr.filter(r => r.a === IO) : rr.filter(r => r.da === IO);
+  const altro = verso.length === 1 ? nomeP(mio > 0 ? verso[0].da : verso[0].a) : '';
+  const mese = new Date().toLocaleDateString('it-IT', { month: 'long' }), ym = oggiISO().slice(0, 7);
+  const delMese = D.movimenti.filter(m => (m.data || '').startsWith(ym) && m.tipo === 'spesa');
+  const spesoMese = delMese.reduce((t, m) => t + Conti.inValutaGruppo(m), 0);
+  const miaMese = IO ? delMese.reduce((t, m) => { const q = Conti.quote(m)[IO]; return t + (q || 0); }, 0) : 0;
+  let etichetta = !IO ? 'Il tuo saldo' : mio > 0 ? (altro ? altro + ' ti deve' : 'Ti devono') : mio < 0 ? (altro ? 'Devi a ' + altro : 'Devi') : 'Siete in pari';
+  let h = `<div class="cap"><div><p class="q" style="font-weight:600;margin:0">Gruppo ${esc(G.nome)} · ${esc(mese)}</p><h1>Conti</h1></div><div class="dx solo-pc"><button type="button" class="ico-btn" id="csv" aria-label="Esporta per Excel">${ic('scarica', 20)}</button></div></div>`;
+  h += `<section class="hero" aria-label="Saldo"><small>${esc(etichetta)}</small><span class="grande num">${IO ? eur(Math.abs(mio)) : '—'}</span>
+    ${IO && mio ? `<div class="bt"><button type="button" id="saldato" data-r='${verso.length === 1 ? esc(JSON.stringify(verso[0])) : 'null'}'>Segna saldato</button><button type="button" class="out" id="ricorda">${mio > 0 ? 'Ricordaglielo' : 'Vedi i saldi'}</button></div>` : ''}
+    ${!IO ? '<div class="bt"><button type="button" id="chiP">Indica chi sei</button></div>' : ''}</section>`;
+  h += `<div class="kpi2"><div><small>Speso nel mese</small><b class="num">${eur(spesoMese)}</b></div><div><small>La tua parte</small><b class="num">${IO ? eur(miaMese) : '—'}</b></div></div>`;
+  const ultimi = D.movimenti.slice(0, 5);
+  h += `<section aria-labelledby="mov" style="display:flex;flex-direction:column;gap:8px"><div style="display:flex;justify-content:space-between;align-items:center"><h2 id="mov" class="sez" style="margin:0">Movimenti</h2>${D.movimenti.length ? '<button type="button" class="link" data-v="spese">Vedi tutti</button>' : ''}</div>`;
+  h += ultimi.length ? `<div class="sc">${ultimi.map(rigaMov).join('')}</div>` : `<div class="card vuoto">${ic('borsello', 32)}Nessuna spesa ancora.<br>Tocca "Spesa" per aggiungere la prima: chi ha pagato, quanto e per chi.</div>`;
+  h += `</section><div class="menu-righe">
+    <button type="button" data-v="saldi">${ic('gruppo', 20, 1.8)}<span class="t"><b>Saldi e persone</b><small>Chi deve a chi, come pareggiare</small></span>${ic('avanti', 18, 2)}</button>
+    <button type="button" data-v="stat">${ic('borsello', 20, 1.8)}<span class="t"><b>Statistiche</b><small>Per conto, per mese, chi ha pagato di più</small></span>${ic('avanti', 18, 2)}</button>
+    <button type="button" data-v="spese">${ic('cartella', 20, 1.8)}<span class="t"><b>Conti e voci</b><small>${D.conti.length ? esc(D.conti.map(c => c.nome).join(', ')) : 'Casa, Viaggi, Extra…'}</small></span>${ic('avanti', 18, 2)}</button>
+    <button type="button" id="csv2">${ic('scarica', 20, 1.8)}<span class="t"><b>Esporta per Excel</b><small>Tutti i movimenti in un file</small></span>${ic('avanti', 18, 2)}</button></div>`;
+  return h;
+}
+const ICONE_MOV = m => m.tipo === 'trasferimento' ? 'scambio' : m.tipo === 'entrata' ? 'entrata' : /pizz/i.test(m.titolo) ? 'pizza' : /frutta|verdur|mercato/i.test(m.titolo) ? 'foglia' : iconaVoce(m.categoria || m.titolo, contoDi(m.conto_id)?.tipo)[0];
+function rigaMov(m) {
+  const tu = m.pagato_da === IO, data = new Date(m.data + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
+  const meta = m.tipo === 'trasferimento' ? `${tu ? 'Hai dato tu' : 'Ha dato ' + nomeP(m.pagato_da)} a ${nomeTu(Object.keys(m.divisione.parti)[0])} · ${data}` : `${tu ? 'Hai pagato tu' : (m.tipo === 'entrata' ? 'Ricevuta da ' : 'Ha pagato ') + nomeP(m.pagato_da)} · ${data}`;
+  let quota = '';
+  if (IO && m.tipo !== 'trasferimento') { const e = Conti.effetti(m)[IO] || 0; if (e) quota = `<small class="${e > 0 ? 'tu' : 'altri'}">${e > 0 ? 'ti devono ' : 'devi '}${eur(Math.abs(e))}</small>`; }
+  return `<button type="button" class="mov" data-m="${m.id}"><span class="mi ${tu ? 'tu' : 'altri'}">${ic(ICONE_MOV(m), 20, 1.8)}</span><span class="mt"><b>${esc(m.titolo)}</b><small>${esc(meta)}${m.ha_foto ? ' · scontrino' : ''}</small></span><span class="ma"><b class="num">${eur(Conti.inValutaGruppo(m))}</b>${quota}</span></button>`;
+}
+async function ricordaConto() {
+  const s = Conti.saldi(D.movimenti, D.partecipanti), mio = IO ? (s[IO] || 0) : 0;
+  if (mio <= 0) { vistaConti = 'saldi'; return renderConti(); }
+  const verso = Conti.rimborsi(s).filter(r => r.a === IO);
+  const testo = verso.map(r => `${nomeP(r.da)}, nei conti di ${G.nome} su ${NOME_APP} mi devi ${eur(r.importo)}. Quando puoi, saldiamo?`).join('\n');
+  if (navigator.share) { try { await navigator.share({ title: NOME_APP, text: testo }); return; } catch (e) { if (e.name === 'AbortError') return; } }
+  try { await navigator.clipboard.writeText(testo); toast('Messaggio copiato: incollalo in chat ✓'); }
+  catch (e) { foglio(`<h2>Promemoria</h2><p class="q">Copia questo messaggio e mandalo:</p><textarea rows="4" readonly>${esc(testo)}</textarea>`); }
 }
 
 function chipsConti() {
@@ -67,7 +107,7 @@ function vistaSpese(s) {
   const q = cercaConti.trim().toLowerCase();
   const lista = D.movimenti.filter(m => (!filtroConto || m.conto_id === filtroConto) && (!filtroVoce || m.categoria === filtroVoce) &&
     (!q || (m.titolo + ' ' + (m.nota || '') + ' ' + nomeP(m.pagato_da) + ' ' + etichettaConto(m)).toLowerCase().includes(q)));
-  let h = chipsConti() + `<input id="cerca" class="campo-pag" type="search" placeholder="Cerca tra le spese" aria-label="Cerca tra le spese" style="margin:2px 0 4px">`;
+  let h = chipsConti() + `<input id="cerca" type="search" placeholder="Cerca tra le spese" aria-label="Cerca tra le spese" style="margin:0">`;
   if (filtroConto) {
     const tot = lista.filter(m => m.tipo !== 'trasferimento').reduce((t, m) => t + (m.tipo === 'entrata' ? -1 : 1) * Conti.inValutaGruppo(m), 0);
     h += `<p class="q" style="margin:6px 4px 0">Totale ${esc(contoDi(filtroConto).nome)}${filtroVoce ? ' · ' + esc(filtroVoce) : ''}: <b class="num" style="color:var(--tx)">${eur(tot)}</b></p>`;
@@ -77,7 +117,7 @@ function vistaSpese(s) {
   else if (!lista.length) corpo = '<div class="vuoto">Nessuna spesa trovata.</div>';
   else {
     const perData = {}; lista.forEach(m => { (perData[m.data] = perData[m.data] || []).push(m); });
-    corpo = '<div class="solo-tel">' + Object.keys(perData).sort().reverse().map(d => `<h2 class="sez">${esc(dataLunga(d))}</h2><div class="lista">` + perData[d].map(m => {
+    corpo = '<div class="solo-tel" style="display:flex;flex-direction:column;gap:12px">' + Object.keys(perData).sort().reverse().map(d => `<h2 class="sez" style="margin:4px 0 0">${esc(dataLunga(d))}</h2><div class="lista">` + perData[d].map(m => {
       const T = Conti.inValutaGruppo(m); let mia = '';
       if (IO && m.tipo !== 'trasferimento') { const e = Conti.effetti(m)[IO] || 0; if (e) mia = `<span class="num ${e > 0 ? 'pos' : 'neg'}">${e > 0 ? 'ti devono ' : 'devi '}${eur(Math.abs(e))}</span>`; }
       return `<button class="mv" type="button" data-m="${m.id}">${tileMov(m)}<span class="tt"><b>${esc(m.titolo)}</b><span class="by">${descrMov(m)}${!filtroConto && m.conto_id ? ' · ' + esc(contoDi(m.conto_id)?.nome || '') : ''}${m.ha_foto ? ' · scontrino' : ''}</span></span><span class="am"><b class="num ${m.tipo === 'entrata' ? 'pos' : ''}">${eur(T)}</b>${m.valuta !== VG() ? `<span class="by num">${Conti.soldi(m.importo, m.valuta)}</span>` : mia}</span></button>`;

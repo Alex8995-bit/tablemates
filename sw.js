@@ -1,10 +1,10 @@
 // Service worker di Tablemates: apre l'app anche senza rete, la aggiorna e mostra le notifiche ad app chiusa.
 // Quando cambi i file, aumenta il numero di VERSIONE: i dispositivi scaricheranno la nuova versione.
-const VERSIONE = 'tablemates-7.5';
+const VERSIONE = 'tablemates-9.0';
 const FILE = [
   './', 'index.html', 'app.css', 'config.js', 'manifest.webmanifest',
-  'supabase.js', 'pdf.min.js', 'pdf.worker.min.js', 'plus-jakarta-sans-latin-wght-normal.woff2', 'plus-jakarta-sans-latin-ext-wght-normal.woff2',
-  'util.js', 'icone.js', 'sicurezza.js', 'conti-calc.js', 'store.js', 'ai.js', 'lettore.js', 'notifiche.js', 'piano.js', 'spesa.js', 'conti.js', 'chat.js', 'imp.js', 'app.js',
+  'supabase.js', 'pdf.min.js', 'pdf.worker.min.js', 'manrope-latin-wght-normal.woff2', 'manrope-latin-ext-wght-normal.woff2',
+  'util.js', 'icone.js', 'sicurezza.js', 'conti-calc.js', 'store.js', 'ai.js', 'lettore.js', 'notifiche.js', 'oggi.js', 'piano.js', 'dieta.js', 'ricetta.js', 'spesa.js', 'conti.js', 'chat.js', 'gruppo.js', 'imp.js', 'app.js',
   'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png', 'favicon-32.png'
 ];
 self.addEventListener('install', e => {

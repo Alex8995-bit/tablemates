@@ -1,10 +1,8 @@
-// Scheda Piano: la dieta di ogni persona del gruppo (da PDF o a mano), vista "Tutti" di oggi, piatti, ricette e link.
+// Scheda Piano: la dieta di ogni persona del gruppo (da PDF o a mano), giorni della settimana, pasti, alternative, piatti e ricette.
 const REGOLE = 'Usa SOLO gli alimenti e le grammature indicati (ammessi spezie, erbe, aceto, limone, sale). Ispirati a ricette italiane note e realistiche, come quelle di siti di cucina affidabili. Preparazione in 3-5 passaggi numerati, brevi.';
 const GIORNI_SETT = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato'];
-const ORDINE_PASTI = ['colazione', 'spuntino', 'pranzo', 'merenda', 'cena'];
 let personaPiano = LS.get('pianoPersona') || '';
 const puntoLive = () => ST && ST.modo === 'supabase' ? `<span class="live ${live ? 'ok' : ''}" title="${live ? 'Sincronizzato' : 'Non collegato'}"></span>` : '';
-const perIA = o => JSON.stringify(o, (k, v) => k === 'nota' ? undefined : v); // le note del nutrizionista non servono all'IA
 const testoRicerca = p => p.alimenti.replace(/\d+([.,]\d+)?\s*(g|gr|grammi|ml|kg|cl)?\b/gi, ' ').replace(/[(),;:+]/g, ' ').replace(/\s+/g, ' ').trim();
 const pianoDi = pid => D.stato['piano:' + pid] || null;
 const ricetteDi = pid => D.stato['ricette:' + pid] || {};
@@ -24,87 +22,102 @@ function giornoScelto(pid) {
 }
 function pastoProssimo(tipo) {
   const t = senzaAccenti(tipo), h = new Date().getHours() + new Date().getMinutes() / 60;
-  const fascia = h < 10 ? 'colazione' : h < 11.5 ? 'spuntino' : h < 15 ? 'pranzo' : h < 18 ? 'merenda' : h < 22 ? 'cena' : '';
-  return fascia && t.includes(fascia);
+  const o = ordinePasto(tipo), fascia = h < 10 ? 0 : h < 11.5 ? 1 : h < 15 ? 2 : h < 18 ? 3 : h < 22 ? 4 : -1;
+  return fascia >= 0 && o === fascia;
 }
-const ordinePasto = t => { const i = ORDINE_PASTI.findIndex(x => senzaAccenti(t).includes(x)); return i < 0 ? 99 : i; };
+const ordinePasto = t => { const x = senzaAccenti(t); return /pomeriggio|merenda|arco/.test(x) ? 3 : /colazione/.test(x) ? 0 : /spuntino/.test(x) ? 1 : /pranzo/.test(x) ? 2 : /cena/.test(x) ? 4 : 99; };
 
-function testataGruppo() {
-  const pp = D.partecipanti;
-  return `<div class="barra"><button type="button" class="gruppo-btn" id="grBtn" aria-label="Cambia gruppo"><span class="lg">${esc((G.nome || '?')[0].toUpperCase())}</span>${esc(G.nome)}${ic('giu', 16, 2)}</button>
-    <div class="avs" role="img" aria-label="${esc(pp.map(p => p.nome).join(', '))} nel gruppo">${pp.slice(0, 4).map((p, i) => avatar(p, i)).join('')}</div></div>`;
-}
-function collegaTestata(el) { const b = el.querySelector('#grBtn'); if (b) b.onclick = async () => { try { schermataGruppi(await ST.gruppi()); } catch (e) { toast(e.message); } }; }
+let pianoAperto = '';
+const LETTERE = ['L', 'M', 'M', 'G', 'V', 'S', 'D'];
+function lunediDiQuesta() { const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return d; }
 
 function renderPiano() {
   const el = $('t-piano');
   if (!G) { el.innerHTML = '<div class="testa"><h1>Piano</h1></div><div class="vuoto">Accedi e scegli un gruppo per iniziare.</div>'; return; }
-  if (!personaPiano || (personaPiano !== 'tutti' && idxP(personaPiano) < 0)) personaPiano = IO || 'tutti';
-  const oggi = new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
-  let h = testataGruppo() + `<div class="testa"><p>${puntoLive()}${esc(oggi[0].toUpperCase() + oggi.slice(1))}</p><h1>Oggi si mangia</h1></div>`;
-  h += `<div class="chips" role="tablist" aria-label="Di chi">` +
-    `<button type="button" role="tab" class="chip solo ${personaPiano === 'tutti' ? 'on' : ''}" data-pp="tutti" aria-selected="${personaPiano === 'tutti'}">Tutti</button>` +
-    D.partecipanti.map((p, i) => `<button type="button" role="tab" class="chip ${personaPiano === p.id ? 'on' : ''}" data-pp="${p.id}" aria-selected="${personaPiano === p.id}">${avatar(p, i, 'p')}${esc(p.id === IO ? 'Tu' : p.nome)}</button>`).join('') + '</div>';
-  h += personaPiano === 'tutti' ? vistaTutti() : vistaPersona(personaPiano);
+  if (!personaPiano || idxP(personaPiano) < 0) personaPiano = IO || (D.partecipanti[0] || {}).id || '';
+  const pid = personaPiano, p = D.partecipanti.find(x => x.id === pid), piano = pianoDi(pid), tu = pid === IO;
+  let h = `<div class="cap"><div><p class="q" style="font-weight:600;margin:0">${puntoLive()}${tu || !p ? 'Il tuo piano alimentare' : 'Piano alimentare di ' + esc(p.nome)}</p><h1>Piano</h1></div><div class="dx">` +
+    (piano?.giorni?.length ? `<button type="button" class="ico-btn" id="pnMod" aria-label="Modifica il piano">${ic('matita', 20, 1.8)}</button>` : '') +
+    `<button type="button" class="ico-btn" id="up" aria-label="Carica un nuovo PDF della dieta">${ic('carica', 22, 1.8)}</button></div></div>`;
+  if (D.partecipanti.length > 1) h += `<div class="chips" role="tablist" aria-label="Di chi è il piano">` + D.partecipanti.map((x, i) => `<button type="button" role="tab" class="chip ${pid === x.id ? 'on' : ''}" data-pp="${x.id}" aria-selected="${pid === x.id}">${avatar(x, i, 'p')}${esc(x.id === IO ? 'Tu' : x.nome)}</button>`).join('') + '</div>';
+  h += p ? vistaPersona(pid) : '<div class="vuoto">Aggiungi le persone del gruppo dalla scheda Gruppo.</div>';
   el.innerHTML = h;
-  collegaTestata(el);
   el.querySelectorAll('[data-pp]').forEach(b => b.onclick = () => { personaPiano = b.dataset.pp; LS.set('pianoPersona', personaPiano); vibra(); renderPiano(); });
-  el.querySelectorAll('[data-gg]').forEach(b => b.onclick = () => { LS.set('giorno:' + personaPiano, b.dataset.gg); vibra(); renderPiano(); });
+  el.querySelectorAll('[data-gg]').forEach(b => b.onclick = () => { LS.set('giorno:' + personaPiano, b.dataset.gg); pianoAperto = ''; vibra(); renderPiano(); });
+  el.querySelectorAll('[data-apri]').forEach(b => b.onclick = () => { pianoAperto = b.dataset.apri; vibra(); renderPiano(); });
   el.querySelectorAll('[data-re]').forEach(b => b.onclick = () => altroPiatto(+b.dataset.re, b));
+  el.querySelectorAll('[data-prop]').forEach(b => b.onclick = () => proponiPiatto(personaPiano, giornoScelto(personaPiano), +b.dataset.prop, b));
   el.querySelectorAll('[data-ric]').forEach(d => d.onclick = () => apriRicetta(d.dataset.pid || personaPiano, +d.dataset.g, +d.dataset.ric));
   el.querySelectorAll('[data-salva]').forEach(b => b.onclick = () => salvaLink(+b.dataset.salva));
-  el.querySelectorAll('[data-vai]').forEach(b => b.onclick = () => { personaPiano = b.dataset.vai; LS.set('pianoPersona', personaPiano); renderPiano(); });
-  if ($('gen')) $('gen').onclick = generaGiorno;
-  if ($('up')) $('up').onclick = () => $('pdf').click();
-  if ($('man')) $('man').onclick = () => editorDieta(personaPiano);
-}
-
-function vistaTutti() {
-  const righe = {}; // tipo pasto → [{persona, pasto, piatto}]
-  let qualcuno = false;
-  D.partecipanti.forEach((p, i) => {
-    const piano = pianoDi(p.id); if (!piano?.giorni?.length) return;
-    qualcuno = true;
-    const gi = giornoDiOggi(piano) >= 0 ? giornoDiOggi(piano) : giornoScelto(p.id), g = piano.giorni[gi], ric = ricetteDi(p.id)[gi] || [];
-    g.pasti.forEach((pa, k) => {
-      const chiave = senzaAccenti(pa.tipo).trim() || 'pasto';
-      (righe[chiave] = righe[chiave] || { tipo: pa.tipo, voci: [] }).voci.push({ p, i, pa, piatto: ric[k], gi, k, giorno: g.giorno });
-    });
+  el.querySelectorAll('[data-fatto]').forEach(b => b.onclick = () => { const [iso, ...t] = b.dataset.fatto.split('|'); segnaFatto(personaPiano, iso, t.join('|')); });
+  el.querySelectorAll('[data-alt]').forEach(b => b.onclick = () => { const [k, i] = b.dataset.alt.split('|').map(Number); vibra(); foglioAlternative(personaPiano, giornoScelto(personaPiano), k, i); });
+  el.querySelectorAll('[data-sc]').forEach(b => b.onclick = () => {
+    const [k, i, j] = b.dataset.sc.split('|').map(Number), gi = giornoScelto(personaPiano), g = pianoDi(personaPiano).giorni[gi], pa = g.pasti[k];
+    vibra(); scegliAlternativa(personaPiano, gi, pa.tipo, i, j < 0 ? null : j);
+    toast(j < 0 ? 'Torni a ' + pa.voci[i].nome : pa.voci[i].nome + ' → ' + pa.voci[i].sost[j].nome + ', solo per ' + g.giorno);
   });
-  if (!qualcuno) return `<div class="card vuoto">${ic('piano', 32)}<b>Nessuna dieta inserita</b><br>Ognuno può avere la sua: scegli il tuo nome qui sopra e inserisci i tuoi pasti. Anche chi non usa l'app, come un nonno o un bambino, può avere i suoi.</div>`;
-  const senza = D.partecipanti.filter(p => !pianoDi(p.id)?.giorni?.length);
-  return Object.values(righe).sort((a, b) => ordinePasto(a.tipo) - ordinePasto(b.tipo)).map(r =>
-    `<article class="card pasto ${pastoProssimo(r.tipo) ? 'prossimo' : ''}"><div class="tp"><h3>${esc(r.tipo)}</h3>${pastoProssimo(r.tipo) ? '<span class="by pos" style="font-weight:700">Prossimo pasto</span>' : ''}</div>` +
-    r.voci.map(v => `<div class="persona-pasto">${avatar(v.p, v.i, 'p')}<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px"><b style="font-size:13px">${esc(v.p.id === IO ? 'Tu' : v.p.nome)} <span class="by">· ${esc(v.giorno)}</span></b><p class="al" style="font-size:14px">${esc(v.pa.alimenti)}</p>${v.pa.alternative ? `<p class="alt">In alternativa: ${esc(v.pa.alternative)}</p>` : ''}${v.piatto ? `<button type="button" class="link" style="text-align:left;padding:2px 0" data-ric="${v.k}" data-g="${v.gi}" data-pid="${v.p.id}">${ic('libro', 15)} ${esc(v.piatto.nome)}</button>` : ''}</div></div>`).join('') +
-    '</article>').join('') +
-    (senza.length ? `<p class="q" style="text-align:center;margin:8px 0 16px">Senza dieta: ${senza.map(p => `<button type="button" class="link" data-vai="${p.id}">${esc(p.id === IO ? 'tu' : p.nome)}</button>`).join(', ')}</p>` : '');
+  el.querySelectorAll('[data-nl]').forEach(b => b.onclick = () => { const t = b.previousElementSibling; t.classList.toggle('chiusa'); b.textContent = t.classList.contains('chiusa') ? 'Leggi tutto' : 'Mostra meno'; });
+  if ($('spD')) $('spD').onclick = () => foglioSpesaDieta(personaPiano);
+  if ($('gen')) $('gen').onclick = generaGiorno;
+  if ($('pref')) $('pref').onclick = foglioPreferite;
+  el.querySelectorAll('#up,#up2').forEach(b => b.onclick = () => $('pdf').click());
+  if ($('man')) $('man').onclick = () => editorPiano(personaPiano);
+  if ($('pnMod')) $('pnMod').onclick = () => editorPiano(personaPiano);
 }
 
 function vistaPersona(pid) {
   const p = D.partecipanti.find(x => x.id === pid), nome = pid === IO ? 'Tu' : p.nome, piano = pianoDi(pid);
+  const pref = IO ? (D.stato['preferite:' + IO] || []).length : 0;
   if (!piano || !piano.giorni || !piano.giorni.length) {
-    return `<div class="card vuoto">${ic('documento', 32)}<b>${pid === IO ? 'Non hai ancora inserito la tua dieta' : esc(p.nome) + ' non ha ancora una dieta'}</b><br>Carica il PDF del nutrizionista oppure scrivila a mano.</div>
-      <button class="btn" id="up" type="button">${ic('documento', 18)}Carica PDF della dieta</button><button class="btn ghost" id="man" type="button">${ic('matita', 18)}Scrivi la dieta a mano</button>`;
+    return `<div class="card vuoto">${ic('documento', 32)}<b>${pid === IO ? 'Non hai ancora inserito il tuo piano' : esc(p.nome) + ' non ha ancora un piano'}</b><br>Carica il PDF del nutrizionista oppure scrivilo a mano. Prima di salvare puoi controllare tutto.</div>
+      <div style="display:flex;flex-direction:column;gap:8px"><button class="btn" id="up2" type="button">${ic('carica', 18)}Carica il PDF della dieta</button><button class="btn bordo" id="man" type="button" style="margin:0">${ic('matita', 18)}Scrivi il piano a mano</button></div>` +
+      (pref ? `<button class="riga-link" type="button" id="pref">${ic('segnalibro', 22, 1.8)}<span><b>Ricette salvate</b><small>${pref} ${pref === 1 ? 'ricetta' : 'ricette'}</small></span>${ic('avanti', 18, 2)}</button>` : '');
   }
   const gi = giornoScelto(pid), g = piano.giorni[gi], r = ricetteDi(pid)[gi] || [], oggiIdx = giornoDiOggi(piano);
-  let h = `<div class="giorni" role="tablist" aria-label="Giorni della dieta di ${esc(nome)}">` + piano.giorni.map((d, i) => {
-    const lab = String(d.giorno); const corto = lab.length > 9 ? lab.slice(0, 3) : lab;
-    return `<button type="button" role="tab" class="giorno ${i === gi ? 'on' : ''}" data-gg="${i}" aria-selected="${i === gi}" aria-label="${esc(lab)}"><small>${i === oggiIdx ? 'Oggi' : 'Giorno ' + (i + 1)}</small><b>${esc(corto[0].toUpperCase() + corto.slice(1))}</b></button>`;
-  }).join('') + '</div>';
-  h += g.pasti.map((pa, k) => {
-    const x = r[k], prox = gi === oggiIdx && pastoProssimo(pa.tipo);
-    return `<article class="card pasto ${prox ? 'prossimo' : ''}"><div class="tp"><h3>${esc(pa.tipo)}</h3>${prox ? '<span class="by pos" style="font-weight:700">Prossimo pasto</span>' : ''}</div>
-      <p class="al">${esc(pa.alimenti)}</p>${pa.alternative ? `<p class="alt">In alternativa: ${esc(pa.alternative)}</p>` : ''}${pa.nota ? `<details class="alt" style="margin-top:6px"><summary style="cursor:pointer;font-weight:600">Nota del nutrizionista</summary><p style="white-space:pre-line;margin:6px 0 0;line-height:1.45">${esc(pa.nota)}</p></details>` : ''}` +
+  // Giorni: la settimana L–D se il piano usa i giorni della settimana, altrimenti "Giorno 1, 2…"
+  const settimana = piano.giorni.every((_, i) => i < 7) && piano.giorni.some(x => GIORNI_SETT.some(n => senzaAccenti(x.giorno).startsWith(senzaAccenti(n).slice(0, 3))));
+  let h;
+  if (settimana) {
+    const lun = lunediDiQuesta();
+    h = `<div class="giorni7" role="tablist" aria-label="Giorni della settimana">` + LETTERE.map((l, i) => {
+      const dt = new Date(lun); dt.setDate(lun.getDate() + i);
+      const k = giornoPerData(piano, dt), on = k === gi && k >= 0, oggi = isoDi(dt) === oggiISO();
+      return `<button type="button" role="tab" class="${on ? 'on' : ''} ${oggi ? 'oggi' : ''}" aria-selected="${on}" ${k >= 0 ? `data-gg="${k}"` : 'disabled'} aria-label="${esc(dt.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric' }))}${k < 0 ? ', nessun pasto nel piano' : ''}${oggi ? ', oggi' : ''}"><span>${l}</span><b>${dt.getDate()}</b></button>`;
+    }).join('') + '</div>';
+  } else {
+    h = `<div class="giorni7 scorri" role="tablist" aria-label="Giorni del piano">` + piano.giorni.map((x, i) => `<button type="button" role="tab" class="${i === gi ? 'on' : ''}" aria-selected="${i === gi}" data-gg="${i}" aria-label="${esc(x.giorno)}"><span>${esc(String(x.giorno).slice(0, 3))}</span><b>${i + 1}</b></button>`).join('') + '</div>';
+  }
+  const iso = settimana ? chiaveGiorno(piano, gi) : 'g' + gi, ora = new Date().getHours() * 60 + new Date().getMinutes();
+  const elenco = (haVoci(piano) ? elencoSlot(g) : g.pasti.map((pa, k) => ({ pa, k, tipo: pa.tipo }))).sort((a, b) => ordinePasto(a.tipo) - ordinePasto(b.tipo));
+  // Il pasto aperto: quello scelto, altrimenti il prossimo di oggi, altrimenti il primo
+  const chiave = pid + '|' + gi + '|';
+  let aperto = pianoAperto.startsWith(chiave) ? pianoAperto.slice(chiave.length) : '';
+  if (!aperto || !elenco.some(x => x.pa && x.pa.tipo === aperto)) {
+    const pros = gi === oggiIdx ? elenco.find(x => x.pa && !eFatto(pid, iso, x.pa.tipo) && minutiDi(oraDi(x.pa.tipo)) + 60 > ora) : null;
+    aperto = (pros || elenco.find(x => x.pa) || {}).tipo || '';
+  }
+  h += elenco.map(({ pa, k, tipo }) => {
+    if (!pa) return `<div class="pc-chiuso vuoto-slot"><b>${esc(tipo)}</b><span class="st">Non previsto</span></div>`;
+    const fatto = eFatto(pid, iso, pa.tipo), n = pa.voci ? pa.voci.length : 0, x = r[k];
+    if (pa.tipo !== aperto) return `<button type="button" class="pc-chiuso" data-apri="${esc(chiave + pa.tipo)}" aria-expanded="false"><b>${esc(pa.tipo)}</b>${fatto ? `<span class="st fatto">${ic('spunta', 16, 2.4)}Fatto</span>` : `<span class="st">ore ${esc(oraDi(pa.tipo))}${n ? ' · ' + n + (n === 1 ? ' alimento' : ' alimenti') : ''}</span>`}</button>`;
+    const notaLunga = pa.nota && pa.nota.length > 180;
+    return `<section class="pc-aperto" aria-labelledby="pc-${k}"><div class="tp"><h2 id="pc-${k}">${esc(pa.tipo)}</h2><span>${fatto ? 'Fatto · ' : ''}${n ? n + (n === 1 ? ' alimento' : ' alimenti') : 'ore ' + esc(oraDi(pa.tipo))}</span></div>` +
+      (pa.voci ? htmlCibi(pid, gi, k, pa) : `<p style="margin:0;font-size:15px;line-height:1.5">${esc(pa.alimenti)}</p>${pa.alternative ? `<p class="q" style="margin:0">In alternativa: ${esc(pa.alternative)}</p>` : ''}`) +
+      (pa.nota ? `<div class="avviso">${ic('info', 18, 2)}<div style="min-width:0"><div class="nota-lunga ${notaLunga ? 'chiusa' : ''}"><strong>Nota del nutrizionista:</strong> ${esc(pa.nota)}</div>${notaLunga ? '<button type="button" class="link" data-nl style="color:var(--warn-ic);padding:4px 0 0;font-size:13px">Leggi tutto</button>' : ''}</div></div>` : '') +
       (x ? `<button type="button" class="piatto" data-ric="${k}" data-g="${gi}"><span class="tt"><b>${esc(x.nome)}</b><span class="by" style="display:flex;align-items:center;gap:4px">${ic('orologio', 13, 2)}${esc(x.tempo || '')}${x.da ? ' · scelto da ' + esc(x.da) : ''}</span></span><span class="piccolo pieno">${ic('libro', 15, 2)}Ricetta</span></button>` : '') +
-      `<div class="azioni">${pa.link ? `<a class="piccolo" href="${esc(pa.link)}" target="_blank" rel="noopener">${ic('libro', 15, 2)}Ricetta salvata</a>` : ''}
-        <a class="piccolo neutro" href="https://www.google.com/search?q=${encodeURIComponent('ricetta ' + testoRicerca(pa))}" target="_blank" rel="noopener">${ic('cerca', 15, 2)}Cerca ricetta</a>
-        <button type="button" class="piccolo neutro" data-salva="${k}">${ic('link', 15, 2)}${pa.link ? 'Cambia link' : 'Salva link'}</button>
-        ${x && haAI() ? `<button type="button" class="piccolo neutro" data-re="${k}">${ic('scintille', 15, 2)}Altro piatto</button>` : ''}</div>
-      ${pa.link_da ? `<span class="by">Link salvato da ${esc(pa.link_da)}</span>` : ''}</article>`;
+      `<div class="pc-azioni">${fatto && !segnato(pid, iso, pa.tipo) ? `<span class="piccolo pieno" style="cursor:default">${ic('spunta', 15, 2.4)}Fatto</span>` : `<button type="button" class="piccolo ${fatto ? 'pieno' : ''}" data-fatto="${esc(iso + '|' + pa.tipo)}" aria-pressed="${fatto}">${ic('spunta', 15, 2.4)}${fatto ? 'Fatto' : 'Segna come fatto'}</button>`}
+        ${!x && haAI() ? `<button type="button" class="piccolo neutro" data-prop="${k}">${ic('scintille', 15, 2)}Proponi un piatto</button>` : ''}
+        ${x && haAI() ? `<button type="button" class="piccolo neutro" data-re="${k}">${ic('scintille', 15, 2)}Altro piatto</button>` : ''}
+        <a class="piccolo neutro" href="https://www.google.com/search?q=${encodeURIComponent('ricetta ' + testoRicerca({ alimenti: testoPasto(pid, gi, pa) }))}" target="_blank" rel="noopener">${ic('cerca', 15, 2)}Cerca ricetta</a>
+        ${pa.link ? `<a class="piccolo neutro" href="${esc(pa.link)}" target="_blank" rel="noopener">${ic('libro', 15, 2)}Ricetta salvata</a>` : ''}
+        <button type="button" class="piccolo neutro" data-salva="${k}">${ic('link', 15, 2)}${pa.link ? 'Cambia link' : 'Salva link'}</button></div>
+      ${pa.link_da ? `<span class="by">Link salvato da ${esc(pa.link_da)}</span>` : ''}</section>`;
   }).join('');
-  h += (haAI() ? `<button class="btn" id="gen" type="button">${ic('scintille', 18)}${r.length ? 'Rigenera piatti e spesa del giorno' : 'Crea piatti e lista della spesa'}</button>` : '') + `<button class="btn ghost" id="up" type="button">${ic('documento', 18)}Sostituisci il PDF</button>` +
-    `<button class="btn bordo" id="man" type="button" style="margin-top:8px">${ic('matita', 18)}Modifica la dieta${pid === IO ? '' : ' di ' + esc(p.nome)}</button>
-    <p class="by" style="text-align:center;margin:10px 0 20px">Dieta ${piano.da ? 'inserita da ' + esc(piano.da) : ''} · ${piano.giorni.length} giorni</p>`;
+  h += `<div style="display:flex;flex-direction:column;gap:8px">` +
+    (haVoci(piano) ? `<button class="btn" id="spD" type="button">${ic('sacchetto', 18)}Crea la lista della spesa dalla dieta</button>` : '') +
+    (haAI() ? `<button class="btn ${haVoci(piano) ? 'ghost' : ''}" id="gen" type="button" style="margin:0">${ic('scintille', 18)}${r.length ? 'Rigenera i piatti di ' + esc(g.giorno) : 'Proponi i piatti di ' + esc(g.giorno)}</button>` : '') + '</div>' +
+    (pref ? `<button class="riga-link" type="button" id="pref">${ic('segnalibro', 22, 1.8)}<span><b>Ricette salvate</b><small>${pref} ${pref === 1 ? 'ricetta' : 'ricette'}</small></span>${ic('avanti', 18, 2)}</button>` : '') +
+    `<p class="by" style="text-align:center;margin:0 0 12px">Piano ${piano.da ? 'inserito da ' + esc(piano.da) : ''} · ${piano.giorni.length} ${piano.giorni.length === 1 ? 'giorno' : 'giorni'}${nome === 'Tu' ? '' : ' · ' + esc(nome)}</p>`;
   return h;
 }
 
@@ -121,30 +134,31 @@ function salvaLink(k) {
   }, 'url');
 }
 
-const PROMPT_PDF = 'Estrai fedelmente la dieta da questo PDF, senza inventare nulla e senza aggiungere giorni o pasti non presenti. Includi TUTTI i giorni, TUTTI i pasti e TUTTE le alternative previste. Se i giorni corrispondono ai giorni della settimana, usa il loro nome (Lunedì, Martedì…). JSON: {"giorni":[{"giorno":"nome breve del giorno","pasti":[{"tipo":"Colazione/Spuntino/Pranzo/Merenda/Cena","alimenti":"alimenti e grammature come scritti","alternative":"alternative previste o stringa vuota"}]}]}';
+const PROMPT_PDF = 'Estrai fedelmente la dieta da questo PDF, senza inventare nulla e senza aggiungere giorni o pasti non presenti. Includi TUTTI i giorni, TUTTI i pasti, TUTTI gli alimenti con le grammature e TUTTE le alternative previste per ciascun alimento. Se i giorni corrispondono ai giorni della settimana, usa il loro nome (Lunedì, Martedì…). Per "tipo" usa: Colazione, Spuntino mattina, Pranzo, Spuntino pomeriggio, Cena (un pasto "nell\'arco della giornata" o una merenda è Spuntino pomeriggio). JSON: {"giorni":[{"giorno":"Lunedì","pasti":[{"tipo":"Pranzo","voci":[{"nome":"Riso","qta":70,"unita":"g","misura":"","sost":[{"nome":"Pasta di semola","qta":70,"unita":"g","misura":""}]}],"nota":""}]}]}. "qta" è un numero oppure null se manca; "unita" è g, ml o stringa vuota; "misura" è la misura casalinga scritta nel PDF (es. "1 Cucchiaio") o stringa vuota; "nota" contiene le note del nutrizionista per quel pasto o stringa vuota.';
 async function analizzaPDF(f) {
-  const pid = personaPiano, nome = nomeP(pid);
+  const pid = personaPiano || IO, nome = nomeP(pid);
   if (f.size > 14 * 1024 * 1024) return toast('Il PDF è troppo grande (' + Math.round(f.size / 1048576) + ' MB): prova con uno sotto i 14 MB.');
   const att = attesaIA('Leggo la dieta di ' + (pid === IO ? 'te' : nome), 'Può servire fino a un minuto. Tieni aperta l\'app.');
   try {
-    // 1) lettura diretta del PDF, senza intelligenza artificiale (piani Nutribook)
-    let out = null, locale = false;
+    // 1) lettura diretta del PDF nel telefono, senza intelligenza artificiale (piani Nutribook)
+    let out = null, fonte = '';
     try { out = await LETTORE.leggi(await f.arrayBuffer()); } catch (e) { out = null; }
-    if (out && out.sicuro) locale = true;
+    const b64 = () => new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result.split(',')[1]); fr.readAsDataURL(f); });
+    if (out && out.sicuro) fonte = 'lettore';
     else if (haAI()) {
-      // 2) se non lo riconosce con sicurezza, o se il PDF è di un altro tipo, lo legge l'intelligenza artificiale
-      const b64 = await new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result.split(',')[1]); fr.readAsDataURL(f); });
-      out = await ia([{ inline_data: { mime_type: 'application/pdf', data: b64 } }, { text: PROMPT_PDF }]);
-    } else if (out) locale = true;
-    else throw new Error('Non riesco a leggere questo PDF in automatico. Scrivi la dieta a mano oppure attiva un\'intelligenza artificiale in Impostazioni.');
-    if (!out.giorni?.length) throw new Error('Nessun giorno trovato nel PDF');
-    delete out.sicuro; out.da = CHI; D.stato['ricette:' + pid] = {}; LS.del('giorno:' + pid);
-    renderPiano();
-    if (await salvaPiano(pid, out)) {
-      await scrivi(() => ST.salvaStato(G.id, 'ricette:' + pid, {}));
-      att.fine(); toast(locale ? 'Dieta caricata ✓ ' + out.giorni.length + ' giorni, ' + out.giorni.reduce((n, g) => n + g.pasti.length, 0) + ' pasti. Controlla che corrisponda al PDF' : 'Dieta caricata ✓ Controlla che corrisponda al PDF');
-      avvisaGruppo('Nuova dieta', `${CHI} ha caricato la dieta di ${pid === IO ? CHI : nome}`);
-    } else att.fine();
+      // 2) impaginazione diversa: la legge l'intelligenza artificiale
+      out = normalizzaPiano(await ia([{ inline_data: { mime_type: 'application/pdf', data: await b64() } }, { text: PROMPT_PDF }])); fonte = 'ia';
+    } else if (out) fonte = 'lettore';
+    else {
+      // 3) senza intelligenza artificiale: si prova a ricostruirla dal testo del PDF
+      let testo = ''; try { testo = await testoDaPDF(await b64()); } catch (e) { throw new Error(/scansione|foto/.test(e.message) ? 'Questo PDF sembra una foto o una scansione: senza intelligenza artificiale non si può leggere. Attivala in Impostazioni oppure scrivi il piano a mano.' : e.message); }
+      out = LETTORE.parsaTesto(testo); fonte = 'testo';
+      if (!out) throw new Error('Non riesco a riconoscere giorni e pasti in questo PDF. Attiva un\'intelligenza artificiale in Impostazioni oppure scrivi il piano a mano.');
+    }
+    if (!out?.giorni?.length) throw new Error('Nessun giorno trovato nel PDF');
+    delete out.sicuro;
+    att.fine();
+    editorPiano(pid, out, { revisione: fonte });
   } catch (e) { att.errore(e.message); }
 }
 
@@ -152,7 +166,7 @@ async function generaGiorno() {
   const pid = personaPiano, b = $('gen'), gi = giornoScelto(pid), g = pianoDi(pid).giorni[gi], nome = nomeP(pid);
   b.disabled = true; b.innerHTML = '<span class="spin"></span>Creo i piatti…';
   try {
-    const out = await ia([{ text: 'Per ogni pasto di questa giornata di dieta proponi un piatto. ' + REGOLE + ' Poi crea la lista della spesa aggregata, con ogni prodotto assegnato a un reparto tra: ' + REPARTI.join(', ') + '. JSON: {"piatti":[{"nome":"","tempo":"es. 15 min","preparazione":""}],"spesa":[{"nome":"","quantita":"","reparto":""}]} con i piatti nello stesso ordine dei pasti. Giornata: ' + perIA(g) }]);
+    const out = await ia([{ text: 'Per ogni pasto di questa giornata di dieta proponi un piatto. ' + REGOLE + ' Poi crea la lista della spesa aggregata, con ogni prodotto assegnato a un reparto tra: ' + REPARTI.join(', ') + '. JSON: {"piatti":[{"nome":"","tempo":"es. 15 min","preparazione":""}],"spesa":[{"nome":"","quantita":"","reparto":""}]} con i piatti nello stesso ordine dei pasti. Giornata: ' + giornoPerIA(pid, gi) }]);
     out.piatti.forEach(p => p.da = CHI);
     const ric = ricetteDi(pid); ric[gi] = out.piatti; D.stato['ricette:' + pid] = ric;
     const etichetta = nome + ' · ' + g.giorno;
@@ -173,54 +187,10 @@ async function altroPiatto(k, b) {
   b.textContent = 'Cerco…';
   try {
     const p = pianoDi(pid).giorni[gi].pasti[k], ric = ricetteDi(pid), vecchio = ric[gi][k]?.nome;
-    const x = await ia([{ text: 'Proponi un piatto diverso da "' + vecchio + '" per questo pasto. ' + REGOLE + ' JSON: {"nome":"","tempo":"","preparazione":""}. Pasto: ' + perIA(p) }]);
+    const x = await ia([{ text: 'Proponi un piatto diverso da "' + vecchio + '" per questo pasto. ' + REGOLE + ' JSON: {"nome":"","tempo":"","preparazione":""}. Pasto: ' + pastoPerIA(pid, gi, p) }]);
     x.da = CHI; ric[gi][k] = x; D.stato['ricette:' + pid] = ric; renderPiano();
     await salvaRicette(pid);
   } catch (e) { toast(e.message); renderPiano(); }
 }
 
-function mostraRicetta(x) {
-  const R = x.ricetta;
-  foglio(`<h2>${esc(x.nome)}</h2><div class="q">${esc(R.tempo || x.tempo || '')}${R.porzioni ? ' · ' + esc(R.porzioni) : ''}${R.difficolta ? ' · ' + esc(R.difficolta) : ''}</div>` +
-    `<div class="card" style="margin-top:12px"><h4 style="margin-top:0">Ingredienti</h4><ul style="margin:0;padding-left:20px">${(R.ingredienti || []).map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>` +
-    `<div class="card"><h4 style="margin-top:0">Preparazione</h4><ol style="margin:0;padding-left:20px">${(R.passaggi || []).map(p => `<li>${esc(p)}</li>`).join('')}</ol></div>` +
-    (R.consigli ? `<div class="card"><h4 style="margin-top:0">Consigli</h4><p style="margin:0;line-height:1.5">${esc(R.consigli)}</p></div>` : ''));
-}
-async function apriRicetta(pid, gi, k) {
-  const ric = ricetteDi(pid), x = ric[gi]?.[k]; if (!x) return; vibra();
-  if (x.ricetta) return mostraRicetta(x);
-  if (!haAI()) {
-    return foglio(`<h2>${esc(x.nome)}</h2><p class="q" style="white-space:pre-line;line-height:1.5">${esc(x.preparazione || '')}</p><p class="by">Per la ricetta completa con dosi e consigli serve un'intelligenza artificiale.</p>`);
-  }
-  foglio('<div class="vuoto"><span class="spin" style="border-color:var(--line);border-top-color:var(--acc)"></span><br>Preparo la ricetta…</div>');
-  try {
-    const p = pianoDi(pid).giorni[gi].pasti[k];
-    x.ricetta = await ia([{ text: 'Scrivi la ricetta completa del piatto "' + x.nome + '" per questo pasto di dieta. ' + REGOLE + ' Riporta ogni ingrediente con la grammatura della dieta. Passaggi chiari e dettagliati, da 4 a 8. JSON: {"tempo":"","porzioni":"","difficolta":"","ingredienti":[""],"passaggi":[""],"consigli":""}. Pasto: ' + perIA(p) }]);
-    D.stato['ricette:' + pid] = ric; mostraRicetta(x);
-    await salvaRicette(pid);
-  } catch (e) { chiudi(); toast(e.message); }
-}
-
-function editorDieta(pid) {
-  const p = D.partecipanti.find(x => x.id === pid), piano = pianoDi(pid);
-  const t = (piano?.giorni || []).map(g => '# ' + g.giorno + '\n' + g.pasti.map(x => x.tipo + ': ' + x.alimenti + (x.alternative ? ' | ' + x.alternative : '')).join('\n')).join('\n\n');
-  foglio(`<h2>Dieta di ${esc(pid === IO ? 'te' : p.nome)}</h2><p class="q" style="line-height:1.5">Per ogni giorno una riga "# Nome del giorno", poi una riga per pasto: "Pranzo: alimenti | alternative". Usa i nomi dei giorni della settimana (Lunedì, Martedì…) e l'app ti mostrerà da sola i pasti di oggi.</p>
-    <textarea id="dt" style="min-height:45vh;background:var(--card)" placeholder="# Lunedì&#10;Colazione: yogurt greco 150 g, avena 40 g | latte 200 ml&#10;Pranzo: pasta integrale 80 g, zucchine 200 g">${esc(t)}</textarea>
-    <button class="btn" id="dtS" type="button" style="margin-top:8px">Salva la dieta</button>`);
-  $('dtS').onclick = async () => {
-    const giorni = []; let g = null;
-    $('dt').value.split('\n').map(l => l.trim()).filter(Boolean).forEach(l => {
-      if (l.startsWith('#')) { g = { giorno: l.replace(/^#+/, '').trim() || 'Giorno', pasti: [] }; giorni.push(g); }
-      else if (g) {
-        const i = l.indexOf(':'), tipo = i > 0 ? l.slice(0, i).trim() : 'Pasto', [al, alt] = (i > 0 ? l.slice(i + 1) : l).split('|');
-        const v = piano?.giorni?.find(x => x.giorno === g.giorno)?.pasti.find(x => x.tipo === tipo);
-        g.pasti.push({ tipo, alimenti: (al || '').trim(), alternative: (alt || '').trim(), ...(v?.link ? { link: v.link, link_da: v.link_da } : {}), ...(v?.nota ? { nota: v.nota } : {}) });
-      }
-    });
-    if (!giorni.length) return toast('Scrivi almeno un giorno che inizia con #');
-    chiudi();
-    if (await salvaPiano(pid, { giorni, da: CHI })) { toast('Dieta salvata ✓'); avvisaGruppo('Pasti aggiornati', `${CHI} ha aggiornato la dieta di ${pid === IO ? CHI : p.nome}`); }
-    renderPiano();
-  };
-}
 $('pdf').onchange = e => { const f = e.target.files[0]; if (f) analizzaPDF(f); e.target.value = ''; };

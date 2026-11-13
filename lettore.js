@@ -3,8 +3,14 @@
 // impaginazione restituisce null e l'app passa all'intelligenza artificiale.
 const LETTORE = (() => {
   const SOGLIA_QTA = 280, SOGLIA_TITOLO = 100, TOL_RIGA = 2.5, MAX_CONTINUA = 12.5;
-  const numero = t => t.replace(/\d+(?:[.,]\d+)?/g, m => { const n = parseFloat(m.replace(',', '.')); return isFinite(n) ? String(+n.toFixed(2)).replace('.', ',') : m; });
+  const numero = t => t.replace(/\d+(?:[.,]\d+)?/g, m => { const n = parseFloat(m.replace(',', '.')); return isFinite(n) ? String(+n.toFixed(1)).replace('.', ',') : m; });
   const pulisci = t => t.replace(/(\d)\s*\u0000\s*(\d)/g, '$1-$2').replace(/\u0000/g, '(').replace(/\(\s+/g, '(').replace(/\s+\)/g, ')').replace(/\s+/g, ' ').trim();
+  const SLOT = ['Colazione', 'Spuntino mattina', 'Pranzo', 'Spuntino pomeriggio', 'Cena'];
+  const norm = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const slot = t => { const x = norm(t); if (/colazione/.test(x)) return SLOT[0]; if (/pomeriggio|merenda|arco/.test(x)) return SLOT[3]; if (/spuntino/.test(x)) return SLOT[1]; if (/pranzo/.test(x)) return SLOT[2]; if (/cena/.test(x)) return SLOT[4]; return String(t).trim(); };
+  const fmt = n => String(+Number(n).toFixed(1)).replace('.', ',');
+  const testoVoce = v => v.nome + (v.qta != null ? ' ' + fmt(v.qta) + (v.unita ? ' ' + v.unita : '') : '') + (v.misura ? ' (' + v.misura + ')' : '');
+  const parseQta = t => { const m = String(t || '').match(/^([\d.,]+)\s*([a-zA-Z]*)/); if (!m) return { qta: null, unita: '' }; const n = parseFloat(m[1].replace(',', '.')); const u = m[2].toLowerCase(); return { qta: isFinite(n) ? n : null, unita: ['g', 'ml', 'kg', 'l', 'cl'].includes(u) ? u : '' }; };
   const rumore = it => /powered by nutribook/i.test(it.s) || (it.y < 45 && /^\d+$/.test(it.s.trim()));
 
   // pagine = [[{ s, x, y }]] → { giorni:[{giorno, pasti:[{tipo, alimenti, alternative}]}], sicuro }
@@ -61,25 +67,76 @@ const LETTORE = (() => {
         if (!(r.testo.length <= 60 && !/^[-•*]/.test(r.testo) && r.testo !== r.testo.toUpperCase())) { r.sez.chiusa = true; }
       } else r.sez.inNota = false;
       if (r.sez.chiusa) continue;
-      const voce = { nome: r.testo, qta, misura };
+      const voce = { nome: r.testo.replace(/\s*\(media\)/gi, '').trim(), ...parseQta(qta), misura };
       if (!alt || !r.sez.cur) { r.sez.voci = r.sez.voci || []; r.sez.voci.push(voce); r.sez.ultimo = voce; r.sez.cur = null; }
       else r.sez.cur.sost.push(voce);
       prec = { pag: r.pag, y: r.y, x0: r.x0, voce, sez: r.sez };
     }
-    const txt = v => v.nome + (v.qta ? ' ' + v.qta : '') + (v.misura ? ' (' + v.misura + ')' : '');
     const giorni = []; let sicuro = true;
-    for (const s of sezioni) {
-      if (!s.voci || !s.voci.length) { sicuro = false; continue; }
-      let g = giorni.find(x => x.giorno === s.giorno); if (!g) giorni.push(g = { giorno: s.giorno, pasti: [] });
-      g.pasti.push({
-        tipo: s.tipo, alimenti: s.voci.map(txt).join('; '),
-        alternative: s.voci.filter(v => v.sost && v.sost.length).map(v => v.nome + ': ' + v.sost.map(txt).join(', ')).join('; '),
-        ...(s.nota && s.nota.length ? { nota: s.nota.join('\n') } : {})
+    for (const sz of sezioni) {
+      if (!sz.voci || !sz.voci.length) { sicuro = false; continue; }
+      let g = giorni.find(x => x.giorno === sz.giorno); if (!g) giorni.push(g = { giorno: sz.giorno, pasti: [] });
+      const tipo = slot(sz.tipo); let pa = g.pasti.find(x => x.tipo === tipo);
+      if (!pa) g.pasti.push(pa = { tipo, voci: [] });
+      sz.voci.forEach(v => pa.voci.push({ nome: v.nome, qta: v.qta, unita: v.unita, misura: v.misura, sost: (v.sost || []).map(x => ({ nome: x.nome, qta: x.qta, unita: x.unita, misura: x.misura })) }));
+      if (sz.nota && sz.nota.length) pa.nota = (pa.nota ? pa.nota + '\n' : '') + sz.nota.join('\n');
+    }
+    for (const g of giorni) {
+      g.pasti.sort((x, y) => { const i = SLOT.indexOf(x.tipo), j = SLOT.indexOf(y.tipo); return (i < 0 ? 99 : i) - (j < 0 ? 99 : j); });
+      // testo semplice di riserva (chat, assistente, modifica a mano): le voci restano la fonte vera
+      g.pasti.forEach(pa => {
+        pa.alimenti = pa.voci.map(testoVoce).join('; ');
+        pa.alternative = pa.voci.filter(v => v.sost.length).map(v => v.nome + ': ' + v.sost.map(testoVoce).join(', ')).join('; ');
       });
     }
     if (!giorni.length) return null;
     if (giorni.some(g => g.pasti.length < 2)) sicuro = false;
     return { giorni, sicuro };
+  }
+
+
+  // PDF di altri formati: lettura del testo riga per riga (giorni, pasti, alimenti con grammature, "oppure").
+  // È meno precisa: il risultato passa sempre dalla schermata di controllo prima di essere salvato.
+  const NOMI_G = { lunedi: 'Lunedì', martedi: 'Martedì', mercoledi: 'Mercoledì', giovedi: 'Giovedì', venerdi: 'Venerdì', sabato: 'Sabato', domenica: 'Domenica' };
+  const UNITA = u => { u = norm(u).replace(/\.$/, ''); return /^(g|gr|grammi|grammo)$/.test(u) ? 'g' : /^(ml|millilitri)$/.test(u) ? 'ml' : u === 'kg' ? 'kg' : u === 'cl' ? 'cl' : u === 'l' ? 'l' : ''; };
+  function voceDaTesto(s) {
+    s = String(s || '').replace(/^[-•*·]\s*/, '').trim(); if (!s) return null;
+    let m = s.match(/^(.*?)[\s:]+(\d+(?:[.,]\d+)?)\s*(g|gr|grammi|ml|kg|cl|l)\b\.?\s*(?:\((.*?)\))?\s*(?:oppure\s+(.*)|(.*))$/i);
+    if (m && m[1].trim()) return { nome: (m[1].trim().replace(/[:\-–]$/, '').trim() + (m[6] && m[6].trim() ? ' ' + m[6].trim() : '')), qta: parseFloat(m[2].replace(',', '.')), unita: UNITA(m[3]), misura: (m[4] || m[5] || '').trim(), sost: [] };
+    m = s.match(/^(\d+(?:[.,]\d+)?)\s*(g|gr|grammi|ml|kg|cl|l)\b\.?\s+(?:di\s+)?(.+)$/i);
+    if (m) return { nome: m[3].trim(), qta: parseFloat(m[1].replace(',', '.')), unita: UNITA(m[2]), misura: '', sost: [] };
+    m = s.match(/^(.*?)\s+(\d+\s*(?:cucchiai[oi]?|cucchiaini?|tazzin[ae]|tazz[ae]|vasetti?|vasetto|frutti?|fette|fetta|uova|uovo|pezzi?|bicchieri?|bicchiere|porzion[ei])\b.*)$/i);
+    if (m) return { nome: m[1].trim(), qta: null, unita: '', misura: m[2].trim(), sost: [] };
+    return { nome: s, qta: null, unita: '', misura: '', sost: [] };
+  }
+  function parsaTesto(testo) {
+    const righe = String(testo || '').split(/\n+/).map(t => t.replace(/\s+/g, ' ').trim()).filter(Boolean);
+    const reGiorno = /^(luned[iìÌ]|marted[iìÌ]|mercoled[iìÌ]|gioved[iìÌ]|venerd[iìÌ]|sabato|domenica|giorno\s*\d+)(?![a-zà-ü])\.?/i;
+    const rePasto = /^(prima colazione|colazione|spuntino(?:\s+(?:di\s+|del\s+)?(?:mattina|mattutino|metà mattina|pomeriggio|pomeridiano))?|merenda|pranzo|cena|nell'arco della giornata)\b\s*[:\-–]?\s*/i;
+    const reAlt = /^(oppure|in alternativa|alternativa|o in alternativa|puoi sostituire[^:]*:?|sostituibile con)\s*[:,]?\s*/i;
+    const reQta = /\d+(?:[.,]\d+)?\s*(g|gr|grammi|ml|kg|cl)\b/i;
+    const giorni = []; let g = null, pa = null, ultima = null, inAlt = false;
+    const vaiGiorno = n => { g = giorni.find(x => x.giorno === n); if (!g) giorni.push(g = { giorno: n, pasti: [] }); pa = null; ultima = null; };
+    const vaiPasto = t => { if (!g) vaiGiorno('Giorno 1'); const tipo = slot(t); pa = g.pasti.find(x => x.tipo === tipo); if (!pa) g.pasti.push(pa = { tipo, voci: [] }); ultima = null; inAlt = false; };
+    for (let r of righe) {
+      let m = r.match(reGiorno);
+      if (m) { const k = norm(m[1]).replace(/\s+/g, ' '); vaiGiorno(NOMI_G[k] || k.replace(/^giorno\s*/, 'Giorno ')); r = r.slice(m[0].length).replace(/^\s*[-–:]\s*/, ''); if (!r) continue; }
+      m = r.match(rePasto);
+      if (m) { vaiPasto(m[1]); r = r.slice(m[0].length); if (!r) continue; }
+      if (!pa) continue;
+      const alt = reAlt.test(r); if (alt) { r = r.replace(reAlt, ''); inAlt = true; if (!r) continue; }
+      const pezzi = reQta.test(r) ? r.split(/\s*[;,]\s+|\s+\+\s+/).filter(Boolean) : [r];
+      for (const pz of pezzi) {
+        if (!reQta.test(pz) && pz.length > 60) { pa.nota = (pa.nota ? pa.nota + '\n' : '') + pz; continue; }
+        const v = voceDaTesto(pz); if (!v) continue;
+        if ((alt || inAlt) && ultima) { delete v.sost; ultima.sost.push(v); }
+        else { pa.voci.push(v); ultima = v; }
+      }
+      if (!alt) inAlt = false;
+    }
+    giorni.forEach(gg => { gg.pasti = gg.pasti.filter(x => x.voci.length || x.nota); gg.pasti.sort((x, y) => { const i = SLOT.indexOf(x.tipo), j = SLOT.indexOf(y.tipo); return (i < 0 ? 99 : i) - (j < 0 ? 99 : j); }); });
+    const ok = giorni.filter(gg => gg.pasti.length);
+    return ok.length ? { giorni: ok, sicuro: false } : null;
   }
 
   async function leggi(buffer) {
@@ -92,6 +149,6 @@ const LETTORE = (() => {
     }
     return parsaDieta(pagine);
   }
-  return { parsaDieta, leggi };
+  return { parsaDieta, parsaTesto, voceDaTesto, leggi, SLOT, slot, testoVoce, fmt };
 })();
 if (typeof module !== 'undefined') module.exports = LETTORE;

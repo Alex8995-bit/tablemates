@@ -2,15 +2,17 @@
 let chat = [];
 function renderChat() {
   const el = $('t-chat');
-  const testa = `<div class="testa"><p>Pasti, spesa e conti di ${esc(G ? G.nome : 'tutto il gruppo')}</p><h1>Assistente</h1></div>`;
+  const testa = `<div class="sub-cap"><button type="button" class="indietro" id="chB" aria-label="Torna a Oggi">${ic('indietro', 22, 2)}</button><div><h1>Assistente</h1><p>Pasti, spesa e conti di ${esc(G ? G.nome : 'tutto il gruppo')}</p></div></div>`;
   if (!haAI()) {
-    el.innerHTML = testa + `<div class="card vuoto" style="text-align:left">${ic('scintille', 28)}<b>Serve un'intelligenza artificiale</b><p class="q" style="margin:6px 0 0;line-height:1.5">${ANTEPRIMA ? 'Nell\'anteprima non si collega nessuna intelligenza artificiale.' : 'In Impostazioni inserisci una chiave di Gemini, ChatGPT o Claude: puoi condividerla con tutto il gruppo.'} Poi qui chiedi "cosa mangio domani?", "cosa mangia Giulia stasera?", "aggiungi il latte alla spesa" o "quanto devo e a chi?", e ti risponde anche a voce.</p></div>`;
+    el.innerHTML = testa + `<div class="card vuoto" style="text-align:left">${ic('scintille', 28)}<b>Serve un'intelligenza artificiale</b><p class="q" style="margin:6px 0 0;line-height:1.5">${ANTEPRIMA ? 'Nell\'anteprima non si collega nessuna intelligenza artificiale.' : 'In Impostazioni (dalla scheda Gruppo) inserisci una chiave di Gemini, Groq, ChatGPT o Claude: puoi condividerla con tutto il gruppo.'} Poi qui chiedi "cosa mangio domani?", "cosa mangia Giulia stasera?", "aggiungi il latte alla spesa" o "quanto devo e a chi?", e ti risponde anche a voce.</p></div>`;
+    $('chB').onclick = () => vai('oggi');
     return;
   }
   el.innerHTML = testa + `<div class="sug">` +
     ['Cosa mangio oggi?', 'Cosa mangiamo stasera?', 'Cosa devo comprare?', 'Quanto devo e a chi?', 'Quanto abbiamo speso in casa?'].map(s => `<button type="button">${s}</button>`).join('') +
     `</div><div class="msgs" id="msgs">${chat.length ? chat.map(m => `<div class="m ${m.r}">${esc(m.t)}</div>`).join('') : `<p class="q" style="text-align:center;margin-top:30px">Scrivi o detta una domanda.${iaAttiva().condivisa ? '<br><span class="by">Usi l\'intelligenza artificiale condivisa da ' + esc(iaAttiva().da || 'un membro del gruppo') + '.</span>' : ''}</p>`}</div>` +
     `<div class="ask"><input id="dom" placeholder="Scrivi o detta…" enterkeyhint="send" aria-label="Domanda"><button class="mic" id="mic" type="button" aria-label="Detta">${ic('microfono', 20)}</button><button id="inv" type="button" aria-label="Invia">${ic('invia', 20)}</button></div>`;
+  $('chB').onclick = () => vai('oggi');
   el.querySelectorAll('.sug button').forEach(b => b.onclick = () => chiediAI(b.textContent));
   $('inv').onclick = () => chiediAI($('dom').value);
   $('dom').onkeydown = e => { if (e.key === 'Enter') chiediAI($('dom').value); };

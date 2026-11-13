@@ -15,7 +15,7 @@ const SS = {
 };
 const S = k => LS.get(k) || (window.CFG && window.CFG[k]) || '';
 const ANTEPRIMA = !!window.ANTEPRIMA;
-window.VERSIONE = '7.5';
+window.VERSIONE = '9.0';
 const NOME_APP = 'Tablemates';
 const REPARTI = ['Frutta e verdura','Carne e pesce','Latticini e uova','Pane e cereali','Dispensa','Surgelati','Bevande','Casa e igiene','Altro'];
 const vibra = () => { try { navigator.vibrate && navigator.vibrate(10); } catch(e){} };
@@ -48,11 +48,17 @@ function chiedi(titolo, testo, valore, siTesto, fn, tipo){
   const ok = () => { const x = v.value; chiudi(); fn(x); };
   $('chS').onclick = ok; v.onkeydown = e => { if (e.key === 'Enter') ok(); };
 }
+// Schede: Oggi, Piano, Spesa, Conti, Gruppo. A tavola, Assistente e Impostazioni si aprono da queste.
+const SCHEDE = ['oggi', 'piano', 'spesa', 'conti', 'gruppo', 'presenze', 'chat', 'imp'];
+const SCHEDA_NAV = { presenze: 'oggi', chat: 'oggi', imp: 'gruppo' };
 function vai(t){
-  document.querySelectorAll('nav.sezioni button[data-t]').forEach(b => { b.classList.toggle('on', b.dataset.t === t); if (b.dataset.t === t) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
-  ['piano','spesa','conti','chat','imp'].forEach(x => $('t-' + x).hidden = x !== t);
-  if ($('navAltro')) { const a = t === 'chat' || t === 'imp'; $('navAltro').classList.toggle('on', a); if (a) $('navAltro').setAttribute('aria-current', 'page'); else $('navAltro').removeAttribute('aria-current'); }
+  if (!SCHEDE.includes(t)) t = 'oggi';
+  const nav = SCHEDA_NAV[t] || t;
+  document.querySelectorAll('nav.sezioni button[data-t]').forEach(b => { const on = b.dataset.t === nav || b.dataset.t === t; b.classList.toggle('on', on); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+  if (t === 'chat') document.querySelectorAll('nav.sezioni button[data-t="oggi"]').forEach(b => { if (matchMedia('(min-width:900px)').matches) { b.classList.remove('on'); b.removeAttribute('aria-current'); } });
+  SCHEDE.forEach(x => { const e = $('t-' + x); if (e) e.hidden = x !== t; });
   LS.set('scheda', t); scrollTo(0, 0);
+  if (t === 'presenze' && typeof renderPresenze === 'function') renderPresenze();
   if (t === 'chat') setTimeout(() => scrollTo(0, document.body.scrollHeight), 0);
 }
 const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'x' + Date.now().toString(36) + Math.random().toString(36).slice(2));

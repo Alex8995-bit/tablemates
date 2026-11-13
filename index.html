@@ -6,8 +6,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Tablemates</title>
 <meta name="description" content="Pasti, lista della spesa e conti condivisi per famiglie e coinquilini.">
-<meta name="theme-color" content="#F4F5F1" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0E1210" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#F4F6F3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F1712" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -16,28 +16,30 @@
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="preload" href="plus-jakarta-sans-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="manrope-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="app.css">
 </head>
 <body>
 <div class="offline" id="offline" hidden>Sei offline: vedi gli ultimi dati salvati, le modifiche non vengono registrate.</div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <main class="wrap">
-<section id="t-piano"></section>
+<section id="t-oggi"></section>
+<section id="t-piano" hidden></section>
 <section id="t-spesa" hidden></section>
 <section id="t-conti" hidden></section>
+<section id="t-gruppo" hidden></section>
+<section id="t-presenze" hidden></section>
 <section id="t-chat" hidden></section>
 <section id="t-imp" hidden></section>
 </main>
-<nav class="sezioni" aria-label="Sezioni">
+<nav class="sezioni" aria-label="Navigazione principale">
 <div class="marchio" id="navMarchio"></div>
-<button type="button" data-t="piano" class="on"></button>
+<button type="button" data-t="oggi" class="on"></button>
+<button type="button" data-t="piano"></button>
 <button type="button" data-t="spesa"></button>
-<button type="button" class="piu tel" id="navPiu" aria-label="Aggiungi"></button>
 <button type="button" data-t="conti"></button>
+<button type="button" data-t="gruppo"></button>
 <button type="button" data-t="chat" class="pc"></button>
-<button type="button" data-t="imp" class="pc"></button>
-<button type="button" class="tel" id="navAltro"></button>
 <div class="io" id="navIo"></div>
 </nav>
 <input type="file" id="pdf" accept="application/pdf" hidden>
@@ -54,10 +56,14 @@
 <script src="ai.js"></script>
 <script src="lettore.js"></script>
 <script src="notifiche.js"></script>
+<script src="oggi.js"></script>
 <script src="piano.js"></script>
+<script src="dieta.js"></script>
+<script src="ricetta.js"></script>
 <script src="spesa.js"></script>
 <script src="conti.js"></script>
 <script src="chat.js"></script>
+<script src="gruppo.js"></script>
 <script src="imp.js"></script>
 <script src="app.js"></script>
 <!--/SCRIPTS-->

@@ -10,7 +10,7 @@ function applicaTema() {
   if (t === 'chiaro') r.setAttribute('data-theme', 'light'); else if (t === 'scuro') r.setAttribute('data-theme', 'dark'); else r.removeAttribute('data-theme');
   document.querySelectorAll('meta[name="theme-color"]').forEach(m => {
     if (!m.dataset.orig) m.dataset.orig = m.content;
-    m.content = t === 'chiaro' ? '#F4F5F1' : t === 'scuro' ? '#0E1210' : m.dataset.orig;
+    m.content = t === 'chiaro' ? '#F4F6F3' : t === 'scuro' ? '#0F1712' : m.dataset.orig;
   });
 }
 applicaTema();
@@ -128,7 +128,7 @@ async function flussoNuovoPin() {
 }
 
 // ---------- Schermata di blocco ----------
-function inerte(si) { ['main', 'nav.sezioni', '#pop'].forEach(s => { const e = document.querySelector(s); if (e) e.inert = si; }); }
+function inerte(si) { ['main', 'nav.sezioni', '#pop', '#pagina'].forEach(s => { const e = document.querySelector(s); if (e) e.inert = si; }); }
 function sblocca() { const el = $('blocco'); if (el) el.remove(); inerte(false); LS.del('pinTent'); LS.del('pinFino'); }
 function mostraBlocco() {
   if ($('blocco') || !pinImpostato() || !cifreOk) return;
@@ -180,7 +180,7 @@ document.addEventListener('visibilitychange', () => {
   const m = LS.get('bloccoMin') === '' ? 1 : +LS.get('bloccoMin');
   if (Date.now() - _nascosta >= (isNaN(m) ? 1 : m) * 60000) mostraBlocco();
 });
-function avviaBlocco() { if (pinImpostato()) mostraBlocco(); bioDisponibile().then(v => { BIO_OK = v; if ($('t-imp') && $('t-imp').innerHTML) renderImp(); }); }
+function avviaBlocco() { if (pinImpostato()) mostraBlocco(); bioDisponibile().then(v => { BIO_OK = v; if ($('t-imp') && $('t-imp').innerHTML) renderImp(); if ($('sicFoglio')) foglioSicurezza(); }); }
 
 // ---------- Password dell'account ----------
 function formPassword(titolo) {
@@ -225,18 +225,19 @@ function htmlSicurezza() {
   }
   return h + '</div>';
 }
+function aggiornaSicurezza() { renderImp(); if ($('sicFoglio')) foglioSicurezza(); }
 function legaSicurezza() {
   document.querySelectorAll('[data-tema]').forEach(b => b.onclick = () => { LS.set('tema', b.dataset.tema); applicaTema(); renderImp(); });
-  if ($('pinNuovo')) $('pinNuovo').onclick = async () => { if (await flussoNuovoPin()) { toast('PIN attivato ✓'); renderImp(); } };
+  if ($('pinNuovo')) $('pinNuovo').onclick = async () => { if (await flussoNuovoPin()) { toast('PIN attivato ✓'); aggiornaSicurezza(); } };
   if ($('bloccoMin')) $('bloccoMin').onchange = e => { LS.set('bloccoMin', e.target.value); toast('Salvato ✓'); };
   if ($('bloccaOra')) $('bloccaOra').onclick = mostraBlocco;
   const chiediAttuale = () => chiediPin('Inserisci il PIN attuale', '', leggiPin().n, verificaPin);
   if ($('pinCambia')) $('pinCambia').onclick = async () => {
     if (!(await chiediAttuale())) return;
     if (await flussoNuovoPin()) toast('PIN cambiato ✓'); else chiudi();
-    renderImp();
+    aggiornaSicurezza();
   };
-  if ($('pinOff')) $('pinOff').onclick = async () => { if (!(await chiediAttuale())) return; disattivaPin(); chiudi(); toast('PIN disattivato'); renderImp(); };
+  if ($('pinOff')) $('pinOff').onclick = async () => { if (!(await chiediAttuale())) return; disattivaPin(); chiudi(); toast('PIN disattivato'); aggiornaSicurezza(); };
   if ($('bioT')) $('bioT').onchange = async e => {
     if (!e.target.checked) { LS.del('bioId'); toast('Disattivato'); return; }
     try { await bioAttiva(); toast(nomeBio()[0].toUpperCase() + nomeBio().slice(1) + ' attivato ✓'); }

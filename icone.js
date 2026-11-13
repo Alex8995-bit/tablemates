@@ -1,5 +1,24 @@
 // Icone a linea (stile Lucide), disegnate in SVG: niente emoji.
 const ICONE = {
+  oggi: '<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>',
+  calendario: '<path d="M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/>',
+  sacchetto: '<path d="M6 7h12l-1 13H7L6 7zM9 7a3 3 0 0 1 6 0"/>',
+  borsello: '<path d="M4 7h15a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a2 2 0 0 1 2-2h11v3M16 13.5h.01"/>',
+  gruppo: '<path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21a7 7 0 0 1 14 0M16 3.5a4 4 0 0 1 0 7.5M18 14.5a7 7 0 0 1 4 6.5"/>',
+  ingranaggio: '<path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+  carica: '<path d="M12 16V4M7 9l5-5 5 5M5 20h14"/>',
+  indietro: '<path d="M15 6l-6 6 6 6"/>',
+  avanti: '<path d="M9 6l6 6-6 6"/>',
+  segnalibro: '<path d="M6 4h12v17l-6-4-6 4V4z"/>',
+  play: '<path d="M8 5v14l11-7L8 5z"/>',
+  timer: '<path d="M12 9v4l2.5 2M9 2h6M12 5a8 8 0 1 0 0 16 8 8 0 0 0 0-16z"/>',
+  sole: '<path d="M12 3v2M12 19v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M3 12h2M19 12h2M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/>',
+  info: '<path d="M12 8v5M12 16.5h.01M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z"/>',
+  condividi: '<path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/>',
+  piatto: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/>',
+  pizza: '<path d="M12 3l9 17H3L12 3zM10 13h.01M14 16h.01"/>',
+  scontrino2: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3zM9 8h6M9 12h6"/>',
+  puntini: '<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>',
   piano: '<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>',
   carrello: '<circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>',
   portafoglio: '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',
@@ -51,20 +70,23 @@ const ICONE = {
   cestino: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>'
 };
 // Marchio: due cerchi che si sovrappongono; lo spazio in comune è zafferano
-let _mk = 0;
+// Logo: tavolo rotondo visto dall'alto con quattro persone (una in zafferano)
+const LOGO_INT = (bianco) => bianco
+  ? '<circle cx="50" cy="50" r="19" fill="#FFFFFF"/><circle cx="50" cy="50" r="10" fill="none" stroke="#1E7A4C" stroke-width="3"/><g fill="none" stroke="#FFFFFF" stroke-width="10" stroke-linecap="round">' + [0, 90, 180, 270].map(r => `<path d="M34.5 20.9A33 33 0 0 1 65.5 20.9" transform="rotate(${r} 50 50)"/>`).join('') + '</g><g fill="#FFFFFF" stroke="#1E7A4C" stroke-width="2.5"><circle cx="50" cy="19" r="6.5"/><circle cx="81" cy="50" r="6.5"/><circle cx="50" cy="81" r="6.5"/><circle cx="19" cy="50" r="6.5"/></g>'
+  : '<circle cx="50" cy="50" r="19" fill="#FFFFFF"/><circle cx="50" cy="50" r="10" fill="none" stroke="#BFE3CC" stroke-width="3"/><g fill="none" stroke-width="10" stroke-linecap="round">' + [[0, '#8FD0A8'], [90, '#8FD0A8'], [180, '#F4B266'], [270, '#8FD0A8']].map(([r, c]) => `<path d="M34.5 20.9A33 33 0 0 1 65.5 20.9" stroke="${c}" transform="rotate(${r} 50 50)"/>`).join('') + '</g><g fill="#FFFFFF" stroke="#1E7A4C" stroke-width="2.5"><circle cx="50" cy="19" r="6.5"/><circle cx="81" cy="50" r="6.5"/><circle cx="50" cy="81" r="6.5"/><circle cx="19" cy="50" r="6.5"/></g>';
 function marchio(dim = 32) {
-  const id = 'mkc' + (++_mk);
-  return `<svg class="mk" width="${dim}" height="${dim}" viewBox="0 0 48 48" aria-hidden="true"><defs><clipPath id="${id}"><circle cx="19" cy="24" r="10"/></clipPath></defs><rect width="48" height="48" rx="13" fill="#0F5F45"/><circle cx="19" cy="24" r="10" fill="#FFFFFF"/><circle cx="29" cy="24" r="10" fill="#FFFFFF"/><circle cx="29" cy="24" r="10" fill="#F2B33D" clip-path="url(#${id})"/></svg>`;
+  return `<svg class="mk" width="${dim}" height="${dim}" viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" rx="23" fill="#1E7A4C"/>${LOGO_INT(false)}</svg>`;
 }
-const marchioCompleto = (dim = 32) => marchio(dim) + `<span class="wm">${NOME_APP.toLowerCase()}</span>`;
+const marchioBianco = (dim = 56) => `<svg class="mk" width="${dim}" height="${dim}" viewBox="0 0 100 100" aria-hidden="true">${LOGO_INT(true)}</svg>`;
+const marchioCompleto = (dim = 32) => marchio(dim) + '<span class="wm">Table<span>mates</span></span>';
 function ic(nome, dim = 20, spessore = 1.9) {
   return `<svg class="ic" width="${dim}" height="${dim}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${spessore}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONE[nome] || ICONE.pacco}</svg>`;
 }
 // Colori degli avatar, uno per persona
-const COLORI_AV = [['#DCEBE3', '#0F5F45'], ['#FBEBC8', '#7A5100'], ['#E3E6F4', '#33407A'], ['#F2D6E0', '#7A2846'], ['#E4DDF3', '#4B3784'], ['#D7EEF0', '#1F5F66']];
+const COLORI_AV = [['var(--av1)', 'var(--av1-tx)'], ['#F4B266', '#4A2A05'], ['#E3E6F4', '#33407A'], ['#F2D6E0', '#7A2846'], ['#E4DDF3', '#4B3784'], ['#D7EEF0', '#1F5F66']];
 function avatar(p, i, cls = '') {
   const c = COLORI_AV[(i < 0 ? 0 : i) % COLORI_AV.length];
-  const ini = String(p?.nome || '?').trim().slice(0, 2).toUpperCase();
+  const ini = String(p?.nome || '?').trim().slice(0, 1).toUpperCase();
   return `<span class="av ${cls}" style="background:${c[0]};color:${c[1]}" aria-hidden="true">${esc(ini)}</span>`;
 }
 // Icona e colore di una voce di conto, dal nome (Utenze → fulmine, ecc.)

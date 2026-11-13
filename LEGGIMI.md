@@ -102,7 +102,7 @@ Nei **Conti → Saldi** puoi aggiungere anche persone senza app, come un nonno o
 
 Serve per leggere i PDF delle diete, proporre piatti e ricette e per l'Assistente.
 
-**Lettura della dieta:** per i PDF dei piani "Nutribook" l'app legge giorni, pasti, alimenti, alternative e note direttamente nel telefono, senza intelligenza artificiale e senza chiave. Se il PDF ha un'altra impaginazione e c'è un'IA attiva, la lettura passa a lei. Il codice è in `js/lettore.js`. L'IA (Gemini consigliato) serve poi per piatti, ricette e Assistente.
+**Lettura della dieta:** per i PDF dei piani "Nutribook" l'app legge giorni, pasti, alimenti, alternative e note direttamente nel telefono, senza intelligenza artificiale e senza chiave. Se il PDF ha un'altra impaginazione e c'è un'IA attiva, la lettura passa a lei. Il codice è in `js/lettore.js`. Ogni pasto è diviso negli slot fissi (Colazione, Spuntino mattina, Pranzo, Spuntino pomeriggio, Cena), ogni alimento è una riga con il tasto **Alternative** (la scelta vale solo per quel giorno) e dalla scheda si crea la lista della spesa con i totali (`js/dieta.js`). L'IA (Gemini consigliato) serve poi per piatti, ricette e Assistente.
 
 1. Vai su **aistudio.google.com/apikey**, accedi con Google e premi **Create API key**. Ha un piano gratuito.
    - In alternativa gratuita c'è **Groq**: chiave su **console.groq.com/keys**. Groq non legge i PDF direttamente: l'app ne estrae il testo nel telefono, quindi funziona solo con PDF dove il testo si può selezionare (non con foto o scansioni).
@@ -174,3 +174,16 @@ Quando modifichi un file, in `sw.js` aumenta il numero di `VERSIONE` (per esempi
 | `supabase/functions/notifica/` | la funzione delle notifiche |
 | `strumenti/chiavi-notifiche.html` | crea le chiavi delle notifiche |
 | `strumenti/crea_anteprima.py` | crea la versione dimostrativa |
+
+## Novità della versione 9
+
+- **Nuovo aspetto** (logo con il tavolo e le quattro persone, carattere Manrope, colori verde e zafferano), uguale in chiaro e in scuro.
+- **Schede**: Oggi, Piano, Spesa, Conti, Gruppo. Impostazioni dall'ingranaggio di Gruppo, Assistente da Oggi.
+- **Oggi**: prossimo pasto con le quantità, idea di piatto, "A tavola stasera? Ci sono / Salto", spesa e conti in breve.
+- **A tavola**: chi mangia a casa a pranzo e a cena per 7 giorni; ognuno risponde per sé.
+- **Piano**: giorni L–D, pasti a fisarmonica, "Fatto", alternative a pillola ("Puoi sostituire con"), note del nutrizionista.
+- **Editor del piano**: alimenti, quantità, misure e alternative modificabili a mano.
+- **Controllo prima di salvare**: dopo ogni lettura di un PDF si apre l'editor per verificare. I PDF di altri formati li legge l'IA (se attiva) o, senza IA, il lettore del testo (meno preciso).
+- **Ricetta a schermo intero** con ingredienti "In casa / Da comprare", "Metti i mancanti in spesa", ricette salvate e **Modalità cucina** (un passo alla volta, timer, schermo acceso, comandi a voce dove il telefono li supporta).
+- **Spesa + Dispensa**: livelli di quanto resta, "stanno finendo → in lista", la Dispensa si riempie quando spunti un prodotto.
+- **Conti**: "Giulia ti deve", Segna saldato, Ricordaglielo (messaggio da mandare), speso nel mese, la tua parte, ultimi movimenti; saldi, statistiche e conti restano a un tocco.
