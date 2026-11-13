@@ -4,5 +4,5 @@
 window.CFG = {
   sbUrl: 'https://xbttpgbjkuwhzgjsnzsl.supabase.co',        // Project URL, es. https://abcdxyz.supabase.co
   sbKey: 'sb_publishable_gFZnL4I0ZH_t74O6_bBxjw_A6Vz4wVy',        // chiave "publishable" (inizia con sb_publishable_)
-  vapidPublic: ''   // chiave pubblica per le notifiche (vedi la guida, passo "Notifiche")
+  vapidPublic: 'BBQ1gJkT7RzPQJs5_6wiYGU1phBwoRZg6Fy266ZHCoStqJIdHzB6P5ZcLUBafwei5oWlPX8tdKuEuIHngZplsAI'   // chiave pubblica per le notifiche (vedi la guida, passo "Notifiche")
 };
