@@ -4,6 +4,7 @@ const GIORNI_SETT = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì'
 const ORDINE_PASTI = ['colazione', 'spuntino', 'pranzo', 'merenda', 'cena'];
 let personaPiano = LS.get('pianoPersona') || '';
 const puntoLive = () => ST && ST.modo === 'supabase' ? `<span class="live ${live ? 'ok' : ''}" title="${live ? 'Sincronizzato' : 'Non collegato'}"></span>` : '';
+const perIA = o => JSON.stringify(o, (k, v) => k === 'nota' ? undefined : v); // le note del nutrizionista non servono all'IA
 const testoRicerca = p => p.alimenti.replace(/\d+([.,]\d+)?\s*(g|gr|grammi|ml|kg|cl)?\b/gi, ' ').replace(/[(),;:+]/g, ' ').replace(/\s+/g, ' ').trim();
 const pianoDi = pid => D.stato['piano:' + pid] || null;
 const ricetteDi = pid => D.stato['ricette:' + pid] || {};
@@ -82,8 +83,8 @@ function vistaTutti() {
 function vistaPersona(pid) {
   const p = D.partecipanti.find(x => x.id === pid), nome = pid === IO ? 'Tu' : p.nome, piano = pianoDi(pid);
   if (!piano || !piano.giorni || !piano.giorni.length) {
-    return `<div class="card vuoto">${ic('documento', 32)}<b>${pid === IO ? 'Non hai ancora inserito la tua dieta' : esc(p.nome) + ' non ha ancora una dieta'}</b><br>${haAI() ? 'Carica il PDF del nutrizionista oppure scrivila a mano.' : 'Scrivila a mano, oppure attiva un\'intelligenza artificiale in Impostazioni per leggere il PDF.'}</div>
-      ${haAI() ? `<button class="btn" id="up" type="button">${ic('documento', 18)}Carica PDF della dieta</button>` : ''}<button class="btn ${haAI() ? 'ghost' : ''}" id="man" type="button">${ic('matita', 18)}Scrivi la dieta a mano</button>`;
+    return `<div class="card vuoto">${ic('documento', 32)}<b>${pid === IO ? 'Non hai ancora inserito la tua dieta' : esc(p.nome) + ' non ha ancora una dieta'}</b><br>Carica il PDF del nutrizionista oppure scrivila a mano.</div>
+      <button class="btn" id="up" type="button">${ic('documento', 18)}Carica PDF della dieta</button><button class="btn ghost" id="man" type="button">${ic('matita', 18)}Scrivi la dieta a mano</button>`;
   }
   const gi = giornoScelto(pid), g = piano.giorni[gi], r = ricetteDi(pid)[gi] || [], oggiIdx = giornoDiOggi(piano);
   let h = `<div class="giorni" role="tablist" aria-label="Giorni della dieta di ${esc(nome)}">` + piano.giorni.map((d, i) => {
@@ -93,7 +94,7 @@ function vistaPersona(pid) {
   h += g.pasti.map((pa, k) => {
     const x = r[k], prox = gi === oggiIdx && pastoProssimo(pa.tipo);
     return `<article class="card pasto ${prox ? 'prossimo' : ''}"><div class="tp"><h3>${esc(pa.tipo)}</h3>${prox ? '<span class="by pos" style="font-weight:700">Prossimo pasto</span>' : ''}</div>
-      <p class="al">${esc(pa.alimenti)}</p>${pa.alternative ? `<p class="alt">In alternativa: ${esc(pa.alternative)}</p>` : ''}` +
+      <p class="al">${esc(pa.alimenti)}</p>${pa.alternative ? `<p class="alt">In alternativa: ${esc(pa.alternative)}</p>` : ''}${pa.nota ? `<details class="alt" style="margin-top:6px"><summary style="cursor:pointer;font-weight:600">Nota del nutrizionista</summary><p style="white-space:pre-line;margin:6px 0 0;line-height:1.45">${esc(pa.nota)}</p></details>` : ''}` +
       (x ? `<button type="button" class="piatto" data-ric="${k}" data-g="${gi}"><span class="tt"><b>${esc(x.nome)}</b><span class="by" style="display:flex;align-items:center;gap:4px">${ic('orologio', 13, 2)}${esc(x.tempo || '')}${x.da ? ' · scelto da ' + esc(x.da) : ''}</span></span><span class="piccolo pieno">${ic('libro', 15, 2)}Ricetta</span></button>` : '') +
       `<div class="azioni">${pa.link ? `<a class="piccolo" href="${esc(pa.link)}" target="_blank" rel="noopener">${ic('libro', 15, 2)}Ricetta salvata</a>` : ''}
         <a class="piccolo neutro" href="https://www.google.com/search?q=${encodeURIComponent('ricetta ' + testoRicerca(pa))}" target="_blank" rel="noopener">${ic('cerca', 15, 2)}Cerca ricetta</a>
@@ -101,7 +102,7 @@ function vistaPersona(pid) {
         ${x && haAI() ? `<button type="button" class="piccolo neutro" data-re="${k}">${ic('scintille', 15, 2)}Altro piatto</button>` : ''}</div>
       ${pa.link_da ? `<span class="by">Link salvato da ${esc(pa.link_da)}</span>` : ''}</article>`;
   }).join('');
-  h += (haAI() ? `<button class="btn" id="gen" type="button">${ic('scintille', 18)}${r.length ? 'Rigenera piatti e spesa del giorno' : 'Crea piatti e lista della spesa'}</button><button class="btn ghost" id="up" type="button">${ic('documento', 18)}Sostituisci il PDF</button>` : '') +
+  h += (haAI() ? `<button class="btn" id="gen" type="button">${ic('scintille', 18)}${r.length ? 'Rigenera piatti e spesa del giorno' : 'Crea piatti e lista della spesa'}</button>` : '') + `<button class="btn ghost" id="up" type="button">${ic('documento', 18)}Sostituisci il PDF</button>` +
     `<button class="btn bordo" id="man" type="button" style="margin-top:8px">${ic('matita', 18)}Modifica la dieta${pid === IO ? '' : ' di ' + esc(p.nome)}</button>
     <p class="by" style="text-align:center;margin:10px 0 20px">Dieta ${piano.da ? 'inserita da ' + esc(piano.da) : ''} · ${piano.giorni.length} giorni</p>`;
   return h;
@@ -120,19 +121,28 @@ function salvaLink(k) {
   }, 'url');
 }
 
+const PROMPT_PDF = 'Estrai fedelmente la dieta da questo PDF, senza inventare nulla e senza aggiungere giorni o pasti non presenti. Includi TUTTI i giorni, TUTTI i pasti e TUTTE le alternative previste. Se i giorni corrispondono ai giorni della settimana, usa il loro nome (Lunedì, Martedì…). JSON: {"giorni":[{"giorno":"nome breve del giorno","pasti":[{"tipo":"Colazione/Spuntino/Pranzo/Merenda/Cena","alimenti":"alimenti e grammature come scritti","alternative":"alternative previste o stringa vuota"}]}]}';
 async function analizzaPDF(f) {
   const pid = personaPiano, nome = nomeP(pid);
   if (f.size > 14 * 1024 * 1024) return toast('Il PDF è troppo grande (' + Math.round(f.size / 1048576) + ' MB): prova con uno sotto i 14 MB.');
   const att = attesaIA('Leggo la dieta di ' + (pid === IO ? 'te' : nome), 'Può servire fino a un minuto. Tieni aperta l\'app.');
   try {
-    const b64 = await new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result.split(',')[1]); fr.readAsDataURL(f); });
-    const out = await ia([{ inline_data: { mime_type: 'application/pdf', data: b64 } }, { text: 'Estrai fedelmente la dieta da questo PDF, senza inventare nulla e senza aggiungere giorni o pasti non presenti. Includi TUTTI i giorni, TUTTI i pasti e TUTTE le alternative previste. Se i giorni corrispondono ai giorni della settimana, usa il loro nome (Lunedì, Martedì…). JSON: {"giorni":[{"giorno":"nome breve del giorno","pasti":[{"tipo":"Colazione/Spuntino/Pranzo/Merenda/Cena","alimenti":"alimenti e grammature come scritti","alternative":"alternative previste o stringa vuota"}]}]}' }]);
+    // 1) lettura diretta del PDF, senza intelligenza artificiale (piani Nutribook)
+    let out = null, locale = false;
+    try { out = await LETTORE.leggi(await f.arrayBuffer()); } catch (e) { out = null; }
+    if (out && out.sicuro) locale = true;
+    else if (haAI()) {
+      // 2) se non lo riconosce con sicurezza, o se il PDF è di un altro tipo, lo legge l'intelligenza artificiale
+      const b64 = await new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result.split(',')[1]); fr.readAsDataURL(f); });
+      out = await ia([{ inline_data: { mime_type: 'application/pdf', data: b64 } }, { text: PROMPT_PDF }]);
+    } else if (out) locale = true;
+    else throw new Error('Non riesco a leggere questo PDF in automatico. Scrivi la dieta a mano oppure attiva un\'intelligenza artificiale in Impostazioni.');
     if (!out.giorni?.length) throw new Error('Nessun giorno trovato nel PDF');
-    out.da = CHI; D.stato['ricette:' + pid] = {}; LS.del('giorno:' + pid);
+    delete out.sicuro; out.da = CHI; D.stato['ricette:' + pid] = {}; LS.del('giorno:' + pid);
     renderPiano();
     if (await salvaPiano(pid, out)) {
       await scrivi(() => ST.salvaStato(G.id, 'ricette:' + pid, {}));
-      att.fine(); toast('Dieta caricata ✓ Controlla che corrisponda al PDF');
+      att.fine(); toast(locale ? 'Dieta caricata ✓ ' + out.giorni.length + ' giorni, ' + out.giorni.reduce((n, g) => n + g.pasti.length, 0) + ' pasti. Controlla che corrisponda al PDF' : 'Dieta caricata ✓ Controlla che corrisponda al PDF');
       avvisaGruppo('Nuova dieta', `${CHI} ha caricato la dieta di ${pid === IO ? CHI : nome}`);
     } else att.fine();
   } catch (e) { att.errore(e.message); }
@@ -142,7 +152,7 @@ async function generaGiorno() {
   const pid = personaPiano, b = $('gen'), gi = giornoScelto(pid), g = pianoDi(pid).giorni[gi], nome = nomeP(pid);
   b.disabled = true; b.innerHTML = '<span class="spin"></span>Creo i piatti…';
   try {
-    const out = await ia([{ text: 'Per ogni pasto di questa giornata di dieta proponi un piatto. ' + REGOLE + ' Poi crea la lista della spesa aggregata, con ogni prodotto assegnato a un reparto tra: ' + REPARTI.join(', ') + '. JSON: {"piatti":[{"nome":"","tempo":"es. 15 min","preparazione":""}],"spesa":[{"nome":"","quantita":"","reparto":""}]} con i piatti nello stesso ordine dei pasti. Giornata: ' + JSON.stringify(g) }]);
+    const out = await ia([{ text: 'Per ogni pasto di questa giornata di dieta proponi un piatto. ' + REGOLE + ' Poi crea la lista della spesa aggregata, con ogni prodotto assegnato a un reparto tra: ' + REPARTI.join(', ') + '. JSON: {"piatti":[{"nome":"","tempo":"es. 15 min","preparazione":""}],"spesa":[{"nome":"","quantita":"","reparto":""}]} con i piatti nello stesso ordine dei pasti. Giornata: ' + perIA(g) }]);
     out.piatti.forEach(p => p.da = CHI);
     const ric = ricetteDi(pid); ric[gi] = out.piatti; D.stato['ricette:' + pid] = ric;
     const etichetta = nome + ' · ' + g.giorno;
@@ -163,7 +173,7 @@ async function altroPiatto(k, b) {
   b.textContent = 'Cerco…';
   try {
     const p = pianoDi(pid).giorni[gi].pasti[k], ric = ricetteDi(pid), vecchio = ric[gi][k]?.nome;
-    const x = await ia([{ text: 'Proponi un piatto diverso da "' + vecchio + '" per questo pasto. ' + REGOLE + ' JSON: {"nome":"","tempo":"","preparazione":""}. Pasto: ' + JSON.stringify(p) }]);
+    const x = await ia([{ text: 'Proponi un piatto diverso da "' + vecchio + '" per questo pasto. ' + REGOLE + ' JSON: {"nome":"","tempo":"","preparazione":""}. Pasto: ' + perIA(p) }]);
     x.da = CHI; ric[gi][k] = x; D.stato['ricette:' + pid] = ric; renderPiano();
     await salvaRicette(pid);
   } catch (e) { toast(e.message); renderPiano(); }
@@ -185,7 +195,7 @@ async function apriRicetta(pid, gi, k) {
   foglio('<div class="vuoto"><span class="spin" style="border-color:var(--line);border-top-color:var(--acc)"></span><br>Preparo la ricetta…</div>');
   try {
     const p = pianoDi(pid).giorni[gi].pasti[k];
-    x.ricetta = await ia([{ text: 'Scrivi la ricetta completa del piatto "' + x.nome + '" per questo pasto di dieta. ' + REGOLE + ' Riporta ogni ingrediente con la grammatura della dieta. Passaggi chiari e dettagliati, da 4 a 8. JSON: {"tempo":"","porzioni":"","difficolta":"","ingredienti":[""],"passaggi":[""],"consigli":""}. Pasto: ' + JSON.stringify(p) }]);
+    x.ricetta = await ia([{ text: 'Scrivi la ricetta completa del piatto "' + x.nome + '" per questo pasto di dieta. ' + REGOLE + ' Riporta ogni ingrediente con la grammatura della dieta. Passaggi chiari e dettagliati, da 4 a 8. JSON: {"tempo":"","porzioni":"","difficolta":"","ingredienti":[""],"passaggi":[""],"consigli":""}. Pasto: ' + perIA(p) }]);
     D.stato['ricette:' + pid] = ric; mostraRicetta(x);
     await salvaRicette(pid);
   } catch (e) { chiudi(); toast(e.message); }
@@ -204,7 +214,7 @@ function editorDieta(pid) {
       else if (g) {
         const i = l.indexOf(':'), tipo = i > 0 ? l.slice(0, i).trim() : 'Pasto', [al, alt] = (i > 0 ? l.slice(i + 1) : l).split('|');
         const v = piano?.giorni?.find(x => x.giorno === g.giorno)?.pasti.find(x => x.tipo === tipo);
-        g.pasti.push({ tipo, alimenti: (al || '').trim(), alternative: (alt || '').trim(), ...(v?.link ? { link: v.link, link_da: v.link_da } : {}) });
+        g.pasti.push({ tipo, alimenti: (al || '').trim(), alternative: (alt || '').trim(), ...(v?.link ? { link: v.link, link_da: v.link_da } : {}), ...(v?.nota ? { nota: v.nota } : {}) });
       }
     });
     if (!giorni.length) return toast('Scrivi almeno un giorno che inizia con #');

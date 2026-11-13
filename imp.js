@@ -4,7 +4,7 @@ addEventListener('beforeinstallprompt', e => { e.preventDefault(); installaEvt =
 addEventListener('appinstalled', () => { installaEvt = null; toast('App installata ✓'); renderImp(); });
 const installata = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 const ios = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-const PROVIDER = [['nessuna', 'Nessuna'], ['gemini', 'Google Gemini'], ['openai', 'ChatGPT (OpenAI)'], ['claude', 'Claude (Anthropic)']];
+const PROVIDER = [['nessuna', 'Nessuna'], ['gemini', 'Google Gemini (gratuito)'], ['groq', 'Groq (gratuito)'], ['openai', 'ChatGPT (OpenAI)'], ['claude', 'Claude (Anthropic)']];
 
 function renderImp() {
   const el = $('t-imp'); if (!el) return;
@@ -28,6 +28,7 @@ function renderImp() {
     h += `<h2 class="sez">Intelligenza artificiale</h2><div class="card"><p class="q" style="margin:0 0 6px;line-height:1.5">Serve per leggere i PDF delle diete, proporre piatti e ricette e per l'Assistente. È facoltativa.</p>
       ${gr && gr.chiave ? `<div class="nota" style="margin:6px 0 10px">Il gruppo usa ${esc((PROVIDER.find(p => p[0] === gr.prov) || [])[1] || gr.prov)}, condivisa da ${esc(gr.da || '?')}.${pers ? ' Su questo dispositivo usi invece la tua chiave personale.' : ''}</div>` : ''}
       <label class="lb" for="ap">Servizio</label><select id="ap">${PROVIDER.map(([v, n]) => `<option value="${v}" ${((LS.get('aiProv') === 'off' ? 'nessuna' : LS.get('aiProv')) || (gr ? gr.prov : 'nessuna')) === v ? 'selected' : ''}>${n}</option>`).join('')}</select>
+      <p class="by" id="aph" style="margin:6px 0 0;line-height:1.45"></p>
       <label class="lb" for="gk">Chiave API</label><input id="gk" type="password" placeholder="Incolla la chiave" value="${esc(LS.get('gKey') || '')}" autocomplete="off">
       ${G && ST && ST.modo === 'supabase' ? `<label style="display:flex;gap:10px;align-items:flex-start;margin:10px 0 4px;font-size:14px;line-height:1.45"><input type="checkbox" id="share" style="width:20px;height:20px;margin:2px 0 0;flex:none;accent-color:var(--acc)" ${gr && gr.chiave && gr.chiave === LS.get('gKey') ? 'checked' : ''}><span>Condividi con tutto il gruppo: chi entra con un invito userà questa intelligenza artificiale senza inserire nulla. Le persone del gruppo potranno vedere la chiave.</span></label>` : ''}
       <button class="btn" id="sv" type="button" style="margin-top:8px">Salva</button>
@@ -57,6 +58,11 @@ function renderImp() {
   if ($('notOn')) $('notOn').onclick = attivaNotifiche;
   if ($('notOff')) $('notOff').onclick = disattivaNotifiche;
   if ($('inst')) $('inst').onclick = async () => { installaEvt.prompt(); await installaEvt.userChoice.catch(() => {}); installaEvt = null; renderImp(); };
+  if ($('ap') && $('aph')) {
+    const SUGG = { gemini: 'Chiave gratuita su aistudio.google.com/apikey. Legge direttamente il PDF, anche se è una scansione.', groq: 'Chiave gratuita su console.groq.com/keys. Legge solo PDF con testo selezionabile (non scansioni o foto).', openai: 'A pagamento. Chiave su platform.openai.com/api-keys.', claude: 'A pagamento. Chiave su console.anthropic.com.' };
+    const mostra = () => { $('aph').textContent = SUGG[$('ap').value] || ''; };
+    $('ap').addEventListener('change', mostra); mostra();
+  }
   if ($('sv')) $('sv').onclick = async () => {
     const prov = $('ap').value, chiave = $('gk').value.trim(), cond = $('share') && $('share').checked;
     if (prov !== 'nessuna' && !chiave) return toast('Incolla la chiave API');

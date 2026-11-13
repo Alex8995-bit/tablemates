@@ -102,7 +102,10 @@ Nei **Conti → Saldi** puoi aggiungere anche persone senza app, come un nonno o
 
 Serve per leggere i PDF delle diete, proporre piatti e ricette e per l'Assistente.
 
+**Lettura della dieta:** per i PDF dei piani "Nutribook" l'app legge giorni, pasti, alimenti, alternative e note direttamente nel telefono, senza intelligenza artificiale e senza chiave. Se il PDF ha un'altra impaginazione e c'è un'IA attiva, la lettura passa a lei. Il codice è in `js/lettore.js`. L'IA (Gemini consigliato) serve poi per piatti, ricette e Assistente.
+
 1. Vai su **aistudio.google.com/apikey**, accedi con Google e premi **Create API key**. Ha un piano gratuito.
+   - In alternativa gratuita c'è **Groq**: chiave su **console.groq.com/keys**. Groq non legge i PDF direttamente: l'app ne estrae il testo nel telefono, quindi funziona solo con PDF dove il testo si può selezionare (non con foto o scansioni).
 2. Nell'app apri **Impostazioni → Intelligenza artificiale**: scegli **Google Gemini** e incolla la chiave.
 3. Spunta **Condividi con tutto il gruppo** e premi **Salva**.
 
@@ -151,14 +154,14 @@ Il PIN protegge l'app su quel telefono. Non sostituisce la password dell'account
 
 ## Aggiornare l'app
 
-Quando modifichi un file, in `sw.js` aumenta il numero di `VERSIONE` (per esempio `tablemates-7.1`) e ricarica i file su GitHub. Sui dispositivi compare "Nuova versione disponibile → Aggiorna".
+Quando modifichi un file, in `sw.js` aumenta il numero di `VERSIONE` (per esempio `tablemates-7.3`) e ricarica i file su GitHub. Sui dispositivi compare "Nuova versione disponibile → Aggiorna".
 
 ## Problemi comuni
 
 - **Non arriva il codice:** controlla lo spam e ricontrolla il Passo 3. Le impostazioni predefinite di Supabase permettono una nuova richiesta ogni 60 secondi.
 - **"Email address not authorized":** il Passo 3b non è attivo.
 - **L'app non si apre più:** con il piano gratuito, Supabase mette in pausa un progetto dopo 7 giorni senza attività. Apri supabase.com, scegli il progetto e premi **Resume project**. Usando l'app ogni giorno non succede.
-- **Errore dell'intelligenza artificiale sul modello:** i nomi dei modelli sono in `js/ai.js` (`gemini-2.5-flash`, `gpt-4o-mini`, `claude-sonnet-4-5`) e col tempo possono cambiare.
+- **Errore dell'intelligenza artificiale sul modello:** i nomi dei modelli sono in `js/ai.js` (`gemini-2.5-flash`, `llama-4-scout` e `llama-3.3-70b` per Groq, `gpt-4o-mini`, `claude-sonnet-4-5`) e col tempo possono cambiare.
 
 ## Cosa c'è nel pacchetto
 
