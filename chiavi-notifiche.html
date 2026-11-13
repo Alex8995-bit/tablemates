@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Chiavi per le notifiche · Tablemates</title>
+<style>
+:root{--bg:#F4F6F3;--card:#fff;--tx:#17201B;--sub:#5D6B62;--acc:#1E7A4C;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#0F1411;--card:#1A211D;--tx:#EEF2EF;--sub:#9DAAA2;--acc:#46C07F;color-scheme:dark}}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,'Segoe UI',sans-serif;padding:32px 16px}
+main{max-width:620px;margin:0 auto}
+h1{font-size:26px;margin:0 0 8px}
+.card{background:var(--card);border-radius:16px;padding:16px;margin:14px 0}
+label{display:block;font-size:13px;font-weight:700;color:var(--sub);margin:12px 0 4px}
+textarea{width:100%;box-sizing:border-box;font:13px ui-monospace,Menlo,monospace;padding:10px;border-radius:10px;border:1px solid #ccd5ce;background:var(--bg);color:var(--tx);resize:vertical}
+button{background:var(--acc);color:#fff;border:0;border-radius:12px;padding:12px 16px;font-weight:700;font-size:15px;cursor:pointer}
+p{color:var(--sub)}
+</style>
+</head>
+<body>
+<main>
+<h1>Chiavi per le notifiche</h1>
+<p>Questa pagina crea, solo sul tuo computer, le due chiavi che servono alle notifiche ad app chiusa. Non manda nulla su internet. Aprila con un doppio clic e premi il pulsante una sola volta.</p>
+<div class="card">
+<button type="button" id="crea">Crea le chiavi</button>
+<label for="pub">1 · Chiave pubblica: va in config.js (vapidPublic) e nei segreti di Supabase come VAPID_PUBLIC_KEY</label>
+<textarea id="pub" rows="3" readonly></textarea>
+<label for="priv">2 · Chiave privata: va SOLO nei segreti di Supabase come VAPID_PRIVATE_KEY. Non metterla mai in config.js</label>
+<textarea id="priv" rows="2" readonly></textarea>
+</div>
+<p>Conserva le chiavi in un posto sicuro. Se le cambi, ognuno dovrà riattivare le notifiche dall'app.</p>
+</main>
+<script>
+const b64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+document.getElementById('crea').onclick = async () => {
+  const k = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+  document.getElementById('pub').value = b64u(await crypto.subtle.exportKey('raw', k.publicKey));
+  document.getElementById('priv').value = (await crypto.subtle.exportKey('jwk', k.privateKey)).d;
+};
+</script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Tablemates</title>
+<meta name="description" content="Pasti, lista della spesa e conti condivisi per famiglie e coinquilini.">
+<meta name="theme-color" content="#F4F5F1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0E1210" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Tablemates">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preload" href="plus-jakarta-sans-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="offline" id="offline" hidden>Sei offline: vedi gli ultimi dati salvati, le modifiche non vengono registrate.</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<main class="wrap">
+<section id="t-piano"></section>
+<section id="t-spesa" hidden></section>
+<section id="t-conti" hidden></section>
+<section id="t-chat" hidden></section>
+<section id="t-imp" hidden></section>
+</main>
+<nav class="sezioni" aria-label="Sezioni">
+<div class="marchio" id="navMarchio"></div>
+<button type="button" data-t="piano" class="on"></button>
+<button type="button" data-t="spesa"></button>
+<button type="button" class="piu tel" id="navPiu" aria-label="Aggiungi"></button>
+<button type="button" data-t="conti"></button>
+<button type="button" data-t="chat" class="pc"></button>
+<button type="button" data-t="imp" class="pc"></button>
+<button type="button" class="tel" id="navAltro"></button>
+<div class="io" id="navIo"></div>
+</nav>
+<input type="file" id="pdf" accept="application/pdf" hidden>
+<input type="file" id="foto" accept="image/*" hidden>
+<div id="pop"></div>
+<!--SCRIPTS-->
+<script src="config.js"></script>
+<script src="supabase.js"></script>
+<script src="util.js"></script>
+<script src="icone.js"></script>
+<script src="conti-calc.js"></script>
+<script src="store.js"></script>
+<script src="ai.js"></script>
+<script src="notifiche.js"></script>
+<script src="piano.js"></script>
+<script src="spesa.js"></script>
+<script src="conti.js"></script>
+<script src="chat.js"></script>
+<script src="imp.js"></script>
+<script src="app.js"></script>
+<!--/SCRIPTS-->
+</body>
+</html>
