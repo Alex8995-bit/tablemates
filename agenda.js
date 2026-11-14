@@ -199,6 +199,7 @@ function htmlStatoPromemoria() {
   const server = min !== null && min <= 40;
   const fa = min === null ? 'mai' : min < 2 ? 'adesso' : min < 60 ? min + ' minuti fa' : Math.round(min / 60) + ' ore fa';
   const ok = tel && server;
+  if (ok) return ''; // tutto a posto: la scheda compare solo se c'è qualcosa da sistemare
   return `<details class="card ag-stato" ${ok ? '' : 'open'}><summary><span>${ok ? '✅' : '⚠️'}</span><b>Promemoria ${ok ? 'attivi' : 'da sistemare'}</b>${ic('giu', 18, 2)}</summary>
     <div class="ag-stato-c">
       <p>${tel ? '✅ Notifiche attive su questo telefono.' : '❌ Notifiche spente su questo telefono.'}${!tel && ios() && !installata() ? ' Su iPhone arrivano solo con l\'app aggiunta alla schermata Home.' : ''}</p>

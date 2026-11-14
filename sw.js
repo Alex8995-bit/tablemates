@@ -1,6 +1,6 @@
 // Service worker di Tablemates: apre l'app anche senza rete, la aggiorna e mostra le notifiche ad app chiusa.
 // Quando cambi i file, aumenta il numero di VERSIONE: i dispositivi scaricheranno la nuova versione.
-const VERSIONE = 'tablemates-10.0';
+const VERSIONE = 'tablemates-10.1';
 const FILE = [
   './', 'index.html', 'app.css', 'config.js', 'manifest.webmanifest',
   'supabase.js', 'pdf.min.js', 'pdf.worker.min.js', 'manrope-latin-wght-normal.woff2', 'manrope-latin-ext-wght-normal.woff2',
