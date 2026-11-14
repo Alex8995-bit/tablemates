@@ -35,7 +35,7 @@ function elencoSlot(g) {
 function htmlCibi(pid, gi, k, pa) {
   return '<div class="cibi">' + pa.voci.map((v0, i) => {
     const v = voceEffettiva(pid, gi, pa, i), sost = v0.sost || [], sc = sceltaVoce(pid, gi, pa, i);
-    let h = `<div class="cibo"><div class="r"><span class="${v.scambiata ? 'scamb' : ''}">${esc(v.nome)}${v.scambiata ? `<small>al posto di ${esc(LETTORE.testoVoce(v0))}</small>` : ''}</span><span>${esc(qtaTesto(v))}${v.misura ? `<small>${esc(v.misura)}</small>` : ''}</span></div>`;
+    let h = `<div class="cibo"><div class="r"><span class="${v.scambiata ? 'scamb' : ''}">${EMO.bottone(v.nome, '🍽️')}${esc(v.nome)}${v.scambiata ? `<small>al posto di ${esc(LETTORE.testoVoce(v0))}</small>` : ''}</span><span>${esc(qtaTesto(v))}${v.misura ? `<small>${esc(v.misura)}</small>` : ''}</span></div>`;
     if (sost.length) {
       const altre = sost.map((x, j) => ({ x, j })).filter(o => o.j !== sc), vis = altre.slice(0, 3);
       h += `<div class="sost"><span>${v.scambiata ? 'Oppure' : 'Puoi sostituire con'}</span>` +

@@ -15,7 +15,7 @@ const SS = {
 };
 const S = k => LS.get(k) || (window.CFG && window.CFG[k]) || '';
 const ANTEPRIMA = !!window.ANTEPRIMA;
-window.VERSIONE = '9.8';
+window.VERSIONE = '10.0';
 const NOME_APP = 'Tablemates';
 const REPARTI = ['Frutta e verdura','Carne e pesce','Latticini e uova','Pane e cereali','Dispensa','Surgelati','Bevande','Casa e igiene','Altro'];
 const vibra = () => { try { navigator.vibrate && navigator.vibrate(10); } catch(e){} };
@@ -61,6 +61,7 @@ function vai(t){
   if (t === 'chat') document.querySelectorAll('nav.sezioni button[data-t="oggi"]').forEach(b => { if (matchMedia('(min-width:900px)').matches) { b.classList.remove('on'); b.removeAttribute('aria-current'); } });
   SCHEDE.forEach(x => { const e = $('t-' + x); if (e) e.hidden = x !== t; });
   LS.set('scheda', t); scrollTo(0, 0);
+  if (typeof ridisegnaSeServe === 'function') ridisegnaSeServe(t);
   if (t === 'presenze' && typeof renderPresenze === 'function') renderPresenze();
   if (t === 'chat') setTimeout(() => scrollTo(0, document.body.scrollHeight), 0);
 }

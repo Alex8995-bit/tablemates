@@ -61,6 +61,11 @@ function storeSupabase(url, key) {
       }
       return r.data;
     },
+    async provaNotifica(g) {
+      const r = await db.functions.invoke('notifica', { body: { gruppo_id: g, prova: true } });
+      if (r.error) { let m = ''; try { m = (await r.error.context.clone().json()).errore || ''; } catch (e) {} throw new Error(m || 'La funzione "notifica" non risponde: controlla che sia pubblicata con il codice nuovo.'); }
+      return r.data || {};
+    },
     async notifica(g, titolo, testo, scheda, tipo, a) { try { const r = await db.functions.invoke('notifica', { body: { gruppo_id: g, titolo, testo, scheda, tipo, a } }); return (r.data && r.data.inviate) || 0; } catch (e) { return 0; } },
     ascolta(g, cb, stato) {
       this.smetti();
@@ -130,9 +135,55 @@ function storeLocale() {
       D[t] = D[t].filter(x => x.id !== id); salva();
     },
     async delWhere(t, f) { D[t] = D[t].filter(r => !match(r, f)); salva(); },
-    async iscrivi() {}, async disiscrivi() {}, async notifica() { return 0; },
+    async iscrivi() {}, async disiscrivi() {}, async notifica() { return 0; }, async provaNotifica() { return { inviate: 0, dispositivi: 0 }; },
     async cucina() { throw new Error('Serve il server Supabase: in modalità "solo su questo dispositivo" non è disponibile.'); },
     ascolta(g, cb, stato) { stato(false); },
     smetti() {}
   };
+}
+
+// ---------- Senza rete: le modifiche restano sul telefono e partono appena torna la connessione ----------
+// Avvolge il negozio Supabase: salvaStato/ins/upd/del/delWhere, se la rete manca, finiscono in una coda salvata
+// sul telefono (in ordine) e la modifica si vede subito nell'app. Al ritorno online la coda si svuota da sola.
+const CODA = 'coda_modifiche';
+const reteGiu = e => !navigator.onLine || e instanceof TypeError || /Failed to fetch|Load failed|NetworkError|network|fetch failed|ERR_INTERNET|timeout/i.test(String((e && e.message) || e));
+const TABELLE_UUID = ['spesa', 'partecipanti', 'conti', 'movimenti'];
+function conCoda(st) {
+  const coda = () => LS.getJ(CODA, []), salva = l => LS.setJ(CODA, l);
+  const scritture = ['salvaStato', 'ins', 'upd', 'del', 'delWhere'], orig = {};
+  let inCorso = null;
+  scritture.forEach(m => {
+    orig[m] = st[m].bind(st);
+    st[m] = async (...args) => {
+      // le righe nuove hanno subito il loro codice: così si possono modificare anche prima di essere sul server
+      if (m === 'ins' && TABELLE_UUID.includes(args[0])) args[1] = (Array.isArray(args[1]) ? args[1] : [args[1]]).map(r => r.id ? r : { id: uuid(), ...r });
+      if (navigator.onLine) {
+        if (coda().length) await st.svuota();
+        if (!coda().length) {
+          try { return await orig[m](...args); }
+          catch (e) { if (!reteGiu(e)) throw e; }
+        }
+      }
+      const l = coda(); l.push({ m, args, t: Date.now() }); salva(l);
+      if (st.applica) st.applica(m, args);
+      if (st.inCoda) st.inCoda(l.length);
+    };
+  });
+  st.inAttesa = () => coda().length;
+  st.inSospeso = () => coda();
+  // manda le modifiche in sospeso, una alla volta e nell'ordine in cui sono state fatte
+  st.svuota = () => inCorso || (inCorso = (async () => {
+    let fatte = 0, scartate = 0;
+    try {
+      while (navigator.onLine) {
+        const l = coda(); if (!l.length) break;
+        const op = l[0];
+        try { await orig[op.m](...op.args); fatte++; }
+        catch (e) { if (reteGiu(e)) break; scartate++; console.warn('Modifica non accettata dal server', op.m, e && e.message); }
+        const ora = coda(); ora.shift(); salva(ora);
+      }
+    } finally { inCorso = null; }
+    return { fatte, scartate, restano: coda().length };
+  })());
+  return st;
 }

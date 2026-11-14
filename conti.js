@@ -9,7 +9,7 @@ function tileMov(m, dim = 40) {
   if (m.tipo === 'trasferimento') { nome = 'scambio'; t = TONI.grigio; }
   else if (m.tipo === 'entrata') { nome = 'entrata'; t = TONI.verde; }
   else { const c = contoDi(m.conto_id); [nome, t] = iconaVoce(m.categoria, c?.tipo); }
-  return `<span class="tile" style="width:${dim}px;height:${dim}px;background:${t[0]};color:${t[1]}">${ic(nome, Math.round(dim / 2))}</span>`;
+  return `<span class="tile emo-t" style="width:${dim}px;height:${dim}px;font-size:${Math.round(dim * .52)}px;background:${t[0]};color:${t[1]}" aria-hidden="true">${EMO.mov(m, contoDi(m.conto_id))}</span>`;
 }
 const descrMov = m => m.tipo === 'trasferimento' ? `${esc(nomeTu(m.pagato_da))} → ${esc(nomeTu(Object.keys(m.divisione.parti)[0]))}` : (m.tipo === 'entrata' ? 'ricevuta da ' : 'pagata da ') + esc(nomeTu(m.pagato_da));
 const nomeTu = id => id === IO ? 'te' : nomeP(id);
@@ -29,6 +29,7 @@ function renderConti() {
   }
   h += `<button class="fab2" id="fab" type="button" aria-label="Aggiungi una spesa">${ic('piu', 22, 2.2)}Spesa</button><div style="height:72px"></div>`;
   el.innerHTML = h;
+  el.querySelectorAll('[data-tper]').forEach(b => b.onclick = () => { statPeriodo = b.dataset.tper; vibra(); renderConti(); });
   if ($('coB')) $('coB').onclick = () => { vistaConti = 'home'; renderConti(); scrollTo(0, 0); };
   el.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { vistaConti = b.dataset.v; renderConti(); scrollTo(0, 0); });
   el.querySelectorAll('[data-fc]').forEach(b => b.onclick = () => { filtroConto = b.dataset.fc; filtroVoce = ''; LS.set('filtroConto', filtroConto); renderConti(); });
@@ -85,7 +86,7 @@ function rigaMov(m) {
   const meta = m.tipo === 'trasferimento' ? `${tu ? 'Hai dato tu' : 'Ha dato ' + nomeP(m.pagato_da)} a ${nomeTu(Object.keys(m.divisione.parti)[0])} · ${data}` : `${tu ? 'Hai pagato tu' : (m.tipo === 'entrata' ? 'Ricevuta da ' : 'Ha pagato ') + nomeP(m.pagato_da)} · ${data}`;
   let quota = '';
   if (IO && m.tipo !== 'trasferimento') { const e = Conti.effetti(m)[IO] || 0; if (e) quota = `<small class="${e > 0 ? 'tu' : 'altri'}">${e > 0 ? 'ti devono ' : 'devi '}${eur(Math.abs(e))}</small>`; }
-  return `<button type="button" class="mov" data-m="${m.id}"><span class="mi ${tu ? 'tu' : 'altri'}">${ic(ICONE_MOV(m), 20, 1.8)}</span><span class="mt"><b>${esc(m.titolo)}</b><small>${esc(meta)}${m.ha_foto ? ' · scontrino' : ''}</small></span><span class="ma"><b class="num">${eur(Conti.inValutaGruppo(m))}</b>${quota}</span></button>`;
+  return `<button type="button" class="mov" data-m="${m.id}"><span class="mi ${tu ? 'tu' : 'altri'}"><span class="emo-i" aria-hidden="true">${EMO.mov(m, contoDi(m.conto_id))}</span></span><span class="mt"><b>${esc(m.titolo)}</b><small>${esc(meta)}${m.ha_foto ? ' · scontrino' : ''}</small></span><span class="ma"><b class="num">${eur(Conti.inValutaGruppo(m))}</b>${quota}</span></button>`;
 }
 async function ricordaConto() {
   const s = Conti.saldi(D.movimenti, D.partecipanti), mio = IO ? (s[IO] || 0) : 0;
@@ -113,7 +114,7 @@ async function ricordaConto() {
 function chipsConti() {
   let h = '<div class="chips conti-chips" role="tablist" aria-label="Conto">' +
     `<button type="button" role="tab" class="chip ${!filtroConto ? 'on' : ''}" data-fc="" aria-selected="${!filtroConto}">Tutti i conti</button>` +
-    D.conti.map(c => `<button type="button" role="tab" class="chip ${filtroConto === c.id ? 'on' : ''}" data-fc="${c.id}" aria-selected="${filtroConto === c.id}" style="padding-left:10px">${ic(ICONA_CONTO[c.tipo] || 'cartella', 16)}${esc(c.nome)}</button>`).join('') +
+    D.conti.map(c => `<button type="button" role="tab" class="chip ${filtroConto === c.id ? 'on' : ''}" data-fc="${c.id}" aria-selected="${filtroConto === c.id}" style="padding-left:10px"><span class="emo" aria-hidden="true">${EMO.conto(c)}</span>${esc(c.nome)}</button>`).join('') +
     `<button type="button" class="chip solo" data-gc="nuovo" aria-label="Nuovo conto">${ic('piu', 16, 2.2)}</button></div>`;
   const c = contoDi(filtroConto);
   if (c) {
@@ -171,13 +172,51 @@ function vistaSaldi(s) {
     <button class="btn bordo" id="csv" type="button">${ic('scarica', 18)}Esporta per Excel</button>`;
 }
 
+// ---------- Torta: dove si spende di più ----------
+let statPeriodo = 'tutto';
+const COLORI_TORTA = ['#1E7A4C', '#E8833A', '#3B82C4', '#C2417B', '#8B5CF6', '#D4A20F', '#0E9AA7', '#E5484D', '#6B8E23', '#A0522D', '#5B6B8C', '#F06BAA', '#2F9E8F', '#9AA8A0'];
+// la voce scelta nella spesa, altrimenti si capisce dal titolo (bollette, ristoranti, trasporti…)
+function categoriaTorta(m) {
+  if (m.categoria) return m.categoria.trim().replace(/^./, c => c.toUpperCase());
+  const nomi = { carrello: 'Spesa alimentare', fulmine: 'Bollette e utenze', chiave: 'Affitto e mutuo', attrezzi: 'Casa e manutenzione', piano: 'Ristoranti e bar', benzina: 'Auto e carburante', aereo: 'Viaggi e trasporti', letto: 'Alloggi', regalo: 'Regali', cuore: 'Salute', festa: 'Svago', borsa: 'Shopping' };
+  const [i] = iconaVoce(m.titolo, null); return nomi[i] || 'Altro';
+}
+function datiTorta() {
+  const da = statPeriodo === 'mese' ? oggiISO().slice(0, 7) + '-01' : statPeriodo === 'anno' ? isoDi(new Date(Date.now() - 365 * 864e5)) : '';
+  const per = {};
+  D.movimenti.filter(m => m.tipo === 'spesa' && (!da || m.data >= da)).forEach(m => { const c = categoriaTorta(m); per[c] = (per[c] || { v: 0, n: 0, es: m }); per[c].v += Conti.inValutaGruppo(m); per[c].n++; });
+  const l = Object.entries(per).map(([nome, x]) => ({ nome, v: x.v, n: x.n, emo: EMO.per(nome) || EMO.mov(x.es, contoDi(x.es.conto_id)) })).filter(x => x.v > 0).sort((a, b) => b.v - a.v);
+  // oltre 11 fette, il resto finisce in "Altro"
+  if (l.length > 12) { const resto = l.splice(11); const a = l.find(x => x.nome === 'Altro') || (l.push({ nome: 'Altro', v: 0, n: 0, emo: '📦' }), l[l.length - 1]); resto.forEach(x => { a.v += x.v; a.n += x.n; }); l.sort((a, b) => b.v - a.v); }
+  l.forEach((x, i) => { x.colore = COLORI_TORTA[i % COLORI_TORTA.length]; });
+  return l;
+}
+function svgTorta(l, tot) {
+  const R = 100, C = 110; let a0 = -Math.PI / 2;
+  if (l.length === 1) return `<svg viewBox="0 0 220 220" class="torta" role="img" aria-label="${esc(l[0].nome)} 100%"><circle cx="${C}" cy="${C}" r="${R}" fill="${l[0].colore}"/></svg>`;
+  const fette = l.map(x => {
+    const a1 = a0 + x.v / tot * Math.PI * 2, grande = a1 - a0 > Math.PI ? 1 : 0;
+    const p = `M${C},${C} L${(C + R * Math.cos(a0)).toFixed(2)},${(C + R * Math.sin(a0)).toFixed(2)} A${R},${R} 0 ${grande} 1 ${(C + R * Math.cos(a1)).toFixed(2)},${(C + R * Math.sin(a1)).toFixed(2)} Z`;
+    a0 = a1; return `<path d="${p}" fill="${x.colore}"><title>${esc(x.nome)}</title></path>`;
+  });
+  return `<svg viewBox="0 0 220 220" class="torta" role="img" aria-label="Spese per categoria">${fette.join('')}</svg>`;
+}
+function htmlTorta() {
+  const l = datiTorta(), tot = l.reduce((t, x) => t + x.v, 0);
+  const pct = v => { const p = v / tot * 100; return (p >= 10 || p === 0 ? Math.round(p) : p.toFixed(1).replace('.', ',')) + '%'; };
+  return `<section class="card torta-c" aria-labelledby="ttT"><div class="sez-riga"><h2 class="sez" id="ttT">Dove si spende di più</h2></div>
+    <div class="chips" style="margin:0 -2px">${[['mese', 'Questo mese'], ['anno', 'Ultimi 12 mesi'], ['tutto', 'Tutto']].map(([k, n]) => `<button type="button" class="chip ${statPeriodo === k ? 'on' : ''}" data-tper="${k}" aria-pressed="${statPeriodo === k}" style="padding:0 14px">${n}</button>`).join('')}</div>
+    ${l.length ? `<div class="torta-w">${svgTorta(l, tot)}<div class="torta-tot"><small>Totale spese</small><b class="num">${eur(tot)}</b></div></div>
+    <div class="torta-l">${l.map(x => `<div class="tl"><i style="background:${x.colore}"></i><span class="tl-n">${x.emo ? `<span class="emo" aria-hidden="true">${x.emo}</span>` : ''}${esc(x.nome)}<small>${x.n} ${x.n === 1 ? 'spesa' : 'spese'}</small></span><span class="tl-v"><b class="num">${pct(x.v)}</b><small class="num">${eur(x.v)}</small></span><span class="tl-bar"><em style="width:${(x.v / l[0].v * 100).toFixed(1)}%;background:${x.colore}"></em></span></div>`).join('')}</div>`
+    : '<p class="q" style="margin:4px 0">Nessuna spesa in questo periodo.</p>'}</section>`;
+}
 function vistaStat(st) {
   if (!D.movimenti.length) return `<div class="vuoto">${ic('portafoglio', 32)}Le statistiche compaiono dopo la prima spesa.</div>`;
-  let h = `<div class="kpi" style="margin-top:12px"><div><small>La tua spesa personale</small><b class="num">${IO ? eur(st.mio) : '—'}</b></div><div><small>Pagato da te</small><b class="num">${IO ? eur(st.pagatoDaMe) : '—'}</b></div></div>`;
+  let h = htmlTorta() + `<div class="kpi" style="margin-top:12px"><div><small>La tua spesa personale</small><b class="num">${IO ? eur(st.mio) : '—'}</b></div><div><small>Pagato da te</small><b class="num">${IO ? eur(st.pagatoDaMe) : '—'}</b></div></div>`;
   const conti = Object.entries(st.perConto).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]), maxc = Math.max(1, ...conti.map(c => c[1]));
   h += '<h2 class="sez">Per conto</h2><div class="card">' + conti.map(([k, v]) => {
     const c = contoDi(k), voci = Object.entries(st.perVoce).filter(([kk, vv]) => kk.startsWith(k + '|') && vv > 0).sort((a, b) => b[1] - a[1]);
-    return `<div style="padding:8px 0"><div class="riga"><span class="grow" style="display:flex;align-items:center;gap:8px;font-weight:700">${ic(ICONA_CONTO[c?.tipo] || 'cartella', 18)}${esc(c ? c.nome : 'Senza conto')}</span><b class="num">${eur(v)}</b><span class="by num" style="width:42px;text-align:right">${Math.round(v / Math.max(1, st.totale) * 100)}%</span></div><div class="bar" style="margin-top:6px"><i style="width:${v / maxc * 100}%"></i></div>
+    return `<div style="padding:8px 0"><div class="riga"><span class="grow" style="display:flex;align-items:center;gap:8px;font-weight:700"><span class="emo" aria-hidden="true">${c ? EMO.conto(c) : '📁'}</span>${esc(c ? c.nome : 'Senza conto')}</span><b class="num">${eur(v)}</b><span class="by num" style="width:42px;text-align:right">${Math.round(v / Math.max(1, st.totale) * 100)}%</span></div><div class="bar" style="margin-top:6px"><i style="width:${v / maxc * 100}%"></i></div>
       ${voci.length > 1 || (voci[0] && voci[0][0] !== k + '|Senza voce') ? `<div style="padding:6px 0 0 26px;display:flex;flex-direction:column;gap:2px">${voci.map(([kk, vv]) => `<div class="riga q" style="font-size:13px"><span class="grow">${esc(kk.split('|')[1])}</span><span class="num">${eur(vv)}</span></div>`).join('')}</div>` : ''}</div>`;
   }).join('') + '</div>';
   const mesi = Object.entries(st.perMese).sort((a, b) => b[0].localeCompare(a[0])), maxm = Math.max(1, ...mesi.map(m => Math.abs(m[1])));
@@ -193,11 +232,12 @@ function vistaStat(st) {
 
 // ---------- Gestione dei conti (Casa, Viaggi, Extra…) ----------
 function gestisciConto(id) {
-  const nuovo = id === 'nuovo', c = nuovo ? { nome: '', tipo: 'altro', voci: [] } : JSON.parse(JSON.stringify(contoDi(id)));
+  const nuovo = id === 'nuovo', c = nuovo ? { id: uuid(), nome: '', tipo: 'altro', voci: [] } : JSON.parse(JSON.stringify(contoDi(id)));
+  let emo;
   const disegna = () => {
     $('pop').querySelector('.sheet').innerHTML = `<div class="grab"></div><button class="close" type="button" aria-label="Chiudi" id="ovX">${ic('x', 18)}</button>
       <h2>${nuovo ? 'Nuovo conto' : esc(c.nome)}</h2><p class="q" style="line-height:1.5;margin-top:0">Ogni conto raccoglie le sue spese, ma il saldo tra le persone resta uno solo per tutto il gruppo.</p>
-      <label class="lb" for="cN">Nome</label><input id="cN" value="${esc(c.nome)}" placeholder="es. Casa, Viaggi, Auto, Bambini">
+      <label class="lb" for="cN">Nome</label><div class="riga" style="gap:8px"><button type="button" class="emo-b" id="cEm" aria-label="Cambia emoji">${emo !== undefined ? (emo.e || EMO.conto({ nome: c.nome, tipo: c.tipo })) : EMO.conto(c)}</button><input id="cN" value="${esc(c.nome)}" placeholder="es. Casa, Viaggi, Auto, Bambini" style="flex:1;min-width:0"></div>
       <label class="lb" for="cT">Tipo</label><select id="cT">${[['casa', 'Casa'], ['viaggio', 'Viaggi'], ['extra', 'Extra'], ['altro', 'Altro']].map(([k, n]) => `<option value="${k}" ${c.tipo === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
       <label class="lb">${c.tipo === 'viaggio' ? 'Viaggi' : 'Voci'}</label>
       <div class="lista">${(c.voci || []).map((v, i) => { const [ii, t] = iconaVoce(v, c.tipo); return `<div class="it"><span class="tile" style="width:30px;height:30px;border-radius:9px;background:${t[0]};color:${t[1]}">${ic(ii, 16)}</span><span style="flex:1;font-weight:600">${esc(v)}</span><button type="button" class="del" data-tv="${i}" aria-label="Togli ${esc(v)}">${ic('x', 16)}</button></div>`; }).join('') || `<p class="q" style="padding:12px 0;margin:0">${c.tipo === 'viaggio' ? 'Aggiungi ogni viaggio, per esempio "Parigi 2026".' : 'Nessuna voce.'}</p>`}</div>
@@ -207,6 +247,7 @@ function gestisciConto(id) {
     $('ovX').onclick = chiudi;
     const leggi = () => { c.nome = $('cN').value; c.tipo = $('cT').value; };
     $('cT').onchange = () => { leggi(); disegna(); };
+    $('cEm').onclick = () => { leggi(); scegliEmoji({ testo: c.nome, chiave: 'c:' + c.id, auto: EMO.luogo(c.nome) || EMO.di(c.nome) || '📁', scelta: (e) => { foglio(''); emo = { e }; disegna(); } }); };
     foglioQ('[data-tv]').forEach(b => b.onclick = () => { leggi(); c.voci.splice(+b.dataset.tv, 1); disegna(); });
     const aggV = () => { leggi(); const v = $('cV').value.trim(); if (!v) return; if (!c.voci.includes(v)) c.voci.push(v); disegna(); $('cV').focus(); };
     $('cVa').onclick = aggV; $('cV').onkeydown = e => { if (e.key === 'Enter') aggV(); };
@@ -215,13 +256,14 @@ function gestisciConto(id) {
       if (!c.nome.trim()) return toast('Dai un nome al conto');
       chiudi();
       if (nuovo) {
-        const r = { id: uuid(), gruppo_id: G.id, nome: c.nome.trim(), tipo: c.tipo, voci: c.voci, ordine: D.conti.length + 1, created_at: new Date().toISOString() };
+        const r = { id: c.id, gruppo_id: G.id, nome: c.nome.trim(), tipo: c.tipo, voci: c.voci, ordine: D.conti.length + 1, created_at: new Date().toISOString() };
         D.conti.push(r); filtroConto = r.id; renderConti();
         if (await scrivi(() => ST.ins('conti', r))) toast('Conto creato ✓');
       } else {
         const r = contoDi(id); Object.assign(r, { nome: c.nome.trim(), tipo: c.tipo, voci: c.voci }); renderConti();
         if (await scrivi(() => ST.upd('conti', id, { nome: r.nome, tipo: r.tipo, voci: r.voci }))) toast('Salvato ✓');
       }
+      if (emo !== undefined) salvaEmoji('c:' + c.id, emo.e);
     };
     if ($('cE')) $('cE').onclick = () => {
       if (D.movimenti.some(m => m.conto_id === id)) return toast('Questo conto ha delle spese: spostale o eliminale prima');
@@ -240,6 +282,7 @@ function formMovimento(m, preset) {
   const nuovo = !m, pp = D.partecipanti;
   const f = m ? JSON.parse(JSON.stringify(m)) : Object.assign({ tipo: 'spesa', titolo: '', importo: 0, valuta: VG(), cambio: 1, data: oggiISO(), conto_id: D.conti[0]?.id || null, categoria: '', pagato_da: IO || pp[0].id, divisione: { modo: 'uguale', parti: Object.fromEntries(pp.map(p => [p.id, 1])) }, nota: '' }, preset || {});
   let foto = undefined; // undefined = invariata, null = tolta, stringa = nuova
+  const mid = m ? m.id : uuid(); let emo; // emoji scelta a mano: undefined = invariata
   const disegna = () => {
     const t = f.tipo, tr = t === 'trasferimento', modo = f.divisione.modo, parti = f.divisione.parti, conto = contoDi(f.conto_id);
     const opzP = sel => pp.map(p => `<option value="${p.id}" ${p.id === sel ? 'selected' : ''}>${esc(p.id === IO ? 'Te (' + p.nome + ')' : p.nome)}</option>`).join('');
@@ -252,7 +295,7 @@ function formMovimento(m, preset) {
       ${f.valuta !== VG() ? `<div class="card" style="padding:10px 14px"><label class="lb" for="mC" style="margin:0">Cambio: 1 ${esc(f.valuta)} = ? ${VG()}</label><div class="riga"><input class="grow" id="mC" inputmode="decimal" value="${String(f.cambio).replace('.', ',')}"><button class="piccolo" type="button" id="mCa">Aggiorna</button></div><span class="by num" id="mConv"></span></div>` : ''}
       <div class="seg" role="tablist" aria-label="Tipo">${[['spesa', 'Spesa'], ['entrata', 'Entrata'], ['trasferimento', 'Rimborso']].map(([k, n]) => `<button type="button" role="tab" data-tipo="${k}" class="${t === k ? 'on' : ''}" aria-selected="${t === k}">${n}</button>`).join('')}</div>
       <div class="lista campi" style="margin-top:10px">
-        <div class="it"><label for="mT">Titolo</label><input id="mT" value="${esc(f.titolo)}" placeholder="${tr ? 'Rimborso' : 'es. Cena, Bolletta luce, Volo'}"></div>
+        <div class="it"><label for="mT">Titolo</label><button type="button" class="emo-b" id="mEm" aria-label="Cambia emoji">${emo !== undefined ? (emo.e || EMO.scegli(f.titolo) || '🧾') : EMO.mov({ ...f, id: mid }, contoDi(f.conto_id))}</button><input id="mT" value="${esc(f.titolo)}" placeholder="${tr ? 'Rimborso' : 'es. Cena, Bolletta luce, Volo'}"></div>
         <div class="it"><label for="mP">${tr ? 'Da' : t === 'entrata' ? 'Ricevuta da' : 'Pagata da'}</label><select id="mP">${opzP(f.pagato_da)}</select></div>
         ${tr ? `<div class="it"><label for="mA">A</label><select id="mA">${opzP(dest)}</select></div>` : ''}
         <div class="it"><label for="mD">Data</label><input id="mD" type="date" value="${esc(f.data)}"></div>
@@ -296,6 +339,7 @@ function formMovimento(m, preset) {
   };
   const collega = () => {
     $('mX').onclick = chiudi;
+    $('mEm').onclick = () => { leggi(); scegliEmoji({ testo: f.titolo.trim(), chiave: 'm:' + mid, auto: EMO.scegli(f.titolo) || '🧾', scelta: (e, regola) => { foglio('', { senzaX: true }); emo = { e, regola }; disegna(); } }); };
     foglioQ('[data-tipo]').forEach(b => b.onclick = () => {
       leggi(); const prima = f.tipo; f.tipo = b.dataset.tipo;
       if (f.tipo === 'trasferimento') { f.divisione = { modo: 'importi', parti: { [pp.find(p => p.id !== f.pagato_da)?.id || pp[0].id]: f.importo } }; if (!f.titolo) f.titolo = 'Rimborso'; }
@@ -367,7 +411,7 @@ function formMovimento(m, preset) {
     if (foto !== undefined) riga.foto = foto;
     chiudi();
     if (nuovo) {
-      riga.id = uuid(); riga.creato_da = CHI;
+      riga.id = mid; riga.creato_da = CHI;
       D.movimenti.unshift({ ...riga, ha_foto: !!foto, created_at: new Date().toISOString(), foto: undefined });
       renderConti();
       if (await scrivi(() => ST.ins('movimenti', riga))) {
@@ -381,6 +425,7 @@ function formMovimento(m, preset) {
       renderConti(); if (await scrivi(() => ST.upd('movimenti', m.id, riga))) toast('Salvata ✓');
     }
     ordinaMov(D.movimenti); renderConti();
+    if (emo !== undefined) salvaEmoji(emo.regola ? EMO.chiaveTesto(riga.titolo) : 'm:' + mid, emo.e);
   };
   foglio('', { senzaX: true });
   disegna();

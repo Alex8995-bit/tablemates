@@ -36,7 +36,7 @@ function giornoPerData(piano, data) {
 const pastiDelGiorno = g => (g.pasti.some(p => p.voci) ? elencoSlot(g).filter(x => x.pa) : g.pasti.map((pa, k) => ({ pa, k, tipo: pa.tipo }))).sort((a, b) => ordinePasto(a.pa.tipo) - ordinePasto(b.pa.tipo));
 function righeCibo(pid, gi, pa) {
   if (!pa.voci) return `<li><span>${esc(pa.alimenti)}</span><span></span></li>`;
-  return pa.voci.map((_, i) => { const v = voceEffettiva(pid, gi, pa, i); return `<li><span>${esc(v.nome)}${v.scambiata ? `<small>al posto di ${esc(v.origine.nome)}</small>` : ''}</span><span>${esc(qtaTesto(v) || v.misura || '')}</span></li>`; }).join('');
+  return pa.voci.map((_, i) => { const v = voceEffettiva(pid, gi, pa, i); return `<li><span>${EMO.bottone(v.nome, '🍽️')}${esc(v.nome)}${v.scambiata ? `<small>al posto di ${esc(v.origine.nome)}</small>` : ''}</span><span>${esc(qtaTesto(v) || v.misura || '')}</span></li>`; }).join('');
 }
 
 function gruppoAvatars() {
@@ -44,112 +44,128 @@ function gruppoAvatars() {
   return `<button type="button" class="avs" id="ogG" aria-label="Gruppo ${esc(G.nome)}, ${pp.length} ${pp.length === 1 ? 'membro' : 'membri'}">${pp.slice(0, 4).map((p, i) => avatar(p, i)).join('')}</button>`;
 }
 
-let ogVisto = '';
+// ---------- Dashboard del giorno: pasti in breve, chi c'è a tavola, agenda, spesa e conti ----------
+let ogData = '', ogAperto = null; // giorno mostrato (vuoto = oggi) e pasto aperto
+const ogIso = () => ogData || oggiISO();
+const dataDi = iso => new Date(iso + 'T12:00:00');
+// il giorno del piano che cade in una data: per nome della settimana, altrimenti contando dal giorno scelto
+function giornoPianoPer(piano, iso) {
+  if (!piano?.giorni?.length) return -1;
+  const g = giornoPerData(piano, dataDi(iso)); if (g >= 0) return g;
+  const n = piano.giorni.length, diff = Math.round((dataDi(iso) - dataDi(oggiISO())) / 864e5);
+  return ((giornoScelto(IO) + diff) % n + n) % n;
+}
+function cambiaGiorno(iso) { ogData = iso === oggiISO() ? '' : iso; ogAperto = null; vibra(); renderOggi(); }
+function riassuntoPasto(gi, pa) {
+  if (!pa.voci) return pa.alimenti || '';
+  return pa.voci.map((_, i) => voceEffettiva(IO, gi, pa, i).nome).join(', ');
+}
+
 function renderOggi() {
   const el = $('t-oggi'); if (!el) return;
-  const d = new Date(), dataTxt = d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
   if (!G) { el.innerHTML = '<div class="testa"><h1>Oggi</h1></div><div class="vuoto">Accedi e scegli un gruppo per iniziare.</div>'; return; }
-  let h = `<div class="cap"><div><p class="q" style="font-weight:600;margin:0">${puntoLive()}${esc(dataTxt[0].toUpperCase() + dataTxt.slice(1))}</p><h1>Oggi</h1></div>${gruppoAvatars()}</div>`;
-  const iso = oggiISO(), ora = d.getHours() * 60 + d.getMinutes();
-  const piano = IO ? pianoDi(IO) : null;
-  let prossimo = null, gi = -1, pasti = [];
-  if (piano?.giorni?.length) {
-    gi = giornoDiOggi(piano); if (gi < 0) gi = giornoScelto(IO);
-    pasti = pastiDelGiorno(piano.giorni[gi]);
-    prossimo = pasti.find(x => minutiDi(oraDi(x.pa.tipo)) + 60 > ora) || null;
-    h += `<div class="barre" style="grid-template-columns:repeat(${pasti.length},minmax(0,1fr))" role="tablist" aria-label="Pasti di oggi">${pasti.map((x, i) => {
-      const f = passato(iso, x.pa.tipo), n = prossimo && x.pa.tipo === prossimo.pa.tipo;
-      return `<button type="button" role="tab" data-ogv="${i}" aria-label="${esc(x.pa.tipo)}, ore ${esc(oraDi(x.pa.tipo))}"><i class="${f ? 'fatto' : n ? 'dopo' : ''}"></i><span>${esc(etichettaCorta(x.pa.tipo))}</span></button>`;
-    }).join('')}</div>`;
-  }
-  // Prossimo pasto e presenza
-  const quando = prossimo ? (ordinePasto(prossimo.pa.tipo) <= 2 ? 'p' : 'c') : (d.getHours() < 15 ? 'p' : 'c');
-  const mia = IO ? presDi(IO)[iso + '|' + quando] : undefined;
-  const altri = conApp().filter(p => p.id !== IO), nonRisp = altri.filter(p => presDi(p.id)[iso + '|' + quando] === undefined);
-  const aTavola = conApp().filter(p => presDi(p.id)[iso + '|' + quando] === true).length;
-  const domanda = quando === 'p' ? 'A pranzo oggi?' : 'A tavola stasera?';
-  const rigaTavola = IO ? `<div class="tavola"><span>${domanda}</span><button type="button" class="pill-btn ${mia === true ? 'on' : ''}" aria-pressed="${mia === true}" data-pr="si">Ci sono</button><button type="button" class="pill-btn ${mia === false ? 'on' : ''}" aria-pressed="${mia === false}" data-pr="no">Salto</button></div>
-    <div class="tavola-info"><p>${nonRisp.length ? esc(nonRisp.map(p => p.nome).join(', ')) + (nonRisp.length === 1 ? ' non ha ancora risposto' : ' non hanno ancora risposto') : altri.length ? aTavola + (aTavola === 1 ? ' persona a tavola' : ' persone a tavola') : ''}</p><button type="button" id="ogSett">Tutta la settimana</button></div>` : '';
+  const oggi = oggiISO(), iso = ogIso(), dd = dataDi(iso), diff = Math.round((dd - dataDi(oggi)) / 864e5);
+  const maiusc = t => t[0].toUpperCase() + t.slice(1);
+  const nomeGiorno = diff === 0 ? 'Oggi' : diff === 1 ? 'Domani' : diff === -1 ? 'Ieri' : maiusc(dd.toLocaleDateString('it-IT', { weekday: 'long' }));
+  const dataTxt = maiusc(dd.toLocaleDateString('it-IT', diff === 0 || Math.abs(diff) === 1 ? { weekday: 'long', day: 'numeric', month: 'long' } : { day: 'numeric', month: 'long', year: dd.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined }));
+  let h = `<div class="cap og-cap"><div class="og-gg"><button type="button" class="og-freccia" id="ogPrev" aria-label="Giorno precedente">${ic('indietro', 20, 2.2)}</button>
+    <button type="button" class="og-titolo" id="ogData" aria-label="Scegli il giorno"><span class="q">${diff === 0 ? puntoLive() : ''}${esc(dataTxt)}</span><span class="h1">${esc(nomeGiorno)}</span></button>
+    <button type="button" class="og-freccia" id="ogNext" aria-label="Giorno successivo">${ic('avanti', 20, 2.2)}</button></div>${gruppoAvatars()}
+    <input type="date" id="ogPick" value="${iso}" tabindex="-1" aria-hidden="true" class="og-pick"></div>
+    ${diff !== 0 ? `<button type="button" class="link og-torna" id="ogOggi">${ic('indietro', 15, 2.2)} Torna a oggi</button>` : ''}`;
+  // ---- Pasti del giorno, in breve: si apre quello che interessa
+  const piano = IO ? pianoDi(IO) : null, gi = giornoPianoPer(piano, iso);
+  const pasti = gi >= 0 ? pastiDelGiorno(piano.giorni[gi]) : [];
+  const ora = new Date().getHours() * 60 + new Date().getMinutes();
+  const prossimo = diff === 0 ? pasti.find(x => minutiDi(oraDi(x.pa.tipo)) + 60 > ora) || null : null;
+  const aperto = ogAperto !== null ? ogAperto : prossimo ? prossimo.pa.tipo : '';
   if (!IO) {
     h += `<div class="big"><p class="q" style="margin:0;line-height:1.5">Per vedere i tuoi pasti indica chi sei in ${esc(G.nome)}.</p><button class="btn" type="button" id="ogChi">Indica chi sei</button></div>`;
   } else if (!piano?.giorni?.length) {
-    h += `<section class="big" aria-labelledby="og-t"><span class="eyebrow">Il tuo piano</span><h2 id="og-t">Nessun piano alimentare</h2><p class="q" style="margin:0;line-height:1.5">Carica il PDF del nutrizionista oppure scrivilo a mano: qui vedrai il prossimo pasto con le quantità.</p>
-      <div class="riga"><button class="btn" type="button" id="ogUp" style="flex:1">${ic('carica', 18)}Carica PDF</button><button class="btn bordo" type="button" id="ogMan" style="flex:1;margin:0">${ic('matita', 18)}A mano</button></div>${rigaTavola}</section>`;
+    h += `<section class="big" aria-labelledby="og-t"><span class="eyebrow">Il tuo piano</span><h2 id="og-t">Nessun piano alimentare</h2><p class="q" style="margin:0;line-height:1.5">Carica il PDF del nutrizionista oppure scrivilo a mano: qui vedrai i pasti del giorno con le quantità.</p>
+      <div class="riga"><button class="btn" type="button" id="ogUp" style="flex:1">${ic('carica', 18)}Carica PDF</button><button class="btn bordo" type="button" id="ogMan" style="flex:1;margin:0">${ic('matita', 18)}A mano</button></div></section>`;
   } else {
-    // Tutti i pasti di oggi, uno per volta: si scorre col dito, con le frecce o toccando le barre in alto
-    const iPros = prossimo ? pasti.indexOf(prossimo) : -1;
-    const slide = (x, i) => {
-      const { pa, k } = x, ric = (ricetteDi(IO)[gi] || [])[k], ins = insiemeDi(iso, pa.tipo);
-      const momento = /cena/i.test(pa.tipo) ? 'stasera' : /pranzo/i.test(pa.tipo) ? 'pranzo' : 'oggi';
-      const etich = i === iPros ? 'Prossimo pasto' : passato(iso, pa.tipo) ? 'Già passato' : 'Più tardi';
-      return `<div class="og-slide" role="group" aria-roledescription="pasto" aria-label="${esc(pa.tipo)}, ${i + 1} di ${pasti.length}"><div class="tp"><span class="eyebrow ${i === iPros ? '' : 'spento'}">${etich}</span><span class="ora">ore ${esc(oraDi(pa.tipo))}</span></div><h2>${esc(pa.tipo)}</h2>
-        <ul class="alim">${righeCibo(IO, gi, pa)}</ul>
-        ${ins ? `<p class="ins-b">${ic('utenti', 16, 2)}<span>Mangi insieme a <b>${esc(ins.chi.filter(p => p !== IO).map(nomeP).join(', '))}</b></span></p>
-        <button type="button" class="idea" data-oginsieme="${esc(ins.id)}"><span class="ib">${ic('piatto', 28, 1.8)}</span><span class="it2"><small>Piatto insieme · dosi adattate a te</small><b>${esc((ricetteDi(ins.da)[ins.gi] || [])[ins.k]?.nome || pa.tipo)}</b></span>${ic('avanti', 20, 2)}</button>
-        <button type="button" class="link" data-ogesci="${esc(ins.id)}" style="align-self:flex-start">Non mangio insieme</button>`
-        : ric ? `<button type="button" class="idea" data-ogric="${k}"><span class="ib">${ic('piatto', 28, 1.8)}</span><span class="it2"><small>Idea per ${momento}${ric.tempo ? ' · ' + esc(ric.tempo) : ''}</small><b>${esc(ric.nome)}</b></span>${ic('avanti', 20, 2)}</button>`
-          : true ? `<button type="button" class="idea" data-ogidea="${k}"><span class="ib">${ic('scintille', 26, 1.8)}</span><span class="it2"><small>Idea per ${momento}</small><b>Proponi un piatto con questi alimenti</b></span>${ic('avanti', 20, 2)}</button>` : ''}
-        ${!ins && D.partecipanti.length > 1 ? `<button type="button" class="link" data-ogcomb="${esc(pa.tipo)}" style="align-self:flex-start">${ic('utenti', 16, 2)} Mangiamo insieme…</button>` : ''}</div>`;
+    const momentoDi = tipo => /cena/i.test(tipo) ? (diff === 0 ? 'stasera' : 'cena') : /pranzo/i.test(tipo) ? 'pranzo' : 'questo pasto';
+    const riga = x => {
+      const { pa, k } = x, tipo = pa.tipo, ric = (ricetteDi(IO)[gi] || [])[k], ins = insiemeDi(iso, tipo), apri = tipo === aperto;
+      const fatto = passato(iso, tipo), pros = prossimo && prossimo.pa.tipo === tipo;
+      const piatto = ins ? (ricetteDi(ins.da)[ins.gi] || [])[ins.k] : ric;
+      const sotto = (ins ? '👥 con ' + ins.chi.filter(p => p !== IO).map(nomeP).join(', ') + ' · ' : '') + (piatto ? piatto.nome : riassuntoPasto(gi, pa));
+      let dett = '';
+      if (apri) {
+        dett = `<div class="og-dett"><ul class="alim">${righeCibo(IO, gi, pa)}</ul>
+          ${ins ? `<button type="button" class="idea" data-oginsieme="${esc(ins.id)}"><span class="ib">${ic('piatto', 28, 1.8)}</span><span class="it2"><small>Piatto insieme · dosi adattate a te</small><b>${EMO.html(piatto?.nome || tipo)}${esc(piatto?.nome || tipo)}</b></span>${ic('avanti', 20, 2)}</button>
+            <button type="button" class="link" data-ogesci="${esc(ins.id)}" style="align-self:flex-start">Non mangio insieme</button>`
+          : ric ? `<button type="button" class="idea" data-ogric="${k}"><span class="ib">${ic('piatto', 28, 1.8)}</span><span class="it2"><small>Idea per ${momentoDi(tipo)}${ric.tempo ? ' · ' + esc(ric.tempo) : ''}</small><b>${EMO.html(ric.nome)}${esc(ric.nome)}</b></span>${ic('avanti', 20, 2)}</button>`
+          : `<button type="button" class="idea" data-ogidea="${k}"><span class="ib">${ic('scintille', 26, 1.8)}</span><span class="it2"><small>Idea per ${momentoDi(tipo)}</small><b>Proponi un piatto con questi alimenti</b></span>${ic('avanti', 20, 2)}</button>`}
+          ${!ins && D.partecipanti.length > 1 ? `<button type="button" class="link" data-ogcomb="${esc(tipo)}" style="align-self:flex-start">${ic('utenti', 16, 2)} Mangiamo insieme…</button>` : ''}</div>`;
+      }
+      return `<div class="og-pasto ${apri ? 'aperto' : ''} ${fatto ? 'fatto' : ''} ${pros ? 'pros' : ''}"><button type="button" class="og-riga" data-ogp="${esc(tipo)}" aria-expanded="${apri}">
+        <span class="og-em" aria-hidden="true">${EMO.per(tipo, '🍽️')}</span><span class="og-tt"><b>${esc(tipo)}${pros ? '<em>Prossimo</em>' : ''}</b><small>${esc(sotto)}</small></span>
+        <span class="og-ora num">${esc(oraDi(tipo))}</span>${ic('giu', 18, 2)}</button>${dett}</div>`;
     };
-    h += `<section class="big og-card" aria-label="Pasti di oggi"><div class="og-scorri" id="ogScorri" tabindex="0">${pasti.map(slide).join('')}</div>
-      <div class="og-nav"><button type="button" class="og-freccia" id="ogPrev" aria-label="Pasto precedente">${ic('indietro', 20, 2.2)}</button><span class="og-punti" aria-hidden="true">${pasti.map(() => '<i></i>').join('')}</span><button type="button" class="og-freccia" id="ogNext" aria-label="Pasto successivo">${ic('avanti', 20, 2.2)}</button></div>
-      ${prossimo ? '' : '<p class="q" style="margin:-6px 0 0;font-size:13px">Per oggi è tutto. <button type="button" class="link" id="ogPiano" style="font-size:13px;padding:0">Apri il piano di domani</button></p>'}
-      ${rigaTavola}</section>`;
+    h += `<section class="card og-pasti" aria-label="Pasti di ${esc(nomeGiorno.toLowerCase())}"><div class="sez-riga"><h2 class="sez">Pasti${piano.giorni[gi]?.giorno ? ' · ' + esc(piano.giorni[gi].giorno) : ''}</h2><button type="button" class="link" id="ogPiano">Apri il piano</button></div>
+      ${pasti.length ? pasti.map(riga).join('') : '<p class="q" style="margin:0">Nessun pasto per questo giorno.</p>'}</section>`;
   }
-  // Riquadri spesa e conti
+  // ---- A tavola: pranzo e cena del giorno
+  if (IO) {
+    const altri = conApp().filter(p => p.id !== IO);
+    const rigaTv = q => {
+      const mia = presDi(IO)[iso + '|' + q], si = conApp().filter(p => presDi(p.id)[iso + '|' + q] === true).length, nr = altri.filter(p => presDi(p.id)[iso + '|' + q] === undefined);
+      const info = nr.length ? nr.map(p => p.nome).join(', ') + (nr.length === 1 ? ' non ha risposto' : ' non hanno risposto') : altri.length ? si + (si === 1 ? ' a tavola' : ' a tavola') : '';
+      return `<div class="og-tv"><span class="og-tvn"><b>${q === 'p' ? '🍝 Pranzo' : '🍽️ Cena'}</b>${info ? `<small>${esc(info)}</small>` : ''}</span>
+        <button type="button" class="pill-btn ${mia === true ? 'on' : ''}" aria-pressed="${mia === true}" data-pr="${q}|si">Ci sono</button><button type="button" class="pill-btn ${mia === false ? 'on' : ''}" aria-pressed="${mia === false}" data-pr="${q}|no">Salto</button></div>`;
+    };
+    h += `<section class="card og-tavola" aria-label="A tavola"><div class="sez-riga"><h2 class="sez">A tavola</h2><button type="button" class="link" id="ogSett">Tutta la settimana</button></div>${rigaTv('p')}${rigaTv('c')}</section>`;
+  }
+  // ---- Agenda del giorno (e scadenze vicine, se è oggi)
+  const delGiorno = vociDelGiorno(iso).filter(e => riguardaMe(e)).map(e => ({ e, d: iso }));
+  const vicine = diff === 0 ? prossimeScadenze(3).filter(x => x.d > iso && x.d <= isoDi(new Date(Date.now() + 3 * 864e5)) && riguardaMe(x.e)) : [];
+  const ag = delGiorno.concat(vicine).slice(0, 6);
+  h += `<section class="card og-agenda" aria-label="Agenda"><div class="sez-riga"><h2 class="sez">Agenda</h2><button type="button" class="link" id="ogAgAgg">${ic('piu', 15, 2.2)}Aggiungi</button></div>
+    ${ag.length ? `<div class="sc">${ag.map(x => rigaAgenda(x.e, x.d, { conData: x.d !== iso })).join('')}</div>` : `<button type="button" class="og-vuoto" id="ogAg">Niente in agenda ${diff === 0 ? 'oggi' : 'per questo giorno'} · apri l'agenda</button>`}</section>`;
+  if (diff === 0) h += htmlInsiemeProssimi();
+  // ---- Spesa e conti in breve
   const daPrendere = D.spesa.filter(x => !x.comprato), daAltri = daPrendere.filter(x => x.aggiunto_da && x.aggiunto_da !== CHI);
   const nomiAltri = [...new Set(daAltri.map(x => x.aggiunto_da))];
   const s = Conti.saldi(D.movimenti, D.partecipanti), mio = IO ? (s[IO] || 0) : 0, rr = Conti.rimborsi(s);
   const verso = mio > 0 ? rr.filter(r => r.a === IO) : rr.filter(r => r.da === IO);
   const chiConti = verso.length === 1 ? nomeP(mio > 0 ? verso[0].da : verso[0].a) : '';
-  h += htmlInsiemeProssimi();
-  h += htmlAgendaOggi();
   h += `<div class="tiles">
     <button type="button" class="tile2" id="ogSp">${ic('sacchetto', 24, 1.8)}<b>${daPrendere.length ? daPrendere.length + ' da prendere' : 'Lista vuota'}</b><span>${daAltri.length ? daAltri.length + (daAltri.length === 1 ? ' aggiunto da ' : ' aggiunti da ') + esc(nomiAltri.length === 1 ? nomiAltri[0] : 'altri') : daPrendere.length ? 'Nella lista della spesa' : 'Aggiungi quello che manca'}</span></button>
     <button type="button" class="tile2" id="ogCo">${ic('borsello', 24, 1.8)}<b class="num ${mio > 0 ? 'pos' : mio < 0 ? 'neg' : ''}">${mio ? (mio > 0 ? '+ ' : '− ') + eur(Math.abs(mio)) : 'In pari'}</b><span>${mio > 0 ? (chiConti ? esc(chiConti) + ' ti deve' : 'Ti devono') : mio < 0 ? (chiConti ? 'Devi a ' + esc(chiConti) : 'Devi') : 'Nessun conto da saldare'}</span></button></div>
     <button type="button" class="riga-link" id="ogChat">${ic('scintille', 22, 1.8)}<span><b>Chiedi all'assistente</b><small>Cosa mangio stasera? Cosa manca in casa?</small></span>${ic('avanti', 18, 2)}</button>`;
   el.innerHTML = h;
+  // ---- Collegamenti
+  const sposta = n => { const d = dataDi(iso); d.setDate(d.getDate() + n); cambiaGiorno(isoDi(d)); };
+  $('ogPrev').onclick = () => sposta(-1); $('ogNext').onclick = () => sposta(1);
+  if ($('ogOggi')) $('ogOggi').onclick = () => cambiaGiorno(oggi);
+  $('ogData').onclick = () => { const p = $('ogPick'); try { if (p.showPicker) p.showPicker(); else p.focus(); } catch (e) { p.focus(); } };
+  $('ogPick').onchange = () => { if ($('ogPick').value) cambiaGiorno($('ogPick').value); };
   $('ogG').onclick = () => vai('gruppo');
   if ($('ogChi')) $('ogChi').onclick = scegliPartecipante;
   if ($('ogUp')) $('ogUp').onclick = () => { personaPiano = IO; $('pdf').click(); };
   if ($('ogMan')) $('ogMan').onclick = () => editorPiano(IO);
+  if ($('ogPiano')) $('ogPiano').onclick = () => { if (gi >= 0) LS.set('giorno:' + IO, String(gi)); personaPiano = IO; vai('piano'); renderPiano(); };
+  el.querySelectorAll('[data-ogp]').forEach(b => b.onclick = () => { ogAperto = aperto === b.dataset.ogp ? '' : b.dataset.ogp; vibra(); renderOggi(); });
   el.querySelectorAll('[data-ogric]').forEach(b => b.onclick = () => apriRicetta(IO, gi, +b.dataset.ogric));
-  el.querySelectorAll('[data-oginsieme]').forEach(b => b.onclick = () => { const e = Object.assign({ id: b.dataset.oginsieme }, D.stato[b.dataset.oginsieme]); apriInsieme(e); });
-  el.querySelectorAll('[data-ogesci]').forEach(b => b.onclick = () => esciDaInsieme(b.dataset.ogesci));
-  el.querySelectorAll('[data-ogcomb]').forEach(b => b.onclick = () => foglioInsieme(b.dataset.ogcomb));
-  el.querySelectorAll('[data-insp]').forEach(b => b.onclick = () => apriInsieme(Object.assign({ id: b.dataset.insp }, D.stato[b.dataset.insp])));
   el.querySelectorAll('[data-ogidea]').forEach(b => b.onclick = () => proponiPiatto(IO, gi, +b.dataset.ogidea));
-  const sc = $('ogScorri');
-  if (sc) {
-    const n = pasti.length, larg = () => sc.clientWidth || 1;
-    const attuale = () => Math.max(0, Math.min(n - 1, Math.round(sc.scrollLeft / larg())));
-    const segna = i => {
-      el.querySelectorAll('.og-punti i').forEach((p, j) => p.classList.toggle('on', j === i));
-      el.querySelectorAll('[data-ogv]').forEach((b, j) => { b.classList.toggle('on', j === i); b.setAttribute('aria-selected', j === i); });
-      $('ogPrev').disabled = i === 0; $('ogNext').disabled = i === n - 1; ogVisto = pasti[i].pa.tipo;
-    };
-    const vaiA = (i, liscio) => { sc.scrollTo({ left: i * larg(), behavior: liscio && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'auto' }); segna(i); };
-    // si riparte dal pasto che stavi guardando, altrimenti dal prossimo (o dall'ultimo se la giornata è finita)
-    const iv = pasti.findIndex(x => x.pa.tipo === ogVisto), i0 = iv >= 0 ? iv : prossimo ? pasti.indexOf(prossimo) : n - 1;
-    requestAnimationFrame(() => vaiA(i0, false)); segna(i0);
-    // se la scheda era nascosta (larghezza 0) o cambia larghezza, si rimette sul pasto giusto appena diventa visibile
-    let largPrima = sc.clientWidth;
-    if (window.ResizeObserver) new ResizeObserver(() => {
-      const w = sc.clientWidth; if (!w || w === largPrima) return; largPrima = w;
-      const i = Math.max(0, pasti.findIndex(x => x.pa.tipo === ogVisto)); sc.scrollTo({ left: i * w, behavior: 'auto' }); segna(i);
-    }).observe(sc);
-    let t; sc.addEventListener('scroll', () => { clearTimeout(t); t = setTimeout(() => { if (sc.clientWidth) segna(attuale()); }, 80); }, { passive: true });
-    $('ogPrev').onclick = () => vaiA(Math.max(0, attuale() - 1), true);
-    $('ogNext').onclick = () => vaiA(Math.min(n - 1, attuale() + 1), true);
-    sc.onkeydown = e => { if (e.key === 'ArrowLeft') { e.preventDefault(); $('ogPrev').click(); } if (e.key === 'ArrowRight') { e.preventDefault(); $('ogNext').click(); } };
-    el.querySelectorAll('[data-ogv]').forEach(b => b.onclick = () => { vibra(); vaiA(+b.dataset.ogv, true); });
-  }
-  if ($('ogPiano')) $('ogPiano').onclick = () => { const p = pianoDi(IO), dom = giornoPerData(p, Date.now() + 864e5); if (dom >= 0) LS.set('giorno:' + IO, String(dom)); personaPiano = IO; vai('piano'); renderPiano(); };
-  el.querySelectorAll('[data-pr]').forEach(b => b.onclick = () => segnaPresenza(IO, iso, quando, b.dataset.pr === 'si' ? (mia === true ? undefined : true) : (mia === false ? undefined : false)));
+  el.querySelectorAll('[data-oginsieme]').forEach(b => b.onclick = () => apriInsieme(Object.assign({ id: b.dataset.oginsieme }, D.stato[b.dataset.oginsieme])));
+  el.querySelectorAll('[data-ogesci]').forEach(b => b.onclick = () => esciDaInsieme(b.dataset.ogesci));
+  el.querySelectorAll('[data-ogcomb]').forEach(b => b.onclick = () => foglioInsieme(b.dataset.ogcomb, iso));
+  el.querySelectorAll('[data-insp]').forEach(b => b.onclick = () => apriInsieme(Object.assign({ id: b.dataset.insp }, D.stato[b.dataset.insp])));
+  el.querySelectorAll('[data-pr]').forEach(b => b.onclick = () => { const [q, v] = b.dataset.pr.split('|'), mia = presDi(IO)[iso + '|' + q]; segnaPresenza(IO, iso, q, v === 'si' ? (mia === true ? undefined : true) : (mia === false ? undefined : false)); });
   if ($('ogSett')) $('ogSett').onclick = () => vai('presenze');
-  if ($('ogAg')) $('ogAg').onclick = () => vai('agenda');
+  if ($('ogAg')) $('ogAg').onclick = () => { agendaGiorno = iso; vai('agenda'); renderAgenda(); };
+  $('ogAgAgg').onclick = () => formAgenda(null, { data: iso });
   el.querySelectorAll('[data-ev]').forEach(b => b.onclick = () => { agendaGiorno = b.dataset.d; vai('agenda'); renderAgenda(); apriVoceAgenda(b.dataset.ev, b.dataset.d); });
   $('ogSp').onclick = () => vai('spesa'); $('ogCo').onclick = () => vai('conti'); $('ogChat').onclick = () => vai('chat');
+  // scorrendo col dito a destra o a sinistra si cambia giorno
+  if (!el._scorri) {
+    el._scorri = true; let x0 = 0, y0 = 0, ok = false;
+    el.addEventListener('touchstart', e => { const t = e.touches[0]; ok = e.touches.length === 1 && !e.target.closest('.chips,.sc,input,.og-pick'); x0 = t.clientX; y0 = t.clientY; }, { passive: true });
+    el.addEventListener('touchend', e => { if (!ok) return; const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0; if (Math.abs(dx) > 70 && Math.abs(dy) < 45) { const d = dataDi(ogIso()); d.setDate(d.getDate() + (dx < 0 ? 1 : -1)); cambiaGiorno(isoDi(d)); } }, { passive: true });
+  }
 }
 
 // Un piatto per un pasto, proposto dall'intelligenza artificiale con gli alimenti del piano; poi si apre la ricetta

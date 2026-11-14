@@ -126,6 +126,9 @@ Mentre l'app è aperta, gli avvisi su spese e pasti arrivano già. Per riceverli
 6. Su GitHub apri `config.js`, clicca la matita, incolla il nuovo contenuto e premi **Commit changes**.
 7. Riapri l'app un paio di volte per caricare l'aggiornamento. Poi ognuno va in **Impostazioni → Attiva le notifiche** e accetta.
 
+8. Per **"Ci sei a cena?"** alle 17 e per i **promemoria dell'agenda**: in **Edge Functions → Secrets** aggiungi `CRON_SECRET` (una parola segreta a tua scelta), poi in **SQL Editor** incolla `tablemates/supabase/promemoria.sql`, sostituisci `IL_TUO_PROGETTO`, `IL_TUO_SEGRETO` e `LA_TUA_CHIAVE` (la chiave publishable di `config.js`) e premi **Run**. Così il server controlla l'agenda ogni 5 minuti. Con la chiave nel SQL, la spunta *Verify JWT* sulla funzione `notifica` può restare attiva.
+9. Controllo: nell'app, in fondo all'**Agenda**, il riquadro **Promemoria** dice se le notifiche del telefono sono attive e quando il server ha controllato l'agenda l'ultima volta. **Manda una prova** ti fa arrivare subito una notifica.
+
 Su iPhone le notifiche funzionano solo con l'app aggiunta alla schermata Home (iOS 16.4 o successivo).
 
 ## Passo 9 bis · Intelligenza artificiale per tutti, senza chiavi (consigliato)
@@ -141,13 +144,43 @@ Con questo passo l'app crea piatti e ricette e importa ricette dai link senza ch
 
 Ogni persona può fare al massimo 10 richieste al minuto e 120 all'ora: è un limite di sicurezza per non consumare la quota gratuita di Groq.
 
-## Passo 10 · "Ehi Siri, cosa mangio?" (facoltativo, iPhone)
+## Passo 10 · Calendario dell'iPhone e Siri (facoltativo)
 
-1. Apri l'app **Comandi** e tocca **+**.
-2. Aggiungi l'azione **Dettatura testo**.
-3. Aggiungi l'azione **URL** con `https://tuonome.github.io/tablemates/?chiedi=` seguito dalla variabile *Testo dettato*.
-4. Aggiungi l'azione **Apri URL**.
-5. Chiama il comando "Cosa mangio".
+Con la funzione `collega` l'agenda di Tablemates compare nel Calendario del telefono, con gli avvisi, e Siri può rispondere e aggiungere cose.
+
+1. In Supabase apri **Edge Functions → Deploy a new function → Via Editor**.
+2. Chiama la funzione esattamente `collega`. Incolla tutto il contenuto di `tablemates/supabase/functions/collega/index.ts` e premi **Deploy function**.
+3. Nella funzione `collega` apri **Details** e **togli la spunta** *Verify JWT* (o *Verify JWT with legacy secret*), poi salva. Il Calendario dell'iPhone e i Comandi Rapidi non possono mandare l'accesso dell'app: il controllo lo fa il codice segreto del link personale.
+4. Nell'app: **Impostazioni → Calendario e Siri → Calendario del telefono → Crea il mio link → Aggiungi al calendario**, poi **Iscriviti**. Su Google Calendar: **Copia il link** e in Google Calendar *Altri calendari → Da URL*.
+
+Il calendario si aggiorna da solo (l'iPhone lo rilegge ogni tanto, di solito entro un'ora). Quello che aggiungi direttamente nel Calendario dell'iPhone non torna in Tablemates: gli appuntamenti si aggiungono dall'app o con Siri.
+
+**Siri (app Comandi Rapidi):** per ogni comando crea un nuovo comando con l'azione **Ottieni contenuti dell'URL** (il link lo copi da **Impostazioni → Calendario e Siri → Siri e Comandi Rapidi**), poi **Pronuncia testo** con il risultato. Il nome del comando è la frase da dire.
+
+| Frase per Siri | Cosa fa | Cosa aggiungere al link |
+| --- | --- | --- |
+| "Cosa mangio" | Prossimi pasti di oggi e agenda | `&a=oggi` (oppure `&a=oggi&q=cena`) |
+| "Cosa mangio domani" | Pasti e impegni di domani | `&a=domani` |
+| "Aggiungi alla spesa" | Aggiunge uno o più prodotti | `&a=spesa&testo=` + la risposta di **Chiedi testo** |
+| "Cosa devo comprare" | Legge la lista della spesa | `&a=lista` |
+| "Nuovo appuntamento" | Lo aggiunge all'agenda del gruppo | `&a=appuntamento&titolo=…&data=AAAA-MM-GG&ora=HH:MM` (con **Chiedi data e ora** e **Formatta data**) |
+| "Ho pagato" | Spesa pagata da te, divisa in parti uguali | `&a=pagato&titolo=…&importo=24,50` |
+
+Il link personale non va mandato ad altri. Se pensi che l'abbia qualcun altro, in **Calendario e Siri** tocca **Crea un nuovo link**: il vecchio smette di funzionare.
+
+## Passo 11 · Un indirizzo tuo al posto di github.io (facoltativo)
+
+GitHub Pages può usare un dominio tuo (per esempio `tablemates.it` o `app.tuodominio.it`). Serve comprare il dominio da un registrar (Aruba, Register.it, Namecheap, Cloudflare…).
+
+1. Su GitHub apri il repository → **Settings → Pages → Custom domain**, scrivi il dominio (es. `app.tuodominio.it`) e premi **Save**.
+2. Dal pannello DNS del registrar:
+   - per un sottodominio (`app.tuodominio.it` o `www.tuodominio.it`): record **CNAME** con nome `app` (o `www`) che punta a `tuonome.github.io`;
+   - per il dominio "nudo" (`tuodominio.it`): quattro record **A** con nome `@` verso `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153`.
+3. Quando il DNS è attivo (da pochi minuti a qualche ora) torna in **Settings → Pages** e spunta **Enforce HTTPS** (può comparire anche dopo 24 ore).
+4. In Supabase: **Authentication → URL Configuration** → metti il nuovo indirizzo in **Site URL** e aggiungilo in **Redirect URLs**.
+5. Sul telefono apri il nuovo indirizzo, accedi e **aggiungilo di nuovo alla schermata Home** (puoi togliere la vecchia icona).
+
+Cambiando indirizzo, il telefono lo considera un'app nuova: vanno rifatti l'accesso, il PIN/Face ID e l'attivazione delle notifiche, e va ricreato il collegamento del calendario. I dati del gruppo restano sul server e non si perdono. Anche i link di invito usano il nuovo indirizzo da soli.
 
 ## Password, PIN e tema (dalla versione 7.0)
 
@@ -167,7 +200,7 @@ Il PIN protegge l'app su quel telefono. Non sostituisce la password dell'account
 
 ## Aggiornare l'app
 
-Quando modifichi un file, in `sw.js` aumenta il numero di `VERSIONE` (per esempio `tablemates-7.3`) e ricarica i file su GitHub. Sui dispositivi compare "Nuova versione disponibile → Aggiorna".
+Quando modifichi un file, in `sw.js` aumenta il numero di `VERSIONE` (per esempio `tablemates-10.1`) e ricarica i file su GitHub. All'apertura successiva l'app scarica la nuova versione in sottofondo e si ricarica da sola.
 
 ## Problemi comuni
 
@@ -186,6 +219,7 @@ Quando modifichi un file, in `sw.js` aumenta il numero di `VERSIONE` (per esempi
 | `supabase/schema.sql` | il database |
 | `supabase/functions/notifica/` | la funzione delle notifiche |
 | `supabase/functions/cucina/` | la funzione dell'intelligenza artificiale (Groq) e dell'importazione di ricette da un link |
+| `supabase/functions/collega/` | calendario del telefono e Siri |
 | `strumenti/chiavi-notifiche.html` | crea le chiavi delle notifiche |
 | `strumenti/crea_anteprima.py` | crea la versione dimostrativa |
 
@@ -201,6 +235,22 @@ Quando modifichi un file, in `sw.js` aumenta il numero di `VERSIONE` (per esempi
 - **Ricetta a schermo intero** con ingredienti "In casa / Da comprare", "Metti i mancanti in spesa", ricette salvate e **Modalità cucina** (un passo alla volta, timer, schermo acceso, comandi a voce dove il telefono li supporta).
 - **Spesa + Dispensa**: livelli di quanto resta, "stanno finendo → in lista", la Dispensa si riempie quando spunti un prodotto.
 - **Conti**: "Giulia ti deve", Segna saldato, Ricordaglielo (messaggio da mandare), speso nel mese, la tua parte, ultimi movimenti; saldi, statistiche e conti restano a un tocco.
+
+## Novità della versione 10.0
+- **Oggi è una dashboard**: i pasti del giorno in breve (tocca un pasto per vedere quantità e idee), pranzo e cena "A tavola", l'agenda del giorno, spesa e conti. Con le frecce, scorrendo col dito o toccando la data passi agli altri giorni.
+- **Agenda**: un appuntamento può finire dopo mezzanotte (20:00–01:30 finisce il giorno dopo). In fondo all'agenda c'è il controllo dei promemoria: notifiche del telefono, ultimo controllo del server e **Manda una prova**.
+- **Calendario del telefono e Siri** (Passo 10): l'agenda nel Calendario dell'iPhone con gli avvisi, e comandi per Siri (cosa mangio, aggiungi alla spesa, nuovo appuntamento, ho pagato).
+- **Emoji**: tutte le nazioni e le città principali hanno la bandiera (Andorra 🇦🇩, Londra 🇬🇧, Barcellona 🇪🇸…). L'app conosce tutte le emoji con i nomi in italiano. Ogni emoji si può cambiare: tocca l'emoji nel modulo della spesa, del conto, dell'appuntamento, oppure accanto a un alimento o a un pasto. Puoi sceglierla solo per quella voce o "ogni volta che scrivo…".
+- **Statistiche**: torta "Dove si spende di più", con percentuali e colori diversi, per questo mese, gli ultimi 12 mesi o sempre.
+- **Foto**: foto del gruppo (tocca il logo nella scheda Gruppo) e foto del profilo (Gruppo → ⋯ accanto al tuo nome → Foto del profilo).
+- **Senza rete**: l'app si apre anche offline e le modifiche restano sul telefono; appena torna la connessione partono da sole.
+- **Più veloce**: l'app si apre dalla copia sul telefono e disegna solo la scheda che stai guardando. Niente barra di scorrimento laterale. Il nome con cui entri resta salvato, quindi non viene più chiesto "Chi sei?" a ogni apertura.
+- Intro: la scritta è **TableMates**.
+- Server: aggiorna la funzione `notifica` (Passo 9, punto 4) e pubblica `collega` (Passo 10).
+
+## Novità della versione 9.9
+- **Emoji automatiche, come in Tricount**: dalla parola scritta l'app sceglie un'emoji, senza che tu debba fare nulla. Compaiono accanto ai pasti (🥐 colazione, 🍝 pranzo, 🍽️ cena), agli alimenti del piano e della ricetta (🍗 pollo, 🥔 patate, 🍚 riso), ai prodotti della spesa e ai loro reparti, alle spese in Conti (🏠 affitto, 💡 luce, ⛽ benzina, ✈️ volo), ai conti stessi (🏖️ Viareggio, 🇭🇺 Budapest) e agli appuntamenti e scadenze dell'Agenda (🦷 dentista, 🎂 compleanno, 🏦 mutuo). Se la parola non è riconosciuta, c'è un'emoji di riserva adatta alla scheda.
+- Valgono anche per i dati già inseriti: l'emoji si ricava dal testo e non viene salvata.
 
 ## Novità della versione 9.8
 - **Intro anche con "Riduci movimento"**: se sull'iPhone è attivo (Impostazioni → Accessibilità → Movimento), l'app mostrava solo il logo fermo e passava subito oltre. Ora l'animazione parte sempre; un tocco la salta. Il resto dell'app continua a rispettare l'impostazione.

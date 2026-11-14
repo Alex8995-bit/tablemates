@@ -99,12 +99,12 @@ function vistaPersona(pid) {
   h += elenco.map(({ pa, k, tipo }) => {
     if (!pa) return `<div class="pc-chiuso vuoto-slot"><b>${esc(tipo)}</b><span class="st">Non previsto</span></div>`;
     const n = pa.voci ? pa.voci.length : 0, x = r[k];
-    if (pa.tipo !== aperto) return `<button type="button" class="pc-chiuso" data-apri="${esc(chiave + pa.tipo)}" aria-expanded="false"><b>${esc(pa.tipo)}</b><span class="st">ore ${esc(oraDi(pa.tipo))}${n ? ' · ' + n + (n === 1 ? ' alimento' : ' alimenti') : ''}</span></button>`;
+    if (pa.tipo !== aperto) return `<button type="button" class="pc-chiuso" data-apri="${esc(chiave + pa.tipo)}" aria-expanded="false"><b>${EMO.html(pa.tipo)}${esc(pa.tipo)}</b><span class="st">ore ${esc(oraDi(pa.tipo))}${n ? ' · ' + n + (n === 1 ? ' alimento' : ' alimenti') : ''}</span></button>`;
     const notaLunga = pa.nota && pa.nota.length > 180;
-    return `<section class="pc-aperto" aria-labelledby="pc-${k}"><div class="tp"><h2 id="pc-${k}">${esc(pa.tipo)}</h2><span>${n ? n + (n === 1 ? ' alimento' : ' alimenti') : 'ore ' + esc(oraDi(pa.tipo))}</span></div>` +
+    return `<section class="pc-aperto" aria-labelledby="pc-${k}"><div class="tp"><h2 id="pc-${k}">${EMO.bottone(pa.tipo)}${esc(pa.tipo)}</h2><span>${n ? n + (n === 1 ? ' alimento' : ' alimenti') : 'ore ' + esc(oraDi(pa.tipo))}</span></div>` +
       (pa.voci ? htmlCibi(pid, gi, k, pa) : `<p style="margin:0;font-size:15px;line-height:1.5">${esc(pa.alimenti)}</p>${pa.alternative ? `<p class="q" style="margin:0">In alternativa: ${esc(pa.alternative)}</p>` : ''}`) +
       (pa.nota ? `<div class="avviso">${ic('info', 18, 2)}<div style="min-width:0"><div class="nota-lunga ${notaLunga ? 'chiusa' : ''}"><strong>Nota del nutrizionista:</strong> ${esc(pa.nota)}</div>${notaLunga ? '<button type="button" class="link" data-nl style="color:var(--warn-ic);padding:4px 0 0;font-size:13px">Leggi tutto</button>' : ''}</div></div>` : '') +
-      (x ? `<button type="button" class="piatto" data-ric="${k}" data-g="${gi}"><span class="tt"><b>${esc(x.nome)}</b><span class="by" style="display:flex;align-items:center;gap:4px">${ic('orologio', 13, 2)}${esc(x.tempo || '')}${x.da ? ' · scelto da ' + esc(x.da) : ''}</span></span><span class="piccolo pieno">${ic('libro', 15, 2)}Ricetta</span></button>` : '') +
+      (x ? `<button type="button" class="piatto" data-ric="${k}" data-g="${gi}"><span class="tt"><b>${EMO.html(x.nome, '🍽️')}${esc(x.nome)}</b><span class="by" style="display:flex;align-items:center;gap:4px">${ic('orologio', 13, 2)}${esc(x.tempo || '')}${x.da ? ' · scelto da ' + esc(x.da) : ''}</span></span><span class="piccolo pieno">${ic('libro', 15, 2)}Ricetta</span></button>` : '') +
       `<div class="pc-azioni">
         ${!x ? `<button type="button" class="piccolo neutro" data-prop="${k}">${ic('scintille', 15, 2)}Proponi un piatto</button>` : ''}
         ${x && haAI() ? `<button type="button" class="piccolo neutro" data-re="${k}">${ic('scintille', 15, 2)}Altro piatto</button>` : ''}

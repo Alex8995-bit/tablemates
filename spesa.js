@@ -38,13 +38,13 @@ function htmlLista(seg) {
   h += `<div class="agg"><label for="nv" class="sr">Aggiungi alla lista</label><input id="nv" placeholder="Aggiungi qualcosa…" enterkeyhint="done"><button id="add" type="button" aria-label="Aggiungi">${ic('piu', 22, 2.2)}</button></div>`;
   REPARTI.forEach(r => {
     const v = spesa.filter(x => (REPARTI.includes(x.reparto) ? x.reparto : 'Altro') === r).sort((a, b) => (a.comprato ? 1 : 0) - (b.comprato ? 1 : 0));
-    if (v.length) h += `<section style="display:flex;flex-direction:column;gap:12px"><h2 class="sez" style="margin:0">${r}</h2><div class="sc">${v.map(rigaSpesa).join('')}</div></section>`;
+    if (v.length) h += `<section style="display:flex;flex-direction:column;gap:12px"><h2 class="sez" style="margin:0">${EMO.reparto(r)} ${r}</h2><div class="sc">${v.map(rigaSpesa).join('')}</div></section>`;
   });
   if (!tot) h += `<div class="vuoto">${ic('sacchetto', 32)}La lista è vuota.<br>Aggiungi i prodotti qui sopra, oppure creala dal Piano con le quantità della dieta.</div>`;
   if (fatti) h += `<div style="display:flex;flex-direction:column;gap:4px"><button class="btn scuro" id="reg" type="button">${ic('scontrino2', 20, 1.8)}Spesa fatta? Dividi lo scontrino</button><button class="link-txt" id="clr" type="button" style="text-align:center">Togli i prodotti presi dalla lista</button></div>`;
   return h + '<div style="height:8px"></div>';
 }
-const rigaSpesa = x => `<div class="sp-riga ${x.comprato ? 'done' : ''}"><button type="button" class="sp-ck" data-sk="${x.id}" aria-pressed="${!!x.comprato}" aria-label="${x.comprato ? 'Togli la spunta: ' : 'Segna come preso: '}${esc(x.nome)}">${x.comprato ? ic('spunta', 16, 3) : ''}</button><button type="button" class="sp-nm" data-se="${x.id}" aria-label="Modifica ${esc(x.nome)}"><b>${esc(x.nome)}</b>${chiTxt(x)}</button>${x.quantita ? `<span class="sp-q num">${esc(x.quantita)}</span>` : ''}</div>`;
+const rigaSpesa = x => `<div class="sp-riga ${x.comprato ? 'done' : ''}"><button type="button" class="sp-ck" data-sk="${x.id}" aria-pressed="${!!x.comprato}" aria-label="${x.comprato ? 'Togli la spunta: ' : 'Segna come preso: '}${esc(x.nome)}">${x.comprato ? ic('spunta', 16, 3) : ''}</button><button type="button" class="sp-nm" data-se="${x.id}" aria-label="Modifica ${esc(x.nome)}"><b>${EMO.html(x.nome, EMO.reparto(x.reparto), 's:' + x.id)}${esc(x.nome)}</b>${chiTxt(x)}</button>${x.quantita ? `<span class="sp-q num">${esc(x.quantita)}</span>` : ''}</div>`;
 function chiTxt(x) {
   const a = x.comprato && x.modificato_da ? 'Preso da ' + x.modificato_da : '';
   const per = x.giorno ? x.giorno.replace(/^Dieta · /, 'Piano di ').replace(/^Ricetta · /, 'Ricetta: ') : (x.aggiunto_da ? 'Aggiunto da ' + x.aggiunto_da : '');
@@ -68,7 +68,7 @@ async function spunta(id) {
 function modificaSpesa(id) {
   const x = D.spesa.find(i => i.id === id); if (!x) return;
   foglio(`<h2>${esc(x.nome)}</h2><p class="by" style="margin:0 0 6px">${esc(x.aggiunto_da ? 'Aggiunto da ' + x.aggiunto_da : '')}</p>
-    <label class="lb" for="seN">Prodotto</label><input id="seN" value="${esc(x.nome)}">
+    <label class="lb" for="seN">Prodotto</label><div class="riga" style="gap:8px"><button type="button" class="emo-b" id="seEm" aria-label="Cambia emoji">${EMO.per(x.nome, EMO.reparto(x.reparto), 's:' + x.id)}</button><input id="seN" value="${esc(x.nome)}" style="flex:1;min-width:0"></div>
     <label class="lb" for="seQ">Quantità</label><input id="seQ" value="${esc(x.quantita || '')}" placeholder="Facoltativa">
     <label class="lb" for="seR">Reparto</label><select id="seR">${REPARTI.map(r => `<option ${r === x.reparto ? 'selected' : ''}>${r}</option>`).join('')}</select>
     <button class="btn" id="seS" type="button" style="margin-top:12px">Salva</button><button class="btn danger" id="seD" type="button">${ic('cestino', 18)}Togli dalla lista</button>`);
@@ -78,6 +78,7 @@ function modificaSpesa(id) {
     await scrivi(() => ST.upd('spesa', id, { nome: x.nome, quantita: x.quantita, reparto: x.reparto }));
   };
   $('seD').onclick = () => { chiudi(); eliminaSpesa(id); };
+  $('seEm').onclick = () => scegliEmoji({ testo: x.nome, chiave: 's:' + x.id, auto: EMO.scegli(x.nome) || EMO.reparto(x.reparto) });
 }
 async function eliminaSpesa(id, annullabile) {
   const x = D.spesa.find(i => i.id === id);
@@ -103,7 +104,7 @@ function htmlDispensa(seg) {
     if (!v.length) return;
     h += `<section style="display:flex;flex-direction:column;gap:12px"><h2 class="sez" style="margin:0">${z}</h2><div class="sc">${v.map(({ x, i }) => {
       const basso = x.livello <= 1;
-      return `<button type="button" class="disp-riga" data-dl="${i}" aria-label="${esc(x.nome)}: ${LIVELLI[x.livello]}. Tocca per cambiare"><span class="dn"><b>${esc(x.nome)}</b><small class="${basso ? 'basso' : ''}">${LIVELLI[x.livello]}</small></span><span class="livello" aria-hidden="true">${[1, 2, 3, 4].map(n => `<i class="${n <= x.livello ? 'on' : ''} ${basso ? 'basso' : ''}"></i>`).join('')}</span></button>`;
+      return `<button type="button" class="disp-riga" data-dl="${i}" aria-label="${esc(x.nome)}: ${LIVELLI[x.livello]}. Tocca per cambiare"><span class="dn"><b>${EMO.html(x.nome, '🥫')}${esc(x.nome)}</b><small class="${basso ? 'basso' : ''}">${LIVELLI[x.livello]}</small></span><span class="livello" aria-hidden="true">${[1, 2, 3, 4].map(n => `<i class="${n <= x.livello ? 'on' : ''} ${basso ? 'basso' : ''}"></i>`).join('')}</span></button>`;
     }).join('')}</div></section>`;
   });
   if (!items.length) h += `<div class="vuoto">${ic('casa', 32)}La dispensa è vuota.<br>Aggiungi quello che tieni in casa: quando sta per finire lo metti in lista con un tocco, e le ricette sanno cosa hai già.</div>`;

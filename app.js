@@ -2,7 +2,7 @@
 let ST = null, UTENTE = null, G = null, live = false;
 const VUOTO_D = () => ({ stato: {}, spesa: [], partecipanti: [], conti: [], movimenti: [] });
 let D = VUOTO_D();
-let CHI = SS.get('chi'), IO = null;
+let CHI = SS.get('chi') || LS.get('chi'), IO = null;
 
 function renderNav() {
   const voci = { oggi: ['oggi', 'Oggi'], piano: ['calendario', 'Piano'], spesa: ['sacchetto', 'Spesa'], conti: ['borsello', 'Conti'], agenda: ['agenda', 'Agenda'], gruppo: ['gruppo', 'Gruppo'], chat: ['scintille', 'Assistente'] };
@@ -17,15 +17,43 @@ const nomeP = id => (D.partecipanti.find(p => p.id === id) || {}).nome || '?';
 // Copia degli ultimi dati per aprire l'app anche senza rete (senza foto, per stare nello spazio del telefono)
 function snap() { if (G && ST && ST.modo === 'supabase') LS.setJ('snap_' + G.id, { ...D, movimenti: D.movimenti.map(m => { const c = { ...m }; delete c.foto; return c; }) }); }
 async function scrivi(fn, errore) {
-  if (!navigator.onLine && ST.modo === 'supabase') { toast('Sei offline: modifica non salvata'); await ricarica(); return false; }
   try { await fn(); snap(); return true; }
   catch (e) { toast((errore || 'Non salvato') + ': ' + (e instanceof TypeError || /undefined|null|is not|Load failed|Failed to fetch/i.test(e.message || '') ? 'riprova tra un attimo' : e.message)); await ricarica(); return false; }
 }
 async function ricarica() {
   if (!G) return;
-  try { D = Object.assign(VUOTO_D(), await ST.carica(G.id)); snap(); $('offline').hidden = navigator.onLine; }
-  catch (e) { const s = LS.getJ('snap_' + G.id, null); if (s) D = Object.assign(VUOTO_D(), s); $('offline').hidden = false; }
+  try { D = Object.assign(VUOTO_D(), await ST.carica(G.id)); (ST.inSospeso ? ST.inSospeso() : []).forEach(o => applicaLocale(o.m, o.args)); snap(); aggiornaOffline(); }
+  catch (e) { const s = LS.getJ('snap_' + G.id, null); if (s) D = Object.assign(VUOTO_D(), s); $('offline').hidden = false; aggiornaOffline(); }
   trovaIO(); renderTutto();
+}
+// Una modifica fatta senza rete si applica subito ai dati sul telefono
+function applicaLocale(m, a) {
+  if (!G) return;
+  const ora = new Date().toISOString(), match = (r, f) => Object.keys(f).every(k => r[k] === f[k]);
+  if (m === 'salvaStato') { if (a[0] === G.id) D.stato[a[1]] = a[2]; }
+  else if (m === 'ins') (Array.isArray(a[1]) ? a[1] : [a[1]]).forEach(r => { if (r.gruppo_id === G.id && D[a[0]] && !D[a[0]].some(x => x.id === r.id)) { const c = { created_at: ora, ...r }; if (a[0] === 'movimenti') { c.ha_foto = !!c.foto; delete c.foto; } D[a[0]].push(c); } });
+  else if (m === 'upd') { const r = (D[a[0]] || []).find(x => x.id === a[1]); if (r) Object.assign(r, a[2], a[0] === 'movimenti' && 'foto' in a[2] ? { ha_foto: !!a[2].foto, foto: undefined } : {}); }
+  else if (m === 'del') { if (D[a[0]]) D[a[0]] = D[a[0]].filter(x => x.id !== a[1]); }
+  else if (m === 'delWhere') { if (D[a[0]]) D[a[0]] = D[a[0]].filter(x => !match(x, a[1])); }
+  if (a[0] === 'movimenti' || m === 'ins' && a[0] === 'movimenti') ordinaMov(D.movimenti);
+  if (a[0] === 'partecipanti') trovaIO();
+  snap();
+}
+function aggiornaOffline() {
+  const n = ST && ST.inAttesa ? ST.inAttesa() : 0, e = $('offline'); if (!e) return;
+  e.hidden = navigator.onLine && !n;
+  e.textContent = navigator.onLine ? `Invio di ${n} ${n === 1 ? 'modifica fatta' : 'modifiche fatte'} senza rete…` : `Sei offline: vedi gli ultimi dati salvati.${n ? ` ${n} ${n === 1 ? 'modifica resta' : 'modifiche restano'} sul telefono e ${n === 1 ? 'partirà' : 'partiranno'} appena torni online.` : ' Le modifiche restano sul telefono e partono appena torni online.'}`;
+}
+// Tornata la rete: prima le modifiche in sospeso, poi i dati aggiornati dal server
+async function sincronizza() {
+  if (!ST || ST.modo !== 'supabase' || !navigator.onLine) return aggiornaOffline();
+  if (ST.inAttesa && ST.inAttesa()) {
+    aggiornaOffline();
+    const r = await ST.svuota();
+    if (r.fatte) toast(r.fatte === 1 ? 'Modifica fatta senza rete salvata ✓' : r.fatte + ' modifiche fatte senza rete salvate ✓');
+    if (r.scartate) toast(r.scartate === 1 ? 'Una modifica fatta senza rete non è stata accettata dal server' : r.scartate + ' modifiche fatte senza rete non sono state accettate dal server');
+  }
+  await ricarica(); aggiornaOffline();
 }
 function trovaIO() { const mio = UTENTE && D.partecipanti.find(p => p.user_id === UTENTE.id); IO = mio ? mio.id : null; }
 
@@ -50,7 +78,7 @@ function chiSei() {
       <input id="chiNome" placeholder="Il tuo nome" autocomplete="given-name" style="background:var(--card)"><button class="btn" id="entra" type="button">Entra</button>`);
     const entra = n => {
       n = (n || '').trim(); if (!n) return;
-      CHI = n; SS.set('chi', n);
+      CHI = n; SS.set('chi', n); LS.set('chi', n);
       if (!nomi.includes(n)) { nomi.push(n); LS.setJ('nomi', nomi); }
       chiudi(); ok();
     };
@@ -139,6 +167,7 @@ function schermataGruppi(gr) {
 async function apriGruppo(g) {
   G = g; LS.set('gruppo', g.id); LS.set('gnome', g.nome); LS.set('gvaluta', g.valuta || 'EUR');
   chiudi(); ST.smetti(); live = false; D = VUOTO_D();
+  if (ST.inAttesa && ST.inAttesa() && navigator.onLine) await ST.svuota();
   await ricarica();
   ST.ascolta(g.id, cambiamento, s => { live = s; renderNav(); renderOggi(); renderPiano(); renderSpesa(); });
   if (!IO) scegliPartecipante(); else { setTimeout(promemoria, 1500); setTimeout(avviaNotifiche, 800); }
@@ -192,10 +221,13 @@ async function avvio() {
   chiudi(); renderTutto();
   if (ANTEPRIMA || LS.get('modo') === 'locale') ST = storeLocale();
   else if (S('sbUrl') && S('sbKey') && window.supabase) {
-    try { ST = storeSupabase(S('sbUrl'), S('sbKey')); } catch (e) { toast('Dati del server non validi'); return benvenuto(); }
+    try { ST = conCoda(storeSupabase(S('sbUrl'), S('sbKey'))); } catch (e) { toast('Dati del server non validi'); return benvenuto(); }
+    ST.applica = applicaLocale; ST.inCoda = n => { aggiornaOffline(); if (n === 1) toast('Senza rete: la modifica resta sul telefono e parte appena torni online'); };
   } else return benvenuto();
   if (!CHI) await chiSei();
   UTENTE = await ST.sessione().catch(() => null);
+  // senza rete si entra con l'ultimo accesso salvato su questo telefono
+  if (UTENTE) LS.setJ('utente', UTENTE); else if (!navigator.onLine && ST.modo === 'supabase') UTENTE = LS.getJ('utente', null);
   if (!UTENTE) {
     const via = await loginEmail(); UTENTE = await ST.sessione();
     if (via === 'codice' && !LS.get('pw') && ST.modo === 'supabase') await formPassword('Scegli una password');
@@ -206,6 +238,15 @@ async function avvio() {
   const daImportare = SS.get('importa');
   if (daImportare && G) { SS.del('importa'); vai('piano'); foglioImporta(null, daImportare); }
 }
+
+// ---------- Velocità: si disegna solo la scheda che si vede, le altre quando le apri ----------
+const RENDER_SCHEDE = { oggi: 'renderOggi', piano: 'renderPiano', spesa: 'renderSpesa', conti: 'renderConti', agenda: 'renderAgenda', gruppo: 'renderGruppo', presenze: 'renderPresenze', chat: 'renderChat', imp: 'renderImp' };
+const daRidisegnare = new Set();
+Object.entries(RENDER_SCHEDE).forEach(([t, nome]) => {
+  const vero = window[nome]; if (typeof vero !== 'function') return;
+  window[nome] = function (...a) { const el = $('t-' + t); if (el && el.hidden) { daRidisegnare.add(t); return; } daRidisegnare.delete(t); return vero.apply(this, a); };
+});
+function ridisegnaSeServe(t) { if (daRidisegnare.has(t) && RENDER_SCHEDE[t]) window[RENDER_SCHEDE[t]](); }
 
 // ---------- Avvio ----------
 (function () {
@@ -229,7 +270,9 @@ async function avvio() {
   const sch = sq || LS.get('scheda'); vai(sch && $('t-' + sch) ? sch : 'oggi');
   // App installabile: service worker e avviso di nuova versione
   if ('serviceWorker' in navigator && !ANTEPRIMA && location.protocol !== 'file:') {
-    navigator.serviceWorker.register('sw.js').then(reg => {
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(reg => {
+      reg.update().catch(() => {});
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(() => {}); });
       const avvisa = w => toast('Nuova versione disponibile', { testo: 'Aggiorna', fn: () => w.postMessage('aggiorna') });
       if (reg.waiting && navigator.serviceWorker.controller) avvisa(reg.waiting);
       reg.addEventListener('updatefound', () => {
@@ -242,8 +285,7 @@ async function avvio() {
     navigator.serviceWorker.addEventListener('controllerchange', () => { if (!ricaricata) { ricaricata = true; location.reload(); } });
     navigator.serviceWorker.addEventListener('message', e => { if (e.data && e.data.scheda) vai(e.data.scheda); });
   }
-  const rete = () => { $('offline').hidden = navigator.onLine; };
-  addEventListener('online', () => { rete(); ricarica(); }); addEventListener('offline', rete); rete();
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && G && ST && ST.modo === 'supabase' && navigator.onLine) ricarica(); });
+  addEventListener('online', () => { if (G) sincronizza(); else aggiornaOffline(); }); addEventListener('offline', aggiornaOffline); aggiornaOffline();
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && G && ST && ST.modo === 'supabase' && navigator.onLine) sincronizza(); });
   avvio();
 })();

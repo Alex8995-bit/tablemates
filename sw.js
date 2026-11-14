@@ -1,10 +1,10 @@
 // Service worker di Tablemates: apre l'app anche senza rete, la aggiorna e mostra le notifiche ad app chiusa.
 // Quando cambi i file, aumenta il numero di VERSIONE: i dispositivi scaricheranno la nuova versione.
-const VERSIONE = 'tablemates-9.8';
+const VERSIONE = 'tablemates-10.0';
 const FILE = [
   './', 'index.html', 'app.css', 'config.js', 'manifest.webmanifest',
   'supabase.js', 'pdf.min.js', 'pdf.worker.min.js', 'manrope-latin-wght-normal.woff2', 'manrope-latin-ext-wght-normal.woff2',
-  'util.js', 'icone.js', 'sicurezza.js', 'conti-calc.js', 'store.js', 'ai.js', 'lettore.js', 'notifiche.js', 'oggi.js', 'insieme.js', 'piano.js', 'dieta.js', 'cuoco.js', 'scorri.js', 'agenda.js', 'ricetta.js', 'spesa.js', 'conti.js', 'chat.js', 'gruppo.js', 'imp.js', 'app.js',
+  'util.js', 'icone.js', 'emoji.js', 'emoji-dati.js', 'sicurezza.js', 'conti-calc.js', 'store.js', 'ai.js', 'lettore.js', 'notifiche.js', 'oggi.js', 'insieme.js', 'piano.js', 'dieta.js', 'cuoco.js', 'scorri.js', 'agenda.js', 'ricetta.js', 'spesa.js', 'conti.js', 'chat.js', 'gruppo.js', 'imp.js', 'app.js',
   'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png', 'favicon-32.png'
 ];
 self.addEventListener('install', e => {
@@ -17,14 +17,16 @@ self.addEventListener('message', e => { if (e.data === 'aggiorna') self.skipWait
 self.addEventListener('fetch', e => {
   const r = e.request, u = new URL(r.url);
   if (r.method !== 'GET' || u.origin !== location.origin) return; // server, IA e cambi valuta: sempre dalla rete
+  // L'app si apre dalla copia sul telefono: subito, anche senza rete. Gli aggiornamenti arrivano tutti insieme
+  // con una nuova VERSIONE (si scaricano in sottofondo e l'app si ricarica da sola), così file vecchi e nuovi non si mescolano.
   if (r.mode === 'navigate') {
-    e.respondWith(fetch(r).then(res => { const c = res.clone(); caches.open(VERSIONE).then(x => x.put('index.html', c)); return res; })
-      .catch(() => caches.match('index.html')));
+    e.respondWith(caches.open(VERSIONE).then(c => c.match('index.html')).then(hit => hit || fetch(r)).catch(() => caches.match('index.html')));
     return;
   }
-  // prima la rete (sempre l'ultima versione, così i file non si mescolano tra vecchi e nuovi); senza rete, la copia salvata
-  e.respondWith(fetch(r, { cache: 'no-cache' }).then(res => { if (res.ok) { const c = res.clone(); caches.open(VERSIONE).then(x => x.put(r, c)); } return res; })
-    .catch(() => caches.match(r, { ignoreSearch: true })));
+  e.respondWith(caches.open(VERSIONE).then(c => c.match(r, { ignoreSearch: true })).then(hit => hit || fetch(r).then(res => {
+    if (res.ok) { const copia = res.clone(); caches.open(VERSIONE).then(x => x.put(r, copia)); }
+    return res;
+  })));
 });
 // Notifica arrivata dal server (funzione "notifica" su Supabase)
 self.addEventListener('push', e => {

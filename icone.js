@@ -89,6 +89,8 @@ const COLORI_AV = [['var(--av1)', 'var(--av1-tx)'], ['#F4B266', '#4A2A05'], ['#E
 function avatar(p, i, cls = '') {
   const c = COLORI_AV[(i < 0 ? 0 : i) % COLORI_AV.length];
   const ini = String(p?.nome || '?').trim().slice(0, 1).toUpperCase();
+  const foto = p && typeof D !== 'undefined' && D.stato && D.stato['foto:' + p.id];
+  if (foto && /^data:image\//.test(foto)) return `<span class="av av-foto ${cls}" style="background-image:url('${foto}')" aria-hidden="true"></span>`;
   return `<span class="av ${cls}" style="background:${c[0]};color:${c[1]}" aria-hidden="true">${esc(ini)}</span>`;
 }
 // Icona e colore di una voce di conto, dal nome (Utenze → fulmine, ecc.)

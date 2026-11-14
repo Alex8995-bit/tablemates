@@ -43,16 +43,18 @@ const riguardaMe = e => !e.chi || !e.chi.length || e.chi.includes(IO);
 function quandoTesto(e, d) {
   const dd = daIso(d), oggi = oggiISO(), dom = isoDi(new Date(Date.now() + 864e5));
   const g = d === oggi ? 'Oggi' : d === dom ? 'Domani' : dd.toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' }).replace(/^./, c => c.toUpperCase());
-  return e.tipo === 'scadenza' || e.tutto_giorno ? g : g + ' · ' + (e.inizio || '') + (e.fine ? '–' + e.fine : '');
+  return e.tipo === 'scadenza' || e.tutto_giorno ? g : g + ' · ' + (e.inizio || '') + (e.fine ? '–' + e.fine + (dopoMezzanotte(e) ? ' del giorno dopo' : '') : '');
 }
+// 20:00–01:30: l'appuntamento finisce il giorno dopo
+const dopoMezzanotte = e => !!(e && e.inizio && e.fine && e.fine < e.inizio);
 const euro = v => v ? eur(Math.round(parseFloat(String(v).replace(',', '.')) * 100) || 0) : '';
 
 function rigaAgenda(e, d, opz = {}) {
   const pagata = e.tipo === 'scadenza' && e.fatti && e.fatti[d], scaduta = e.tipo === 'scadenza' && !pagata && d < oggiISO();
-  const ora = e.tipo === 'scadenza' ? ic('scontrino', 18, 2) : e.tutto_giorno ? '<small>Tutto<br>il giorno</small>' : `<b class="num">${esc(e.inizio || '')}</b>${e.fine ? `<small class="num">${esc(e.fine)}</small>` : ''}`;
+  const ora = e.tipo === 'scadenza' ? ic('scontrino', 18, 2) : e.tutto_giorno ? '<small>Tutto<br>il giorno</small>' : `<b class="num">${esc(e.inizio || '')}</b>${e.fine ? `<small class="num">${esc(e.fine)}${dopoMezzanotte(e) ? ' +1' : ''}</small>` : ''}`;
   return `<button type="button" class="ag-riga ${e.tipo === 'scadenza' ? 'scad' : ''} ${pagata ? 'fatta' : ''}" data-ev="${e.id}" data-d="${d}">
     <span class="ag-ora">${ora}</span>
-    <span class="ag-t"><b>${esc(e.titolo)}</b><small>${opz.conData ? esc(quandoTesto(e, d)) + ' · ' : ''}${e.luogo ? esc(e.luogo) + ' · ' : ''}${esc(perChi(e))}${e.ripeti && e.ripeti !== 'no' ? ' · ' + esc((RIPETI.find(r => r[0] === e.ripeti) || [])[1] || '').toLowerCase() : ''}</small></span>
+    <span class="ag-t"><b>${EMO.html(e.titolo, e.tipo === 'scadenza' ? '🧾' : '📅', 'e:' + e.id)}${esc(e.titolo)}</b><small>${opz.conData ? esc(quandoTesto(e, d)) + ' · ' : ''}${e.luogo ? esc(e.luogo) + ' · ' : ''}${esc(perChi(e))}${e.ripeti && e.ripeti !== 'no' ? ' · ' + esc((RIPETI.find(r => r[0] === e.ripeti) || [])[1] || '').toLowerCase() : ''}</small></span>
     ${e.tipo === 'scadenza' ? `<span class="ag-imp">${e.importo ? `<b class="num">${esc(euro(e.importo))}</b>` : ''}<small class="${scaduta ? 'tardi' : ''}">${pagata ? 'Pagata' : scaduta ? 'Scaduta' : ''}</small></span>` : ''}
   </button>`;
 }
@@ -82,6 +84,7 @@ function renderAgenda() {
     <section style="display:flex;flex-direction:column;gap:12px"><div class="sez-riga"><h2 class="sez">${esc(titoloGiorno)}</h2><button type="button" class="link" id="agAgg">${ic('piu', 16, 2.2)}Aggiungi</button></div>
       ${delGiorno.length ? `<div class="sc">${delGiorno.map(e => rigaAgenda(e, agendaGiorno)).join('')}</div>` : `<div class="card vuoto" style="padding:18px">Niente in programma.</div>`}</section>
     ${sc.length ? `<section style="display:flex;flex-direction:column;gap:12px"><h2 class="sez">Prossime scadenze</h2><div class="sc">${sc.slice(0, 8).map(x => rigaAgenda(x.e, x.d, { conData: true })).join('')}</div></section>` : ''}
+    ${htmlStatoPromemoria()}
     <button class="fab2" id="agFab" type="button" aria-label="Nuovo appuntamento o scadenza">${ic('piu', 22, 2.2)}Nuovo</button><div style="height:72px"></div>`;
   $('agP').onclick = () => { agendaMese = new Date(y, m - 1, 1); renderAgenda(); };
   $('agN').onclick = () => { agendaMese = new Date(y, m + 1, 1); renderAgenda(); };
@@ -90,6 +93,7 @@ function renderAgenda() {
   el.querySelectorAll('[data-ev]').forEach(b => b.onclick = () => apriVoceAgenda(b.dataset.ev, b.dataset.d));
   $('agAgg').onclick = () => formAgenda(null, { data: agendaGiorno });
   $('agFab').onclick = () => formAgenda(null, { data: agendaGiorno });
+  collegaStatoPromemoria(el);
   scorriElimina([...el.querySelectorAll('.sc > .ag-riga')], (r, ripristina) => eliminaVoceAgenda(r.dataset.ev, ripristina));
 }
 
@@ -98,7 +102,7 @@ function apriVoceAgenda(id, d) {
   const e = eventi().find(x => x.id === id); if (!e) return;
   if (e.tipo !== 'scadenza') return formAgenda(e);
   const pagata = e.fatti && e.fatti[d];
-  foglio(`<h2>${esc(e.titolo)}</h2><p class="q" style="margin:4px 0 12px;line-height:1.5">Scadenza di ${esc(quandoTesto(e, d).toLowerCase())}${e.importo ? ' · ' + esc(euro(e.importo)) : ''}${e.note ? '<br>' + esc(e.note) : ''}</p>
+  foglio(`<h2>${EMO.html(e.titolo, '🧾', 'e:' + e.id)}${esc(e.titolo)}</h2><p class="q" style="margin:4px 0 12px;line-height:1.5">Scadenza di ${esc(quandoTesto(e, d).toLowerCase())}${e.importo ? ' · ' + esc(euro(e.importo)) : ''}${e.note ? '<br>' + esc(e.note) : ''}</p>
     <button class="btn" id="avP" type="button">${ic('spunta', 18, 2.2)}${pagata ? 'Segna come da pagare' : 'Segna come pagata'}</button>
     <button class="btn ghost" id="avM" type="button">${ic('matita', 18)}Modifica</button>`);
   $('avM').onclick = () => { chiudi(); formAgenda(e); };
@@ -119,19 +123,20 @@ function eliminaVoceAgenda(id, ripristina) {
 }
 
 function formAgenda(e, preset = {}) {
-  const nuovo = !e;
-  const f = e ? JSON.parse(JSON.stringify(e)) : Object.assign({ tipo: 'evento', titolo: '', data: oggiISO(), tutto_giorno: false, inizio: '20:00', fine: '', luogo: '', chi: [], promemoria: '60', ripeti: 'no', importo: '', categoria: '', note: '' }, preset);
+  const nuovo = !e; let emo;
+  const f = e ? JSON.parse(JSON.stringify(e)) : Object.assign({ id: uuid(), tipo: 'evento', titolo: '', data: oggiISO(), tutto_giorno: false, inizio: '20:00', fine: '', luogo: '', chi: [], promemoria: '60', ripeti: 'no', importo: '', categoria: '', note: '' }, preset);
   const disegna = () => {
     const sc = f.tipo === 'scadenza', opzP = sc ? PROMEMORIA_SCADENZA : PROMEMORIA_EVENTO, tutti = !f.chi || !f.chi.length;
     if (!opzP.some(o => o[0] === String(f.promemoria ?? ''))) f.promemoria = sc ? '1440' : '60';
     foglio(`<h2>${nuovo ? (sc ? 'Nuova scadenza' : 'Nuovo appuntamento') : 'Modifica'}</h2>
       <nav class="seg" aria-label="Tipo" style="margin:6px 0 4px">${[['evento', 'Appuntamento'], ['scadenza', 'Scadenza']].map(([k, n]) => f.tipo === k ? `<span aria-current="page">${n}</span>` : `<button type="button" data-tp="${k}">${n}</button>`).join('')}</nav>
       ${sc ? `<div class="chips" style="margin:8px -20px 0;padding:2px 20px 4px">${CATEGORIE_SCADENZA.map(c => `<button type="button" class="chip ${f.categoria === c ? 'on' : ''}" data-cat="${esc(c)}" style="padding:0 14px">${esc(c)}</button>`).join('')}</div>` : ''}
-      <label class="lb" for="agT">${sc ? 'Che cosa scade' : 'Che cosa'}</label><input id="agT" value="${esc(f.titolo)}" placeholder="${sc ? 'Es. Rata del mutuo' : 'Es. Cena dai genitori'}" maxlength="80">
+      <label class="lb" for="agT">${sc ? 'Che cosa scade' : 'Che cosa'}</label><div class="riga" style="gap:8px"><button type="button" class="emo-b" id="agEm" aria-label="Cambia emoji">${emo !== undefined ? (emo.e || EMO.scegli(f.titolo) || (sc ? '🧾' : '📅')) : EMO.per(f.titolo, sc ? '🧾' : '📅', 'e:' + f.id)}</button><input id="agT" value="${esc(f.titolo)}" placeholder="${sc ? 'Es. Rata del mutuo' : 'Es. Cena dai genitori'}" maxlength="80" style="flex:1;min-width:0"></div>
       <div class="coppia"><div><label class="lb" for="agD">${sc ? 'Scade il' : 'Giorno'}</label><input id="agD" type="date" value="${esc(f.data)}"></div>
       ${sc ? `<div><label class="lb" for="agI">Importo (facoltativo)</label><input id="agI" inputmode="decimal" value="${esc(f.importo)}" placeholder="0,00"></div>` : ''}</div>
       ${sc ? '' : `<label class="riga-check"><input type="checkbox" id="agTG" ${f.tutto_giorno ? 'checked' : ''}><span>Tutto il giorno</span></label>
       <div class="coppia" id="agOre" ${f.tutto_giorno ? 'hidden' : ''}><div><label class="lb" for="agS">Dalle</label><input id="agS" type="time" value="${esc(f.inizio)}"></div><div><label class="lb" for="agE">Alle (facoltativo)</label><input id="agE" type="time" value="${esc(f.fine)}"></div></div>
+      <p class="by" id="agDopo" style="margin:2px 0 0" ${dopoMezzanotte(f) ? '' : 'hidden'}>Finisce il giorno dopo, alle ${esc(f.fine)}.</p>
       <label class="lb" for="agL">Dove (facoltativo)</label><input id="agL" value="${esc(f.luogo)}" placeholder="Es. Ristorante Da Mario" maxlength="80">`}
       <label class="lb">Per chi</label><div class="chips" style="margin:0 -20px;padding:2px 20px 4px"><button type="button" class="chip ${tutti ? 'on' : ''}" data-chi="" style="padding:0 14px">Tutto il gruppo</button>${D.partecipanti.map((p, i) => `<button type="button" class="chip ${!tutti && f.chi.includes(p.id) ? 'on' : ''}" data-chi="${p.id}">${avatar(p, i, 'p')}${esc(p.id === IO ? 'Tu' : p.nome)}</button>`).join('')}</div>
       <p class="by" style="margin:4px 0 0">Il promemoria arriva ${tutti ? 'a tutto il gruppo' : 'solo alle persone scelte'}.</p>
@@ -149,18 +154,20 @@ function formAgenda(e, preset = {}) {
     $('pop').querySelectorAll('[data-tp]').forEach(b => b.onclick = () => { leggi(); f.tipo = b.dataset.tp; disegna(); });
     $('pop').querySelectorAll('[data-cat]').forEach(b => b.onclick = () => { leggi(); const prima = f.categoria; f.categoria = f.categoria === b.dataset.cat ? '' : b.dataset.cat; if (!f.titolo || f.titolo === prima) f.titolo = f.categoria; disegna(); });
     $('pop').querySelectorAll('[data-chi]').forEach(b => b.onclick = () => { leggi(); const p = b.dataset.chi; if (!p) f.chi = []; else { f.chi = (f.chi || []).includes(p) ? f.chi.filter(x => x !== p) : (f.chi || []).concat(p); if (f.chi.length === D.partecipanti.length) f.chi = []; } disegna(); });
-    if ($('agTG')) $('agTG').onchange = () => { $('agOre').hidden = $('agTG').checked; };
-    $('agSv').onclick = () => { leggi(); salvaVoceAgenda(f, nuovo); };
+    if ($('agTG')) $('agTG').onchange = () => { $('agOre').hidden = $('agTG').checked; $('agDopo').hidden = $('agTG').checked || !dopoMezzanotte({ inizio: $('agS').value, fine: $('agE').value }); };
+    if ($('agE')) $('agE').oninput = $('agS').oninput = () => { const x = { inizio: $('agS').value, fine: $('agE').value }; $('agDopo').hidden = !dopoMezzanotte(x); $('agDopo').textContent = 'Finisce il giorno dopo, alle ' + x.fine + '.'; };
+    $('agSv').onclick = () => { leggi(); salvaVoceAgenda(f, nuovo).then(ok => { if (ok !== false && emo !== undefined) salvaEmoji(emo.regola ? EMO.chiaveTesto(f.titolo) : 'e:' + f.id, emo.e); }); };
+    $('agEm').onclick = () => { leggi(); scegliEmoji({ testo: f.titolo, chiave: 'e:' + f.id, auto: EMO.scegli(f.titolo) || (f.tipo === 'scadenza' ? '🧾' : '📅'), scelta: (x, regola) => { emo = { e: x, regola }; disegna(); } }); };
     if ($('agDel')) $('agDel').onclick = () => { chiudi(); eliminaVoceAgenda(e.id); };
   };
   disegna();
 }
 async function salvaVoceAgenda(f, nuovo) {
-  if (!f.titolo) return toast(f.tipo === 'scadenza' ? 'Scrivi che cosa scade' : 'Scrivi di che cosa si tratta');
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(f.data)) return toast('Scegli il giorno');
-  if (f.tipo === 'evento' && !f.tutto_giorno && !f.inizio) return toast('Scegli l\'ora di inizio, oppure "Tutto il giorno"');
-  if (f.tipo === 'evento' && !f.tutto_giorno && f.fine && f.fine <= f.inizio) return toast('L\'ora di fine deve essere dopo l\'inizio');
-  if (f.importo && isNaN(parseFloat(String(f.importo).replace(',', '.')))) return toast('Importo non valido');
+  if (!f.titolo) return !!toast(f.tipo === 'scadenza' ? 'Scrivi che cosa scade' : 'Scrivi di che cosa si tratta');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(f.data)) return !!toast('Scegli il giorno');
+  if (f.tipo === 'evento' && !f.tutto_giorno && !f.inizio) return !!toast('Scegli l\'ora di inizio, oppure "Tutto il giorno"');
+  if (f.tipo === 'evento' && !f.tutto_giorno && f.fine && f.fine === f.inizio) return !!toast('L\'ora di fine è uguale all\'inizio');
+  if (f.importo && isNaN(parseFloat(String(f.importo).replace(',', '.')))) return !!toast('Importo non valido');
   const id = f.id || uuid(), v = { ...f }; delete v.id;
   if (v.tipo === 'scadenza') { v.tutto_giorno = true; v.inizio = ''; v.fine = ''; v.luogo = ''; }
   v.promemoria = v.promemoria === '' ? null : +v.promemoria;
@@ -181,4 +188,35 @@ function htmlAgendaOggi() {
   const l = og.concat(sc).slice(0, 4);
   if (!l.length) return '';
   return `<section style="display:flex;flex-direction:column;gap:12px"><div class="sez-riga"><h2 class="sez">In agenda</h2><button type="button" class="link" id="ogAg">Apri l'agenda</button></div><div class="sc">${l.map(x => rigaAgenda(x.e, x.d, { conData: x.d !== oggi })).join('')}</div></section>`;
+}
+
+// ---------- Perché un promemoria non arriva? ----------
+// Tre cose devono funzionare: le notifiche su questo telefono, il server che controlla l'agenda ogni 5 minuti, e la funzione aggiornata.
+function htmlStatoPromemoria() {
+  if (!G || !ST || ST.modo !== 'supabase' || ANTEPRIMA) return '';
+  const tel = typeof notificheAttive === 'function' && notificheAttive();
+  const t = Number((D.stato.cron_ultimo || {}).t) || 0, min = t ? Math.round((Date.now() - t) / 60000) : null;
+  const server = min !== null && min <= 40;
+  const fa = min === null ? 'mai' : min < 2 ? 'adesso' : min < 60 ? min + ' minuti fa' : Math.round(min / 60) + ' ore fa';
+  const ok = tel && server;
+  return `<details class="card ag-stato" ${ok ? '' : 'open'}><summary><span>${ok ? '✅' : '⚠️'}</span><b>Promemoria ${ok ? 'attivi' : 'da sistemare'}</b>${ic('giu', 18, 2)}</summary>
+    <div class="ag-stato-c">
+      <p>${tel ? '✅ Notifiche attive su questo telefono.' : '❌ Notifiche spente su questo telefono.'}${!tel && ios() && !installata() ? ' Su iPhone arrivano solo con l\'app aggiunta alla schermata Home.' : ''}</p>
+      <p>${server ? '✅' : '❌'} Il server controlla l'agenda: ultimo controllo ${esc(fa)}.${server ? '' : ' Se resta così, in Supabase va eseguito di nuovo <b>promemoria.sql</b> e la funzione <b>notifica</b> va pubblicata con il codice nuovo (vedi LEGGIMI).'}</p>
+      <div class="riga" style="gap:8px;flex-wrap:wrap">${tel ? '' : '<button type="button" class="btn" id="agNot" style="flex:1;margin:0">Attiva notifiche</button>'}<button type="button" class="btn bordo" id="agProva" style="flex:1;margin:0">Manda una prova</button></div>
+      <p>📅 In più puoi avere l'agenda nel Calendario del telefono, con avvisi che arrivano anche senza le notifiche dell'app.</p><button type="button" class="btn ghost" id="agCal" style="margin:0">Aggiungi al calendario del telefono</button>
+    </div></details>`;
+}
+function collegaStatoPromemoria(el) {
+  if (el.querySelector('#agNot')) el.querySelector('#agNot').onclick = () => attivaNotifiche();
+  if (el.querySelector('#agCal')) el.querySelector('#agCal').onclick = () => foglioCollega('calendario');
+  if (el.querySelector('#agProva')) el.querySelector('#agProva').onclick = async () => {
+    const b = el.querySelector('#agProva'); b.disabled = true;
+    try {
+      if (notificheAttive() && pushPossibile()) await iscriviDispositivo().catch(() => {});
+      const r = await ST.provaNotifica(G.id);
+      toast(r.inviate ? 'Prova inviata: dovrebbe arrivare tra pochi secondi ✓' : r.dispositivi ? 'Il server non è riuscito a mandarla: riattiva le notifiche su questo telefono' : 'Nessun telefono iscritto alle notifiche: tocca "Attiva notifiche"');
+    } catch (e) { toast(e.message); }
+    b.disabled = false;
+  };
 }

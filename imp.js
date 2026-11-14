@@ -22,6 +22,9 @@ function renderImp() {
     ${sw('conti', 'Promemoria conti', 'Quando qualcuno ti ricorda un conto, e una volta a settimana se c\'è un saldo')}
     ${sw('agenda', 'Agenda', 'Promemoria di appuntamenti e scadenze che ti riguardano')}
     ${!ANTEPRIMA && G ? `<button type="button" id="imNot">${ic('campana', 20, 1.8)}<span class="t"><b>Avvisi sul telefono</b><small>${notificheAttive() ? (pushPossibile() ? 'Attivi anche ad app chiusa' : 'Attivi mentre l\'app è aperta: per averli ad app chiusa va completata la configurazione del server') : LS.get('notifiche') === 'no' ? 'Spenti su questo telefono' : ios() && !installata() ? 'Su iPhone servono con l\'app nella schermata Home' : 'Permetti all\'app di mostrare gli avvisi'}</small></span><span class="v ${notificheAttive() ? 'on' : ''}">${notificheAttive() ? 'Attivi' : 'Attiva'}</span>${ic('avanti', 18, 2)}</button>` : ''}</div></section>`;
+  if (server && G && IO) h += `<section aria-labelledby="colleg" style="display:flex;flex-direction:column;gap:6px"><h2 id="colleg" class="sez" style="margin:0">Calendario e Siri</h2><div class="menu-righe">
+    <button type="button" id="imCal">${ic('calendario', 20, 1.8)}<span class="t"><b>Calendario del telefono</b><small>L'agenda compare nel Calendario dell'iPhone, con gli avvisi</small></span>${ic('avanti', 18, 2)}</button>
+    <button type="button" id="imSiri">${ic('microfono', 20, 1.8)}<span class="t"><b>Siri e Comandi Rapidi</b><small>"Ehi Siri, cosa mangio?", "aggiungi alla spesa"…</small></span>${ic('avanti', 18, 2)}</button></div></section>`;
   h += `<section aria-labelledby="altro" style="display:flex;flex-direction:column;gap:6px"><h2 id="altro" class="sez" style="margin:0">App</h2><div class="menu-righe">
     ${!ANTEPRIMA ? `<button type="button" id="imIA"><span class="t"><b>Intelligenza artificiale</b></span><span class="v">${ia.prov === 'nessuna' ? 'Nessuna' : esc(NOMI_IA[ia.prov] || ia.prov) + (ia.condivisa && ia.prov !== 'server' ? ' · del gruppo' : '')}</span>${ic('avanti', 18, 2)}</button>` : ''}
     ${!(ANTEPRIMA && !cifreOk) ? `<button type="button" id="imPin"><span class="t"><b>PIN e Face ID</b></span><span class="v ${pinImpostato() ? 'on' : ''}">${pinImpostato() ? 'Attivo' : 'Non attivo'}</span>${ic('avanti', 18, 2)}</button>` : ''}
@@ -40,11 +43,13 @@ function renderImp() {
   if ($('imPin')) $('imPin').onclick = foglioSicurezza;
   $('imPiano').onclick = () => { personaPiano = IO || personaPiano; vai('piano'); renderPiano(); $('pdf').click(); };
   $('imOrari').onclick = foglioOrari;
+  if ($('imCal')) $('imCal').onclick = () => foglioCollega('calendario');
+  if ($('imSiri')) $('imSiri').onclick = () => foglioCollega('siri');
   if ($('imInst')) $('imInst').onclick = async () => {
     if (installaEvt) { installaEvt.prompt(); await installaEvt.userChoice.catch(() => {}); installaEvt = null; return renderImp(); }
     foglio(`<h2>Installa l'app</h2><p class="q" style="line-height:1.5">${ios() ? 'Su iPhone e iPad: apri questa pagina in Safari, tocca Condividi e poi <b>Aggiungi alla schermata Home</b>.' : 'Su PC con Chrome o Edge: clicca l\'icona di installazione a destra nella barra degli indirizzi. Su Android: menu ⋮ → <b>Installa app</b>.'}</p>`);
   };
-  if ($('esci')) $('esci').onclick = () => conferma('Uscire dall\'account?', 'Su questo dispositivo dovrai accedere di nuovo con email e password.', 'Esci', async () => { await disattivaNotifiche().catch(() => {}); await ST.esci(); SS.del('chi'); LS.del('gruppo'); location.reload(); }, true);
+  if ($('esci')) $('esci').onclick = () => conferma('Uscire dall\'account?', 'Su questo dispositivo dovrai accedere di nuovo con email e password.', 'Esci', async () => { await disattivaNotifiche().catch(() => {}); await ST.esci(); SS.del('chi'); LS.del('chi'); LS.del('utente'); LS.del('gruppo'); location.reload(); }, true);
   if ($('coll')) $('coll').onclick = () => conferma('Collegare il server?', 'I dati salvati solo su questo dispositivo non vengono spostati: nel nuovo spazio condiviso ricominci da capo.', 'Continua', () => { LS.del('modo'); LS.del('gruppo'); G = null; benvenuto(); });
 }
 
@@ -53,7 +58,7 @@ function foglioAccount() {
   foglio(`<h2>Account</h2><p class="q" style="margin:0 0 12px">${server ? 'Accesso con ' + esc(LS.get('email') || 'email') : 'Solo su questo dispositivo'} · nome: ${esc(CHI || '—')}</p>
     <div class="menu-righe"><button type="button" id="acN">${ic('matita', 20, 1.8)}<span class="t"><b>Cambia nome</b><small>Le tue modifiche sono firmate con questo nome</small></span>${ic('avanti', 18, 2)}</button>
     ${server && !ANTEPRIMA ? `<button type="button" id="pwBtn">${ic('lucchetto', 20, 1.8)}<span class="t"><b>${LS.get('pw') ? 'Cambia password' : 'Imposta una password'}</b><small>Per rientrare senza aspettare il codice via email</small></span>${ic('avanti', 18, 2)}</button>` : ''}</div>`);
-  $('acN').onclick = () => chiedi('Il tuo nome', 'Le tue modifiche saranno firmate con questo nome.', CHI, 'Salva', n => { n = n.trim(); if (!n) return; CHI = n; SS.set('chi', n); const nomi = LS.getJ('nomi', []); if (!nomi.includes(n)) { nomi.push(n); LS.setJ('nomi', nomi); } renderImp(); });
+  $('acN').onclick = () => chiedi('Il tuo nome', 'Le tue modifiche saranno firmate con questo nome.', CHI, 'Salva', n => { n = n.trim(); if (!n) return; CHI = n; SS.set('chi', n); LS.set('chi', n); const nomi = LS.getJ('nomi', []); if (!nomi.includes(n)) { nomi.push(n); LS.setJ('nomi', nomi); } renderImp(); });
   if ($('pwBtn')) $('pwBtn').onclick = async () => { await formPassword(LS.get('pw') ? 'Nuova password' : 'Scegli una password'); renderImp(); };
 }
 function foglioSicurezza() { foglio(`<div id="sicFoglio">${htmlSicurezza().replace('<h2 class="sez">Sicurezza</h2>', '<h2>PIN e Face ID</h2>')}</div>`); legaSicurezza(); }
@@ -148,4 +153,61 @@ function modificaGruppo() {
     chiudi(); G.nome = n; G.valuta = v; LS.set('gnome', n); LS.set('gvaluta', v); renderTutto();
     await scrivi(() => ST.aggiornaGruppo(G.id, { nome: n, valuta: v }));
   };
+}
+
+// ---------- Calendario del telefono e Siri (funzione "collega" su Supabase) ----------
+// Ogni persona ha un link personale con un codice segreto: il calendario dell'iPhone lo legge da solo ogni tanto,
+// i Comandi Rapidi lo usano per far rispondere Siri. Il codice si può rigenerare: il vecchio smette di funzionare.
+const urlFunzione = nome => S('sbUrl').replace(/\/+$/, '') + '/functions/v1/' + nome;
+const mioPonte = () => { if (!IO) return ''; const k = Object.keys(D.stato).find(k => k.startsWith('ponte:') && D.stato[k] && D.stato[k].pid === IO); return k ? k.slice(6) : ''; };
+async function creaPonte(rigenera) {
+  const vecchio = mioPonte(); if (vecchio && !rigenera) return vecchio;
+  const b = new Uint8Array(30); crypto.getRandomValues(b);
+  const t = btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const v = { pid: IO, creato: new Date().toISOString() };
+  if (!(await scrivi(() => ST.salvaStato(G.id, 'ponte:' + t, v)))) return '';
+  D.stato['ponte:' + t] = v;
+  if (vecchio) { D.stato['ponte:' + vecchio] = null; await scrivi(() => ST.salvaStato(G.id, 'ponte:' + vecchio, null)); }
+  return t;
+}
+async function copia(t, cosa) {
+  try { await navigator.clipboard.writeText(t); toast((cosa || 'Link') + ' copiato ✓'); }
+  catch (e) { chiedi('Copia', 'Tieni premuto sul testo e scegli Copia.', t, 'Fatto', () => {}); }
+}
+const SCORCIATOIE = [
+  ['Cosa mangio?', 'a=oggi', '“Ehi Siri, cosa mangio”: i prossimi pasti di oggi e l\'agenda. Aggiungi &q=cena per un pasto preciso.'],
+  ['Cosa mangio domani?', 'a=domani', 'Tutti i pasti e gli impegni di domani.'],
+  ['Aggiungi alla spesa', 'a=spesa&testo=', 'Nel comando: «Chiedi testo» (Cosa aggiungo?) e metti la risposta dopo testo=. Puoi dire più cose: «latte, pane e uova».'],
+  ['Cosa c\'è da comprare?', 'a=lista', 'Legge la lista della spesa.'],
+  ['Nuovo appuntamento', 'a=appuntamento&titolo=…&data=…&ora=…', 'Chiedi testo per il titolo, poi «Chiedi data e ora» e «Formatta data» con aaaa-MM-gg per data= e HH:mm per ora=. Aggiungi &solo=1 se riguarda solo te.'],
+  ['Ho pagato…', 'a=pagato&titolo=…&importo=…', 'Una spesa pagata da te, divisa in parti uguali con tutto il gruppo, nel conto Casa.']
+];
+async function foglioCollega(cosa) {
+  if (!ST || ST.modo !== 'supabase' || !IO) return toast('Serve il server Supabase e una persona del gruppo');
+  const t = mioPonte();
+  if (!t) {
+    foglio(`<h2>${cosa === 'siri' ? 'Siri e Comandi Rapidi' : 'Calendario del telefono'}</h2><p class="q" style="line-height:1.5;margin:4px 0 12px">Serve un link personale, con un codice segreto: non mandarlo ad altri, perché chi lo ha vede la tua agenda e può aggiungere cose alla spesa. Puoi cambiarlo quando vuoi.<br><br>Prima, in Supabase va pubblicata la funzione <b>collega</b> (LEGGIMI, passo 11).</p>
+      <button class="btn" id="cgC" type="button">Crea il mio link</button>`);
+    $('cgC').onclick = async () => { $('cgC').disabled = true; if (await creaPonte()) foglioCollega(cosa); else $('cgC').disabled = false; };
+    return;
+  }
+  const base = urlFunzione('collega') + '?t=' + t, ics = base + '&f=ics', webcal = ics.replace(/^https?:/, 'webcal:');
+  const cal = `<h2>Calendario del telefono</h2><p class="q" style="line-height:1.5;margin:4px 0 12px">L'agenda di Tablemates (appuntamenti e scadenze che ti riguardano) compare nel Calendario, con gli avvisi all'orario scelto. Si aggiorna da sola; quello che aggiungi nel Calendario dell'iPhone però non torna in Tablemates.</p>
+    <a class="btn" id="cgW" href="${esc(webcal)}">${ic('calendario', 18)}Aggiungi al calendario</a>
+    <button class="btn ghost" id="cgI" type="button">${ic('link', 18)}Copia il link (Google Calendar, Outlook)</button>
+    <p class="by" style="margin:8px 0 0;line-height:1.5">Se il tasto non apre il Calendario: Impostazioni dell'iPhone → Calendario → Account → Aggiungi account → Altro → <b>Aggiungi calendario iscritto</b> e incolla il link. Su Google Calendar: Altri calendari → Da URL.</p>`;
+  const siri = `<h2>Siri e Comandi Rapidi</h2><p class="q" style="line-height:1.5;margin:4px 0 10px">Nell'app <b>Comandi Rapidi</b> crea un comando con l'azione «Ottieni contenuti dell'URL» e il link qui sotto, poi «Pronuncia testo» con il risultato. Il nome del comando è la frase da dire a Siri.</p>
+    <div class="menu-righe">${SCORCIATOIE.map(([n, q, d], i) => `<button type="button" data-cs="${i}"><span class="t"><b>${esc(n)}</b><small>${esc(d)}</small></span>${ic('link', 18, 2)}</button>`).join('')}</div>`;
+  foglio(`${cosa === 'siri' ? siri : cal}
+    <button class="btn bordo" id="cgP" type="button" style="margin-top:12px">Prova il collegamento</button>
+    <button class="link-txt rosso" id="cgR" type="button" style="margin-top:4px">Crea un nuovo link (il vecchio smette di funzionare)</button>`);
+  if ($('cgI')) $('cgI').onclick = () => copia(ics);
+  $('pop').querySelectorAll('[data-cs]').forEach(b => b.onclick = () => copia(base + '&' + SCORCIATOIE[+b.dataset.cs][1], 'Link del comando'));
+  $('cgP').onclick = async () => {
+    $('cgP').disabled = true;
+    try { const r = await fetch(base + '&a=prova'), x = await r.text(); toast(r.ok ? x : r.status === 401 && /JWT|jwt|Authorization/.test(x) ? 'Togli la spunta "Verify JWT" alla funzione collega in Supabase' : r.status === 404 ? 'La funzione "collega" non è ancora pubblicata su Supabase' : x); }
+    catch (e) { toast('La funzione "collega" non risponde: è pubblicata su Supabase?'); }
+    $('cgP').disabled = false;
+  };
+  $('cgR').onclick = () => conferma('Creare un nuovo link?', 'Il calendario iscritto e i comandi di Siri con il link vecchio smetteranno di funzionare: andranno aggiornati.', 'Crea nuovo link', async () => { if (await creaPonte(true)) foglioCollega(cosa); }, true);
 }
