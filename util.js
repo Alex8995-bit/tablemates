@@ -15,7 +15,7 @@ const SS = {
 };
 const S = k => LS.get(k) || (window.CFG && window.CFG[k]) || '';
 const ANTEPRIMA = !!window.ANTEPRIMA;
-window.VERSIONE = '10.4';
+window.VERSIONE = '10.8';
 const NOME_APP = 'Tablemates';
 const REPARTI = ['Frutta e verdura','Carne e pesce','Latticini e uova','Pane e cereali','Dispensa','Surgelati','Bevande','Casa e igiene','Altro'];
 const vibra = () => { try { navigator.vibrate && navigator.vibrate(10); } catch(e){} };
@@ -51,8 +51,8 @@ function chiedi(titolo, testo, valore, siTesto, fn, tipo){
   const ok = () => { const x = v.value; chiudi(); fn(x); };
   $('chS').onclick = ok; v.onkeydown = e => { if (e.key === 'Enter') ok(); };
 }
-// Schede: Oggi, Piano, Spesa, Conti, Gruppo. A tavola, Assistente e Impostazioni si aprono da queste.
-const SCHEDE = ['oggi', 'piano', 'spesa', 'conti', 'agenda', 'gruppo', 'presenze', 'chat', 'imp'];
+// Schede: Oggi, Piano, Comuni, Spesa, Conti, Agenda, Gruppo. A tavola, Assistente e Impostazioni si aprono da queste.
+const SCHEDE = ['oggi', 'piano', 'comuni', 'spesa', 'conti', 'agenda', 'gruppo', 'presenze', 'chat', 'imp'];
 const SCHEDA_NAV = { presenze: 'oggi', chat: 'oggi', imp: 'gruppo' };
 function vai(t){
   if (!SCHEDE.includes(t)) t = 'oggi';

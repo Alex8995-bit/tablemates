@@ -15,19 +15,14 @@ function renderImp() {
   if (ANTEPRIMA) h += '<div class="nota">Questa è l\'anteprima: i dati restano solo in questa pagina. L\'app vera si installa e si sincronizza tra i dispositivi.</div>';
   h += `<button type="button" class="account" id="imAcc">${io ? avatar(io, idxP(IO), 'xl') : `<span class="av xl" style="background:var(--av1);color:var(--av1-tx)">${esc((CHI || '?').slice(0, 1).toUpperCase())}</span>`}<span class="t"><b>${esc(CHI || 'Account')}</b><small>${server ? 'Account e password' : 'Solo su questo dispositivo'}</small></span>${ic('avanti', 18, 2)}</button>`;
   h += `<section aria-labelledby="aspetto" style="display:flex;flex-direction:column;gap:6px"><h2 id="aspetto" class="sez" style="margin:0">Aspetto</h2><div class="seg alto" role="radiogroup" aria-labelledby="aspetto">${TEMI.map(([k, n]) => `<button type="button" role="radio" data-tema="${k}" aria-checked="${t === k}" class="${t === k ? 'on' : ''}">${n}</button>`).join('')}</div></section>`;
-  const sw = (k, label, hint) => `<div><span class="t"><b>${label}</b><small>${hint}</small></span><button type="button" class="switch" role="switch" aria-checked="${!!av[k]}" aria-label="${label}" data-av="${k}"></button></div>`;
+  // Notifiche: una sola voce; dentro si scelgono i tipi di avviso
+  const tipiAv = Object.keys(AVVISI_BASE), nOn = tipiAv.filter(k => av[k]).length;
+  const statoTel = !ANTEPRIMA && G ? (notificheAttive() ? 'attive qui' : notificheSpente() ? 'spente qui' : 'da attivare') : '';
   h += `<section aria-labelledby="notif" style="display:flex;flex-direction:column;gap:6px"><h2 id="notif" class="sez" style="margin:0">Notifiche</h2><div class="menu-righe">
-    ${sw('tavola', 'Pasti e presenze', 'Ci sei a cena? ogni giorno alle 17:00, chi mangia insieme e chi ci sarà')}
-    ${sw('spesa', 'Novità nella spesa', 'Quando qualcuno aggiunge, compra, modifica o toglie un prodotto')}
-    ${sw('conti', 'Conti', 'Nuove spese e rimborsi, modifiche, promemoria di un conto e saldo settimanale')}
-    ${sw('agenda', 'Agenda', 'Nuovi appuntamenti e scadenze, modifiche e promemoria che ti riguardano')}
-    ${sw('piano', 'Piano e dieta', 'Quando qualcuno carica o aggiorna la dieta o prepara i piatti')}
-    ${sw('gruppo', 'Gruppo', 'Quando entra, esce o cambia una persona del gruppo')}
-    ${!ANTEPRIMA && G ? `<button type="button" id="imNot">${ic('campana', 20, 1.8)}<span class="t"><b>Avvisi sul telefono</b><small>${notificheAttive() ? (pushPossibile() ? 'Attivi anche ad app chiusa' : 'Attivi mentre l\'app è aperta: per averli ad app chiusa va completata la configurazione del server') : notificheSpente() ? 'Spenti su questo telefono' : ios() && !installata() ? 'Su iPhone servono con l\'app nella schermata Home' : 'Permetti all\'app di mostrare gli avvisi'}</small></span><span class="v ${notificheAttive() ? 'on' : ''}">${notificheAttive() ? 'Attivi' : 'Attiva'}</span>${ic('avanti', 18, 2)}</button>
-    ${server ? `<button type="button" id="imDiag">${ic('gruppo', 20, 1.8)}<span class="t"><b>Chi riceve gli avvisi</b><small>Controlla i telefoni del gruppo e manda una prova agli altri</small></span>${ic('avanti', 18, 2)}</button>` : ''}` : ''}</div></section>`;
+    <button type="button" id="imNotif">${ic('campana', 20, 1.8)}<span class="t"><b>Notifiche</b><small>${nOn === tipiAv.length ? 'Tutti i tipi' : nOn ? nOn + ' tipi su ' + tipiAv.length : 'Nessun tipo'}${statoTel ? ' · ' + statoTel : ''}</small></span><span class="v ${notificheAttive() ? 'on' : ''}">${notificheAttive() ? 'Attive' : 'Scegli'}</span>${ic('avanti', 18, 2)}</button></div></section>`;
   if (server && G && IO) h += `<section aria-labelledby="colleg" style="display:flex;flex-direction:column;gap:6px"><h2 id="colleg" class="sez" style="margin:0">Calendario e Siri</h2><div class="menu-righe">
     <button type="button" id="imCal">${ic('calendario', 20, 1.8)}<span class="t"><b>Calendario del telefono</b><small>L'agenda compare nel Calendario dell'iPhone, con gli avvisi</small></span>${ic('avanti', 18, 2)}</button>
-    <button type="button" id="imSiri">${ic('microfono', 20, 1.8)}<span class="t"><b>Siri e Comandi Rapidi</b><small>"Ehi Siri, cosa mangio?", "aggiungi alla spesa"…</small></span>${ic('avanti', 18, 2)}</button></div></section>`;
+    <button type="button" id="imSiri">${ic('microfono', 20, 1.8)}<span class="t"><b>Siri e Comandi Rapidi</b><small>Un solo comando: «Ehi Siri, Casa» e poi cosa vuoi</small></span>${ic('avanti', 18, 2)}</button></div></section>`;
   h += `<section aria-labelledby="altro" style="display:flex;flex-direction:column;gap:6px"><h2 id="altro" class="sez" style="margin:0">App</h2><div class="menu-righe">
     ${!ANTEPRIMA ? `<button type="button" id="imIA"><span class="t"><b>Intelligenza artificiale</b></span><span class="v">${ia.prov === 'nessuna' ? 'Nessuna' : esc(NOMI_IA[ia.prov] || ia.prov) + (ia.condivisa && ia.prov !== 'server' ? ' · del gruppo' : '')}</span>${ic('avanti', 18, 2)}</button>` : ''}
     ${!(ANTEPRIMA && !cifreOk) ? `<button type="button" id="imPin"><span class="t"><b>PIN e Face ID</b></span><span class="v ${pinImpostato() ? 'on' : ''}">${pinImpostato() ? 'Attivo' : 'Non attivo'}</span>${ic('avanti', 18, 2)}</button>` : ''}
@@ -40,9 +35,7 @@ function renderImp() {
   legaSicurezza();
   $('imB').onclick = () => vai('gruppo');
   $('imAcc').onclick = foglioAccount;
-  el.querySelectorAll('[data-av]').forEach(b => b.onclick = () => { vibra(); salvaAvviso(b.dataset.av, !avvisoAttivo(b.dataset.av)); });
-  if ($('imNot')) $('imNot').onclick = () => notificheAttive() ? conferma('Disattivare gli avvisi?', 'Non riceverai più avvisi su questo dispositivo.', 'Disattiva', disattivaNotifiche) : attivaNotifiche();
-  if ($('imDiag')) $('imDiag').onclick = foglioDiagnosiNotifiche;
+  $('imNotif').onclick = foglioNotifiche;
   if ($('imIA')) $('imIA').onclick = foglioIA;
   if ($('imPin')) $('imPin').onclick = foglioSicurezza;
   $('imPiano').onclick = () => { personaPiano = IO || personaPiano; vai('piano'); renderPiano(); $('pdf').click(); };
@@ -178,15 +171,26 @@ async function copia(t, cosa) {
   try { await navigator.clipboard.writeText(t); toast((cosa || 'Link') + ' copiato ✓'); }
   catch (e) { chiedi('Copia', 'Tieni premuto sul testo e scegli Copia.', t, 'Fatto', () => {}); }
 }
-const SCORCIATOIE = [
-  ['Un solo comando (consigliato)', 'a=chiedi', 'Dici «Ehi Siri, Tablemates» e poi una frase: «aggiungi latte e pane alla spesa», «cosa devo comprare», «cosa mangio domani a cena», «ho pagato 24,50 per la pizza». Passaggi qui sopra.'],
-  ['Cosa mangio?', 'a=oggi', '“Ehi Siri, cosa mangio”: i prossimi pasti di oggi e l\'agenda. Aggiungi &q=cena per un pasto preciso.'],
-  ['Cosa mangio domani?', 'a=domani', 'Tutti i pasti e gli impegni di domani.'],
-  ['Aggiungi alla spesa', 'a=spesa&testo=', 'Nel comando: «Chiedi testo» (Cosa aggiungo?) e metti la risposta dopo testo=. Puoi dire più cose: «latte, pane e uova».'],
-  ['Cosa c\'è da comprare?', 'a=lista', 'Legge la lista della spesa.'],
-  ['Nuovo appuntamento', 'a=appuntamento&titolo=…&data=…&ora=…', 'Chiedi testo per il titolo, poi «Chiedi data e ora» e «Formatta data» con aaaa-MM-gg per data= e HH:mm per ora=. Aggiungi &solo=1 se riguarda solo te.'],
-  ['Ho pagato…', 'a=pagato&titolo=…&importo=…', 'Una spesa pagata da te, divisa in parti uguali con tutto il gruppo, nel conto Casa.']
-];
+// Siri: un solo comando. La guida riproduce le azioni di Comandi Rapidi come appaiono sull'iPhone (in italiano).
+const tk = t => `<span class="sg-tk">${t}</span>`, var_ = (t, c) => `<span class="sg-var ${c || ''}">${t}</span>`;
+const GUIDA_SIRI = () => `
+  <ol class="sg">
+    <li><b>Copia il tuo link</b><span>Tocca il pulsante verde qui sopra. Il link finisce con <code>&amp;a=chiedi</code>.</span></li>
+    <li><b>Crea il comando</b><span>Apri l'app <b>Comandi Rapidi</b> e tocca <b>+</b> in alto a destra. Tocca il nome in alto → <b>Rinomina</b> e scrivi <b>Casa</b>: è la parola che dirai a Siri («Tablemates» Siri non lo capisce).</span>
+      <div class="sg-tel"><div class="sg-tit">${var_('', 'ico')}Casa ⌄</div></div></li>
+    <li><b>Prima azione: la domanda</b><span>Tocca <b>Cerca azioni</b> in basso, scrivi <b>Richiedi input</b> e toccalo. Poi tocca il testo blu e scrivi la domanda, per esempio <b>Cosa vuoi?</b></span>
+      <div class="sg-tel"><div class="sg-az"><i class="sg-i" style="background:#5ac8fa">💬</i>Richiedi ${tk('Testo')} con ${tk('Cosa vuoi?')}</div></div></li>
+    <li><b>Seconda azione: manda la frase a Tablemates</b><span>Cerca <b>Ottieni contenuti dell'URL</b> e toccalo. Tocca il campo blu, cancella quello che c'è e <b>incolla il link</b>. Poi tocca la freccia <b>›</b> e imposta:</span>
+      <span class="sg-sub">· Metodo: <b>POST</b><br>· Corpo della richiesta: <b>Modulo</b><br>· <b>Aggiungi nuovo campo</b> → <b>Testo</b><br>· Chiave: scrivi <b>testo</b> (minuscolo)<br>· Nel campo a destra tocca e scegli la variabile <b>Richiedi input</b> (pallino blu)</span>
+      <div class="sg-tel"><div class="sg-az sg-col"><div><i class="sg-i" style="background:#34c759">⬇︎</i>Ottieni contenuti di ${tk('https://…/collega?t=…&amp;a=chiedi')}</div>
+        <div class="sg-riga"><span>Metodo</span>${tk('POST')}</div><div class="sg-riga"><span>Corpo della richiesta</span>${tk('Modulo')}</div>
+        <div class="sg-riga"><span>testo</span>${var_('Richiedi input', 'blu')}</div></div></div></li>
+    <li><b>Terza azione: Siri legge la risposta</b><span>Cerca <b>Leggi ad alta voce</b> e toccalo. Nel campo scegli la variabile <b>Contenuti URL</b> (pallino verde). Se vuoi vedere anche il testo, aggiungi pure <b>Mostra avviso</b> con <b>Contenuti URL</b>.</span>
+      <div class="sg-tel"><div class="sg-az"><i class="sg-i" style="background:#ff3b30">🔊</i>Leggi ad alta voce ${var_('Contenuti URL', 'verde')}</div></div></li>
+    <li><b>Prova</b><span>Tocca <b>▶</b> in basso a destra e scrivi «cosa devo comprare»: deve rispondere con la lista. Poi prova con la voce: <b>«Ehi Siri, Casa»</b>, e quando chiede «Cosa vuoi?» rispondi.</span></li>
+  </ol>
+  <div class="sg-frasi"><b>Cosa puoi dire</b><span>«aggiungi latte e pane alla spesa» · «cosa devo comprare» · «cosa mangio oggi» · «cosa mangio domani a cena» · «ho pagato 24,50 per la pizza»</span></div>
+  <div class="sg-frasi"><b>Se Siri mostra la risposta ma non parla</b><span>Togli il silenzioso e alza il volume. Poi in <b>Impostazioni → Siri → Risposte di Siri</b> scegli l'opzione che fa parlare sempre Siri. Se Siri cerca su internet invece di aprire il comando, rinominalo con un'altra parola semplice (es. «Tavola») oppure di' «Ehi Siri, esegui Casa».</span></div>`;
 async function foglioCollega(cosa) {
   if (!ST || ST.modo !== 'supabase' || !IO) return toast('Serve il server Supabase e una persona del gruppo');
   const t = mioPonte();
@@ -201,15 +205,14 @@ async function foglioCollega(cosa) {
     <a class="btn" id="cgW" href="${esc(webcal)}">${ic('calendario', 18)}Aggiungi al calendario</a>
     <button class="btn ghost" id="cgI" type="button">${ic('link', 18)}Copia il link (Google Calendar, Outlook)</button>
     <p class="by" style="margin:8px 0 0;line-height:1.5">Se il tasto non apre il Calendario: Impostazioni dell'iPhone → Calendario → Account → Aggiungi account → Altro → <b>Aggiungi calendario iscritto</b> e incolla il link. Su Google Calendar: Altri calendari → Da URL.</p>`;
-  const siri = `<h2>Siri e Comandi Rapidi</h2><p class="q" style="line-height:1.5;margin:4px 0 6px">Basta <b>un solo comando</b>. Tocca «Un solo comando» qui sotto per copiare il link, poi nell'app <b>Comandi Rapidi</b>:</p>
-    <ol class="q" style="line-height:1.55;margin:0 0 10px;padding-left:20px"><li>tocca <b>+</b> e chiama il comando <b>Tablemates</b> (sarà la frase per Siri);</li><li>aggiungi l'azione <b>Chiedi input</b> (tipo Testo, domanda «Cosa vuoi?»);</li><li>aggiungi <b>Ottieni contenuti dell'URL</b>, incolla il link, tocca la freccia, metti Metodo <b>POST</b>, Corpo della richiesta <b>Modulo</b>, <b>Aggiungi nuovo campo</b> → Testo, nome <b>testo</b>, valore la variabile <b>Input fornito</b>;</li><li>aggiungi <b>Pronuncia testo</b> con <b>Contenuti dell'URL</b>.</li></ol>
-    <p class="q" style="line-height:1.5;margin:0 0 10px">Poi dici «Ehi Siri, Tablemates», Siri chiede «Cosa vuoi?» e tu rispondi, per esempio «aggiungi latte alla spesa». I nomi delle azioni possono variare un po' con la versione di iOS. Per gli appuntamenti serve il comando a parte qui sotto.</p>
-    <div class="menu-righe">${SCORCIATOIE.map(([n, q, d], i) => `<button type="button" data-cs="${i}"><span class="t"><b>${esc(n)}</b><small>${esc(d)}</small></span>${ic('link', 18, 2)}</button>`).join('')}</div>`;
+  const siri = `<h2>Siri e Comandi Rapidi</h2><p class="q" style="line-height:1.5;margin:4px 0 10px">Un solo comando per tutto: dici «Ehi Siri, Casa» e poi cosa vuoi. Ci vogliono 5 minuti, una volta sola.</p>
+    <button class="btn" id="cgS" type="button">${ic('link', 18)}Copia il tuo link</button>
+    <p class="by" style="margin:6px 0 0;line-height:1.45">È personale, con un codice segreto: non mandarlo ad altri.</p>${GUIDA_SIRI()}`;
   foglio(`${cosa === 'siri' ? siri : cal}
     <button class="btn bordo" id="cgP" type="button" style="margin-top:12px">Prova il collegamento</button>
     <button class="link-txt rosso" id="cgR" type="button" style="margin-top:4px">Crea un nuovo link (il vecchio smette di funzionare)</button>`);
   if ($('cgI')) $('cgI').onclick = () => copia(ics);
-  $('pop').querySelectorAll('[data-cs]').forEach(b => b.onclick = () => copia(base + '&' + SCORCIATOIE[+b.dataset.cs][1], 'Link del comando'));
+  if ($('cgS')) $('cgS').onclick = () => copia(base + '&a=chiedi', 'Link del comando');
   $('cgP').onclick = async () => {
     $('cgP').disabled = true;
     try { const r = await fetch(base + '&a=prova'), x = await r.text(); toast(r.ok ? x : r.status === 401 && /JWT|jwt|Authorization/.test(x) ? 'Togli la spunta "Verify JWT" alla funzione collega in Supabase' : r.status === 404 ? 'La funzione "collega" non è ancora pubblicata su Supabase' : x); }
@@ -217,4 +220,30 @@ async function foglioCollega(cosa) {
     $('cgP').disabled = false;
   };
   $('cgR').onclick = () => conferma('Creare un nuovo link?', 'Il calendario iscritto e i comandi di Siri con il link vecchio smetteranno di funzionare: andranno aggiornati.', 'Crea nuovo link', async () => { if (await creaPonte(true)) foglioCollega(cosa); }, true);
+}
+
+// Foglio «Notifiche»: avvisi su questo telefono e, per ogni tipo, acceso o spento
+const TIPI_AVVISO = [
+  ['tavola', 'Pasti e presenze', 'Ci sei a cena? alle 17:00, pasti comuni e chi ci sarà'],
+  ['spesa', 'Lista della spesa', 'Quando qualcuno aggiunge o aggiorna la lista e tocca «Avvisa»'],
+  ['conti', 'Conti', 'Nuove spese e rimborsi, modifiche e saldo settimanale'],
+  ['agenda', 'Agenda', 'Appuntamenti, scadenze e promemoria che ti riguardano'],
+  ['piano', 'Piano e dieta', 'Quando qualcuno carica o aggiorna una dieta o prepara i piatti'],
+  ['gruppo', 'Gruppo', 'Quando entra, esce o cambia una persona del gruppo']
+];
+function foglioNotifiche() {
+  const server = ST && ST.modo === 'supabase';
+  const disegna = () => {
+    const av = avvisiDi(IO), on = notificheAttive();
+    foglio(`<h2>Notifiche</h2><p class="q" style="line-height:1.5;margin:4px 0 10px">Scegli quali avvisi ricevere. Valgono per te, su tutti i tuoi telefoni.</p>
+      ${!ANTEPRIMA && G ? `<div class="menu-righe"><button type="button" id="ntTel">${ic('campana', 20, 1.8)}<span class="t"><b>Avvisi su questo telefono</b><small>${on ? (pushPossibile() ? 'Attivi anche ad app chiusa' : 'Attivi mentre l\'app è aperta') : notificheSpente() ? 'Spenti: tocca per riattivarli' : ios() && !installata() ? 'Su iPhone servono con l\'app nella schermata Home' : 'Tocca e poi «Consenti»'}</small></span><span class="v ${on ? 'on' : ''}">${on ? 'Attivi' : 'Attiva'}</span></button></div>` : ''}
+      <label class="lb" style="margin-top:14px">Cosa ti avvisa</label>
+      <div class="menu-righe">${TIPI_AVVISO.map(([k, n, d]) => `<div><span class="t"><b>${n}</b><small>${d}</small></span><button type="button" class="switch" role="switch" aria-checked="${!!av[k]}" aria-label="${n}" data-av="${k}"></button></div>`).join('')}</div>
+      ${server && G ? `<div class="menu-righe" style="margin-top:12px"><button type="button" id="ntDiag">${ic('gruppo', 20, 1.8)}<span class="t"><b>Chi riceve gli avvisi</b><small>Controlla i telefoni del gruppo e manda una prova</small></span>${ic('avanti', 18, 2)}</button></div>` : ''}`);
+    $('pop').querySelectorAll('[data-av]').forEach(b => b.onclick = async () => { vibra(); const k = b.dataset.av, v = !avvisoAttivo(k); b.setAttribute('aria-checked', v); await salvaAvviso(k, v); });
+    if ($('ntTel')) $('ntTel').onclick = () => on ? conferma('Spegnere gli avvisi su questo telefono?', 'Non riceverai più avvisi su questo telefono. Puoi riattivarli quando vuoi.', 'Spegni', async () => { await disattivaNotifiche(); renderImp(); }) : attivaNotifiche().then(() => { renderImp(); if ($('ntTel')) disegna(); });
+    if ($('ntDiag')) $('ntDiag').onclick = foglioDiagnosiNotifiche;
+  };
+  if (!IO) return toast('Prima indica chi sei nel gruppo');
+  disegna();
 }

@@ -238,6 +238,27 @@ Quando modifichi un file, in `sw.js` aumenta il numero di `VERSIONE` (per esempi
 - **Spesa + Dispensa**: livelli di quanto resta, "stanno finendo → in lista", la Dispensa si riempie quando spunti un prodotto.
 - **Conti**: "Giulia ti deve", Segna saldato, Ricordaglielo (messaggio da mandare), speso nel mese, la tua parte, ultimi movimenti; saldi, statistiche e conti restano a un tocco.
 
+## Novità della versione 10.8
+
+Rifinitura grafica (stessa palette, nessuna funzione cambiata): i messaggi di conferma compaiono in basso e non coprono più il titolo; righe del foglio Notifiche più ariose; in Oggi una sola etichetta per pasto; nel Gruppo le azioni sono in riquadri ordinati come in Impostazioni; icona forchetta e coltello per le ricette; pulsanti del Piano allineati; testi di spiegazione più brevi.
+
+## Novità della versione 10.7
+
+- **Nuova scheda «Comuni»** nella barra in basso: i pasti che mangiate insieme. Si aggiunge scegliendo un pasto dal proprio piano (anche di un altro giorno), poi quando mangiarlo (data e momento: pranzo, cena, spuntino…) e con chi. Lì dentro si crea la ricetta, con le dosi di ognuno. Ognuno continua a vedere la propria alimentazione nel Piano.
+- **Oggi: solo pranzo e cena.** Il pasto in comune è in evidenza («In comune» con chi), l'altro in breve dal proprio piano. Un pasto comune in un altro momento (es. spuntino) compare lo stesso.
+- **Crea la lista della spesa in due passi:** scegli i giorni e i pasti comuni, poi l'elenco dei prodotti con le spunte per scegliere cosa aggiungere (quello già in lista o in casa è proposto senza spunta). Ogni prodotto dice **per quando e per chi**: «Lunedì · Pranzo · Ale», «mar 17 nov · Cena · Pasto comune». Anche ai prodotti aggiunti a mano si può indicare giorno, pasto e persona (tocca il prodotto). Rifare la lista non crea doppioni.
+- **Notifiche:** in Impostazioni una sola voce «Notifiche»; dentro si accende o spegne ogni tipo e si controlla chi riceve gli avvisi.
+- **Siri:** un solo link e una guida passo passo con i disegni delle azioni (Richiedi input, Ottieni contenuti dell'URL in POST con il campo «testo», Leggi ad alta voce). Nome consigliato del comando: «Casa».
+
+## Novità della versione 10.6
+
+- **Quantità nella lista della spesa:** sotto «Aggiungi qualcosa…» scrivi quanto comprare e scegli **g**, **porzioni** o **pacchi** (l'unità scelta resta per i prodotti successivi). Si cambia anche toccando il prodotto. Le quantità già presenti restano: «1 kg» diventa 1000 g, «1 l» e «q.b.» non si perdono.
+- **Emoji degli alimenti corrette:** nella Spesa, nel Piano, in Oggi e nelle ricette le parole del cibo hanno la precedenza (lenticchie 🫘 e non 👓, cavolfiore 🥦 e non 💻, albumi 🥚 e non 📷). Aggiunti molti alimenti che non avevano emoji (quinoa, farro, finocchi, carciofi, asparagi, lupini, piadina, proteine…). Corretto un errore per cui una parola valeva come inizio di un'altra (mela → melanzane).
+
+## Novità della versione 10.5
+
+- **Pasti condivisi in Oggi:** quando una persona propone «Mangiamo insieme» (pranzo, spuntino, cena…), nella scheda Oggi di tutti gli invitati compare il riquadro **Mangiamo insieme** con il pasto del giorno, il piatto, chi l'ha proposto e con chi. Un tocco apre il piatto con le proprie dosi; «Non mangio insieme» annulla. Il riquadro compare anche se nel proprio piano quel pasto non c'è.
+
 ## Novità della versione 10.4
 
 - **Avviso della Spesa a comando:** mentre modifichi la lista non parte nulla. In cima alla Spesa (e in Oggi) compare «Hai modificato la lista»: quando hai finito tocchi **Avvisa**, oppure **No** per non avvisare. Gli altri ricevono solo «X ha aggiunto prodotti alla lista della spesa» se hai aggiunto qualcosa, altrimenti «X ha aggiornato la lista della spesa». Se chiudi l'app l'avviso resta in attesa.

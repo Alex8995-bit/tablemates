@@ -17,6 +17,7 @@ const ICONE = {
   info: '<path d="M12 8v5M12 16.5h.01M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z"/>',
   condividi: '<path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/>',
   piatto: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/>',
+  posate: '<path d="M7 3v7a2 2 0 0 0 2 2v9M11 3v7a2 2 0 0 1-2 2M9 3v6"/><path d="M17 21V3c-2 1.5-3 4.5-3 8v2h3"/>',
   pizza: '<path d="M12 3l9 17H3L12 3zM10 13h.01M14 16h.01"/>',
   scontrino2: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3zM9 8h6M9 12h6"/>',
   puntini: '<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>',

@@ -35,7 +35,7 @@ function elencoSlot(g) {
 function htmlCibi(pid, gi, k, pa) {
   return '<div class="cibi">' + pa.voci.map((v0, i) => {
     const v = voceEffettiva(pid, gi, pa, i), sost = v0.sost || [], sc = sceltaVoce(pid, gi, pa, i);
-    let h = `<div class="cibo"><div class="r"><span class="${v.scambiata ? 'scamb' : ''}">${EMO.bottone(v.nome, '🍽️')}${esc(v.nome)}${v.scambiata ? `<small>al posto di ${esc(LETTORE.testoVoce(v0))}</small>` : ''}</span><span>${esc(qtaTesto(v))}${v.misura ? `<small>${esc(v.misura)}</small>` : ''}</span></div>`;
+    let h = `<div class="cibo"><div class="r"><span class="${v.scambiata ? 'scamb' : ''}">${EMO.bottone(v.nome, '🍽️', '', true)}${esc(v.nome)}${v.scambiata ? `<small>al posto di ${esc(LETTORE.testoVoce(v0))}</small>` : ''}</span><span>${esc(qtaTesto(v))}${v.misura ? `<small>${esc(v.misura)}</small>` : ''}</span></div>`;
     if (sost.length) {
       const altre = sost.map((x, j) => ({ x, j })).filter(o => o.j !== sc), vis = altre.slice(0, 3);
       h += `<div class="sost"><span>${v.scambiata ? 'Oppure' : 'Puoi sostituire con'}</span>` +
@@ -79,7 +79,6 @@ const REGOLE_REPARTO = [
 const repartoDi = nome => { const n = senzaAccenti(nome); const r = REGOLE_REPARTO.find(([re]) => re.test(n)); return r ? r[1] : 'Altro'; };
 function quantitaSpesa(e) {
   if (!(e.tot > 0)) return '';
-  if (e.unita === 'g' && e.tot >= 1000) return LETTORE.fmt(e.tot / 1000) + ' kg';
   if (e.unita === 'ml' && e.tot >= 1000) return LETTORE.fmt(e.tot / 1000) + ' l';
   return LETTORE.fmt(e.tot) + (e.unita ? ' ' + e.unita : '');
 }
@@ -95,33 +94,89 @@ function sommaSpesa(pid, indici) {
   }
   return [...m.values()].sort((a, b) => a.nome.localeCompare(b.nome, 'it'));
 }
+// Gli alimenti da comprare per i giorni scelti del piano e per i pasti comuni scelti.
+// Ogni alimento ricorda per chi e per quando serve: "Lunedì · Pranzo · Ale", "ven 20 nov · Cena · Pasto comune".
+function vociPerSpesa(pid, indici, comuni) {
+  const piano = pianoDi(pid), m = new Map(), chi = nomeP(pid);
+  const add = (v, fonte) => {
+    const chiave = senzaAccenti(v.nome).toLowerCase() + '|' + (v.unita || '');
+    let e = m.get(chiave); if (!e) m.set(chiave, e = { nome: v.nome, unita: v.unita || '', tot: 0, fonti: [] });
+    if (v.qta != null) e.tot += v.qta;
+    if (!e.fonti.includes(fonte)) e.fonti.push(fonte);
+  };
+  // un pasto del piano sostituito da un pasto comune scelto non si conta due volte
+  const salta = new Set();
+  comuni.forEach(e => { if (!e.chi.includes(pid)) return; const g = giornoPerData(piano, new Date(e.iso + 'T12:00:00')); if (g >= 0) piano.giorni[g].pasti.forEach((pa, k) => { if (stessoPasto(pa.tipo, e.tipo)) salta.add(g + '|' + k); }); });
+  for (const gi of indici) {
+    const g = piano.giorni[gi];
+    g.pasti.forEach((pa, k) => { if (!pa.voci || salta.has(gi + '|' + k)) return; pa.voci.forEach((_, i) => add(voceEffettiva(pid, gi, pa, i), g.giorno + ' · ' + pa.tipo + ' · ' + chi)); });
+  }
+  // pasto comune: il piatto è il pasto scelto da chi l'ha proposto; ognuno con la sua porzione (se nel suo piano c'è lo stesso alimento)
+  comuni.forEach(e => {
+    const src = pastoPerInsieme(e.da, e); if (!src) return;
+    const fonte = dataBreve(e.iso) + ' · ' + e.tipo + ' · Pasto comune';
+    e.chi.forEach(p => {
+      if (p === e.da) return src.voci.forEach(v => add(v, fonte));
+      const ps = pastoPerInsieme(p, e), usate = new Set();
+      src.voci.forEach(v => { const w = ps && trovaVoce(v.nome, ps.voci, usate); if (w && (w.unita || '') === (v.unita || '') && w.qta != null) { usate.add(w); add({ nome: v.nome, unita: v.unita, qta: w.qta }, fonte); } else add(v, fonte); });
+    });
+  });
+  return [...m.values()].sort((a, b) => a.nome.localeCompare(b.nome, 'it'));
+}
 function foglioSpesaDieta(pid) {
   const piano = pianoDi(pid), oggiIdx = giornoDiOggi(piano), p = D.partecipanti.find(x => x.id === pid);
-  foglio(`<h2 style="padding-right:36px">Lista della spesa dalla dieta</h2><p class="q" style="line-height:1.5;margin:4px 0 0">Scegli i giorni: sommo le quantità di ogni alimento, tenendo conto delle alternative che hai scelto.</p>
-    <div class="gsel">${piano.giorni.map((g, i) => `<label class="gsc"><input type="checkbox" value="${i}" checked><span>${esc(g.giorno)}</span></label>`).join('')}</div>
-    <div class="azioni" style="margin-bottom:6px"><button type="button" class="piccolo" id="gTutti">Tutti</button>${oggiIdx >= 0 ? '<button type="button" class="piccolo" id="gOggi">Da oggi in poi</button>' : ''}<button type="button" class="piccolo" id="gNess">Nessuno</button></div>
-    <p class="by" id="gInfo" style="margin:6px 0 0"></p>
-    <button class="btn" id="gGo" type="button" style="margin-top:8px">${ic('carrello', 18)}Crea la lista</button>`);
-  const box = () => [...$('pop').querySelectorAll('.gsel input')];
-  const scelti = () => box().filter(b => b.checked).map(b => +b.value);
-  const info = () => { const n = scelti().length; $('gInfo').textContent = n ? n + (n === 1 ? ' giorno scelto' : ' giorni scelti') : 'Scegli almeno un giorno'; };
-  box().forEach(b => b.onchange = info); info();
-  $('gTutti').onclick = () => { box().forEach(b => b.checked = true); info(); };
-  $('gNess').onclick = () => { box().forEach(b => b.checked = false); info(); };
-  if ($('gOggi')) $('gOggi').onclick = () => { box().forEach(b => b.checked = +b.value >= oggiIdx); info(); };
-  $('gGo').onclick = async () => {
-    const idx = scelti(); if (!idx.length) return toast('Scegli almeno un giorno');
-    const voci = sommaSpesa(pid, idx); if (!voci.length) return toast('Nessun alimento trovato nei giorni scelti');
-    const etichetta = 'Dieta · ' + (pid === IO ? nomeP(pid) : p.nome);
-    $('gGo').disabled = true; $('gGo').textContent = 'Creo la lista…';
-    try {
-      await scrivi(async () => {
-        await ST.delWhere('spesa', { gruppo_id: G.id, giorno: etichetta, comprato: false });
-        await ST.ins('spesa', voci.map(x => ({ gruppo_id: G.id, nome: x.nome, quantita: quantitaSpesa(x), reparto: repartoDi(x.nome), giorno: etichetta, comprato: false, aggiunto_da: CHI })));
-      });
-      await ricarica(); chiudi(); toast('Lista creata ✓ ' + voci.length + ' prodotti nella Spesa'); avvisaGruppo('Spesa', `${CHI} ha creato la lista della spesa dalla dieta: ${voci.length} prodotti`, { tipo: 'spesa', scheda: 'spesa' });
-    } catch (e) { toast(e.message); if ($('gGo')) { $('gGo').disabled = false; $('gGo').textContent = 'Riprova'; } }
+  const comuni = pid === IO && typeof insiemiMiei === 'function' ? insiemiMiei() : [];
+  let giorniScelti = piano.giorni.map((_, i) => i), comuniScelti = comuni.map(e => e.id);
+  const passo1 = () => {
+    foglio(`<h2 style="padding-right:36px">Lista della spesa dal piano</h2><p class="q" style="line-height:1.5;margin:4px 0 0">Scegli i giorni${comuni.length ? ' e i pasti comuni' : ''}: poi ti mostro i prodotti e scegli tu quali aggiungere.</p>
+      <div class="gsel">${piano.giorni.map((g, i) => `<label class="gsc"><input type="checkbox" value="${i}" ${giorniScelti.includes(i) ? 'checked' : ''}><span>${esc(g.giorno)}</span></label>`).join('')}</div>
+      <div class="azioni" style="margin-bottom:6px"><button type="button" class="piccolo" id="gTutti">Tutti</button>${oggiIdx >= 0 ? '<button type="button" class="piccolo" id="gOggi">Da oggi in poi</button>' : ''}<button type="button" class="piccolo" id="gNess">Nessuno</button></div>
+      ${comuni.length ? `<label class="lb">Pasti comuni in programma</label><div class="sp-conf">${comuni.map(e => `<label class="sp-c"><input type="checkbox" data-pc="${esc(e.id)}" ${comuniScelti.includes(e.id) ? 'checked' : ''}><span class="t"><b>${esc(dataBreve(e.iso))} · ${esc(e.tipo)}</b><small>con ${esc(e.chi.filter(z => z !== IO).map(nomeP).join(', '))}${e.origine ? ' · ' + esc(e.origine) : ''}</small></span></label>`).join('')}</div>` : ''}
+      <p class="by" id="gInfo" style="margin:6px 0 0"></p>
+      <button class="btn" id="gGo" type="button" style="margin-top:8px">Avanti: scegli i prodotti</button>`);
+    const box = () => [...$('pop').querySelectorAll('.gsel input')];
+    const leggi = () => { giorniScelti = box().filter(b => b.checked).map(b => +b.value); comuniScelti = [...$('pop').querySelectorAll('[data-pc]')].filter(b => b.checked).map(b => b.dataset.pc); };
+    const info = () => { leggi(); const n = giorniScelti.length, c = comuniScelti.length; $('gInfo').textContent = n || c ? [n ? n + (n === 1 ? ' giorno' : ' giorni') : '', c ? c + (c === 1 ? ' pasto comune' : ' pasti comuni') : ''].filter(Boolean).join(' e ') : 'Scegli almeno un giorno o un pasto comune'; };
+    $('pop').querySelectorAll('.gsel input, [data-pc]').forEach(b => b.onchange = info); info();
+    $('gTutti').onclick = () => { box().forEach(b => b.checked = true); info(); };
+    $('gNess').onclick = () => { box().forEach(b => b.checked = false); info(); };
+    if ($('gOggi')) $('gOggi').onclick = () => { box().forEach(b => b.checked = +b.value >= oggiIdx); info(); };
+    $('gGo').onclick = () => { leggi(); if (!giorniScelti.length && !comuniScelti.length) return toast('Scegli almeno un giorno o un pasto comune'); passo2(); };
   };
+  const passo2 = () => {
+    const voci = vociPerSpesa(pid, giorniScelti, comuni.filter(e => comuniScelti.includes(e.id)));
+    if (!voci.length) { toast('Nessun alimento trovato in quello che hai scelto'); return passo1(); }
+    const etichetta = 'Dieta · ' + (pid === IO ? nomeP(pid) : p.nome);
+    // già in lista (aggiunto a mano o da un'altra lista) o in casa secondo la Dispensa: si propone senza spunta
+    const giaInLista = v => D.spesa.some(x => !x.comprato && !(x.giorno || '').startsWith(etichetta) && senzaAccenti(x.nome).toLowerCase() === senzaAccenti(v.nome).toLowerCase());
+    const stato = voci.map(v => giaInLista(v) ? 'lista' : statoIngrediente(v.nome) === 'casa' ? 'casa' : '');
+    foglio(`<h2 style="padding-right:36px">Cosa aggiungo?</h2><p class="q" style="line-height:1.5;margin:4px 0 0">Togli la spunta a quello che non ti serve. Sotto ogni prodotto: per quando e per chi.</p>
+      <div class="azioni" style="margin:8px 0 6px"><button type="button" class="piccolo" id="sTutti">Tutti</button><button type="button" class="piccolo" id="sNess">Nessuno</button></div>
+      <div class="sp-conf">${voci.map((v, i) => `<label class="sp-c"><input type="checkbox" data-sv="${i}" ${stato[i] ? '' : 'checked'}><span class="t"><b>${EMO.html(v.nome, '', '', true)}${esc(v.nome)}${stato[i] ? `<span class="tag casa">${stato[i] === 'lista' ? 'Già in lista' : 'In casa'}</span>` : ''}</b><small>Per ${esc(v.fonti.join('; '))}</small></span><span class="sp-q num">${esc(quantitaSpesa(v))}</span></label>`).join('')}</div>
+      <button class="btn" id="sGo" type="button" style="margin-top:10px"></button><button class="link-txt" id="sInd" type="button" style="text-align:center">Indietro</button>`);
+    const box = () => [...$('pop').querySelectorAll('[data-sv]')];
+    const conta = () => { const n = box().filter(b => b.checked).length; $('sGo').disabled = !n; $('sGo').innerHTML = n ? ic('carrello', 18) + 'Aggiungi ' + n + (n === 1 ? ' prodotto' : ' prodotti') : 'Scegli almeno un prodotto'; };
+    box().forEach(b => b.onchange = conta); conta();
+    $('sTutti').onclick = () => { box().forEach(b => b.checked = true); conta(); };
+    $('sNess').onclick = () => { box().forEach(b => b.checked = false); conta(); };
+    $('sInd').onclick = passo1;
+    $('sGo').onclick = async () => {
+      const scelte = box().filter(b => b.checked).map(b => voci[+b.dataset.sv]); if (!scelte.length) return;
+      const nomi = new Set(scelte.map(v => senzaAccenti(v.nome).toLowerCase()));
+      // la lista creata prima dallo stesso piano: i prodotti uguali si sostituiscono (niente doppioni)
+      const vecchi = D.spesa.filter(x => !x.comprato && (x.giorno || '').startsWith(etichetta) && nomi.has(senzaAccenti(x.nome).toLowerCase()));
+      $('sGo').disabled = true; $('sGo').textContent = 'Aggiungo…';
+      try {
+        await scrivi(async () => {
+          for (const x of vecchi) await ST.del('spesa', x.id);
+          await ST.ins('spesa', scelte.map(v => ({ gruppo_id: G.id, nome: v.nome, quantita: quantitaSpesa(v), reparto: repartoDi(v.nome), giorno: etichetta + ' — ' + v.fonti.join('; '), comprato: false, aggiunto_da: CHI })));
+        });
+        await ricarica(); chiudi(); toast('Aggiunti ✓ ' + scelte.length + ' prodotti nella Spesa', { testo: 'Vedi', fn: () => vai('spesa') });
+        avvisaSpesa(scelte.map(v => v.nome));
+      } catch (e) { toast(e.message); if ($('sGo')) { $('sGo').disabled = false; $('sGo').textContent = 'Riprova'; } }
+    };
+  };
+  passo1();
 }
 
 // ---------- Diete lette dall'intelligenza artificiale o scritte come testo: tutto nello stesso formato ----------
