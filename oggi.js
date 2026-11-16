@@ -76,7 +76,7 @@ function renderOggi() {
     <button type="button" class="og-freccia" id="ogNext" aria-label="Giorno successivo">${ic('avanti', 20, 2.2)}</button></div>${gruppoAvatars()}
     <input type="date" id="ogPick" value="${iso}" tabindex="-1" aria-hidden="true" class="og-pick"></div>
     ${diff !== 0 ? `<button type="button" class="link og-torna" id="ogOggi">${ic('indietro', 15, 2.2)} Torna a oggi</button>` : ''}`;
-  h += htmlAvvisiOggi();
+  h += htmlBarraSpesa('og') + htmlAvvisiOggi();
   // ---- Pasti del giorno, in breve: si apre quello che interessa
   const piano = IO ? pianoDi(IO) : null, gi = giornoPianoPer(piano, iso);
   const pasti = gi >= 0 ? pastiDelGiorno(piano.giorni[gi]) : [];
@@ -145,6 +145,7 @@ function renderOggi() {
   $('ogPrev').onclick = () => sposta(-1); $('ogNext').onclick = () => sposta(1);
   if ($('ogOggi')) $('ogOggi').onclick = () => cambiaGiorno(oggi);
   if ($('ogAvvisi')) $('ogAvvisi').onclick = tocaAvvisiOggi;
+  tocaBarraSpesa('og');
   $('ogData').onclick = () => { const p = $('ogPick'); try { if (p.showPicker) p.showPicker(); else p.focus(); } catch (e) { p.focus(); } };
   $('ogPick').onchange = () => { if ($('ogPick').value) cambiaGiorno($('ogPick').value); };
   $('ogG').onclick = () => vai('gruppo');

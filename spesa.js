@@ -17,6 +17,7 @@ function renderSpesa() {
   el.innerHTML = modoSpesa === 'dispensa' ? htmlDispensa(seg) : htmlLista(seg);
   el.querySelectorAll('[data-ms]').forEach(b => b.onclick = () => { modoSpesa = b.dataset.ms; LS.set('modoSpesa', modoSpesa); vibra(); renderSpesa(); });
   if (modoSpesa === 'dispensa') return collegaDispensa(el, valD, foc);
+  tocaBarraSpesa();
   $('nv').value = val; if (foc === 'nv') $('nv').focus();
   $('add').onclick = aggiungiSpesa; $('nv').onkeydown = e => { if (e.key === 'Enter') aggiungiSpesa(); };
   el.querySelectorAll('[data-sk]').forEach(b => b.onclick = () => spunta(b.dataset.sk));
@@ -33,7 +34,7 @@ function renderSpesa() {
 function htmlLista(seg) {
   const spesa = D.spesa, tot = spesa.length, fatti = spesa.filter(x => x.comprato).length;
   const giorniDieta = [...new Set(spesa.filter(x => /^Dieta/.test(x.giorno || '')).map(x => x.giorno))];
-  let h = `<div class="cap"><div><p class="q" style="font-weight:600;margin:0">${puntoLive()}${giorniDieta.length ? 'Per i pasti del piano' : esc(G.nome) + ' · lista condivisa'}</p><h1>Spesa</h1></div>${tot ? `<span class="cnt num">${fatti} di ${tot} presi</span>` : ''}</div>` + seg;
+  let h = htmlBarraSpesa() + `<div class="cap"><div><p class="q" style="font-weight:600;margin:0">${puntoLive()}${giorniDieta.length ? 'Per i pasti del piano' : esc(G.nome) + ' · lista condivisa'}</p><h1>Spesa</h1></div>${tot ? `<span class="cnt num">${fatti} di ${tot} presi</span>` : ''}</div>` + seg;
   if (tot) h += `<div class="prog" role="progressbar" aria-label="Avanzamento spesa" aria-valuemin="0" aria-valuemax="${tot}" aria-valuenow="${fatti}"><i style="width:${Math.round(fatti / tot * 100)}%"></i></div>`;
   h += `<div class="agg"><label for="nv" class="sr">Aggiungi alla lista</label><input id="nv" placeholder="Aggiungi qualcosa…" enterkeyhint="done"><button id="add" type="button" aria-label="Aggiungi">${ic('piu', 22, 2.2)}</button></div>`;
   REPARTI.forEach(r => {

@@ -107,17 +107,31 @@ function inviaRitardati() { const l = [..._ritardati.values()]; _ritardati.clear
 document.addEventListener('visibilitychange', () => { if (document.hidden) inviaRitardati(); });
 addEventListener('pagehide', inviaRitardati);
 
-// Le modifiche alla spesa (aggiunte, prodotti presi, modificati, tolti) si raccolgono e partono in un solo avviso
-let _codaSpesa = { agg: [], presi: [], mod: [], tolti: [] };
+// Avviso della Spesa: mentre modifichi la lista non parte nulla. Resta in attesa (anche se chiudi l'app) e parte solo quando
+// tocchi «Avvisa» nella barra in cima alla Spesa. Due soli testi: «ha aggiunto prodotti alla lista della spesa» se hai aggiunto
+// qualcosa, altrimenti «ha aggiornato la lista della spesa» (prodotti tolti, presi o modificati).
+const spesaInAttesa = () => { const v = LS.getJ('spesaAvviso', null); return v && G && v.g === G.id ? v : null; };
 function avvisaSpesa(nomi, azione) { // azione: 'agg' (predefinita), 'preso' (o true), 'mod', 'tolto'
-  const k = azione === true || azione === 'preso' ? 'presi' : azione === 'mod' ? 'mod' : azione === 'tolto' ? 'tolti' : 'agg';
-  [].concat(nomi).forEach(n => { if (n && !_codaSpesa[k].includes(n)) _codaSpesa[k].push(n); });
-  ritarda('spesa', 6000, () => {
-    const { agg, presi, mod, tolti } = _codaSpesa; _codaSpesa = { agg: [], presi: [], mod: [], tolti: [] };
-    const elenco = l => l.length > 3 ? l.slice(0, 3).join(', ') + ' e altri ' + (l.length - 3) : l.join(', ');
-    const parti = [agg.length ? 'ha aggiunto ' + elenco(agg) : '', presi.length ? 'ha preso ' + elenco(presi) : '', mod.length ? 'ha modificato ' + elenco(mod) : '', tolti.length ? 'ha tolto ' + elenco(tolti) : ''].filter(Boolean);
-    if (parti.length) avvisaGruppo('Spesa', CHI + ' ' + (parti.length > 1 ? parti.slice(0, -1).join(', ') + ' e ' + parti[parti.length - 1] : parti[0]), { tipo: 'spesa', scheda: 'spesa' });
-  });
+  if (!G || !ST || ST.modo !== 'supabase') return; // senza server non c'è nessuno da avvisare
+  const agg = !(azione === true || azione === 'preso' || azione === 'mod' || azione === 'tolto'), v = spesaInAttesa();
+  LS.setJ('spesaAvviso', { g: G.id, agg: agg || !!(v && v.agg) });
+  if (typeof renderSpesa === 'function') renderSpesa();
+  if (typeof renderOggi === 'function') renderOggi();
+}
+function htmlBarraSpesa(pre = 'sp') {
+  if (!spesaInAttesa() || !ST || ST.modo !== 'supabase') return '';
+  return `<div class="sp-avviso" role="group" aria-label="Avvisa gli altri della spesa"><span><b>Hai modificato la lista</b><small>Quando hai finito, avvisa gli altri.</small></span><button type="button" class="btn" id="${pre}Avvisa">Avvisa</button><button type="button" class="link-txt" id="${pre}NonAvvisare">No</button></div>`;
+}
+function tocaBarraSpesa(pre = 'sp') {
+  const rinfresca = () => { if (typeof renderSpesa === 'function') renderSpesa(); if (typeof renderOggi === 'function') renderOggi(); };
+  if ($(pre + 'Avvisa')) $(pre + 'Avvisa').onclick = async () => {
+    const v = spesaInAttesa(); if (!v) return rinfresca();
+    $(pre + 'Avvisa').disabled = true;
+    LS.del('spesaAvviso');
+    await avvisaGruppo('Spesa', CHI + (v.agg ? ' ha aggiunto prodotti alla lista della spesa' : ' ha aggiornato la lista della spesa'), { tipo: 'spesa', scheda: 'spesa' });
+    toast('Avviso inviato ✓'); rinfresca();
+  };
+  if ($(pre + 'NonAvvisare')) $(pre + 'NonAvvisare').onclick = () => { LS.del('spesaAvviso'); rinfresca(); };
 }
 // A chi mandare un avviso dell'agenda: a tutto il gruppo se almeno una delle liste di persone è vuota, altrimenti alle persone indicate
 const destinatariAgenda = (...liste) => liste.some(l => !l || !l.length) ? undefined : [...new Set(liste.flat())];

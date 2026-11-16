@@ -179,6 +179,7 @@ async function copia(t, cosa) {
   catch (e) { chiedi('Copia', 'Tieni premuto sul testo e scegli Copia.', t, 'Fatto', () => {}); }
 }
 const SCORCIATOIE = [
+  ['Un solo comando (consigliato)', 'a=chiedi', 'Dici «Ehi Siri, Tablemates» e poi una frase: «aggiungi latte e pane alla spesa», «cosa devo comprare», «cosa mangio domani a cena», «ho pagato 24,50 per la pizza». Passaggi qui sopra.'],
   ['Cosa mangio?', 'a=oggi', '“Ehi Siri, cosa mangio”: i prossimi pasti di oggi e l\'agenda. Aggiungi &q=cena per un pasto preciso.'],
   ['Cosa mangio domani?', 'a=domani', 'Tutti i pasti e gli impegni di domani.'],
   ['Aggiungi alla spesa', 'a=spesa&testo=', 'Nel comando: «Chiedi testo» (Cosa aggiungo?) e metti la risposta dopo testo=. Puoi dire più cose: «latte, pane e uova».'],
@@ -200,7 +201,9 @@ async function foglioCollega(cosa) {
     <a class="btn" id="cgW" href="${esc(webcal)}">${ic('calendario', 18)}Aggiungi al calendario</a>
     <button class="btn ghost" id="cgI" type="button">${ic('link', 18)}Copia il link (Google Calendar, Outlook)</button>
     <p class="by" style="margin:8px 0 0;line-height:1.5">Se il tasto non apre il Calendario: Impostazioni dell'iPhone → Calendario → Account → Aggiungi account → Altro → <b>Aggiungi calendario iscritto</b> e incolla il link. Su Google Calendar: Altri calendari → Da URL.</p>`;
-  const siri = `<h2>Siri e Comandi Rapidi</h2><p class="q" style="line-height:1.5;margin:4px 0 10px">Nell'app <b>Comandi Rapidi</b> crea un comando con l'azione «Ottieni contenuti dell'URL» e il link qui sotto, poi «Pronuncia testo» con il risultato. Il nome del comando è la frase da dire a Siri.</p>
+  const siri = `<h2>Siri e Comandi Rapidi</h2><p class="q" style="line-height:1.5;margin:4px 0 6px">Basta <b>un solo comando</b>. Tocca «Un solo comando» qui sotto per copiare il link, poi nell'app <b>Comandi Rapidi</b>:</p>
+    <ol class="q" style="line-height:1.55;margin:0 0 10px;padding-left:20px"><li>tocca <b>+</b> e chiama il comando <b>Tablemates</b> (sarà la frase per Siri);</li><li>aggiungi l'azione <b>Chiedi input</b> (tipo Testo, domanda «Cosa vuoi?»);</li><li>aggiungi <b>Ottieni contenuti dell'URL</b>, incolla il link, tocca la freccia, metti Metodo <b>POST</b>, Corpo della richiesta <b>Modulo</b>, <b>Aggiungi nuovo campo</b> → Testo, nome <b>testo</b>, valore la variabile <b>Input fornito</b>;</li><li>aggiungi <b>Pronuncia testo</b> con <b>Contenuti dell'URL</b>.</li></ol>
+    <p class="q" style="line-height:1.5;margin:0 0 10px">Poi dici «Ehi Siri, Tablemates», Siri chiede «Cosa vuoi?» e tu rispondi, per esempio «aggiungi latte alla spesa». I nomi delle azioni possono variare un po' con la versione di iOS. Per gli appuntamenti serve il comando a parte qui sotto.</p>
     <div class="menu-righe">${SCORCIATOIE.map(([n, q, d], i) => `<button type="button" data-cs="${i}"><span class="t"><b>${esc(n)}</b><small>${esc(d)}</small></span>${ic('link', 18, 2)}</button>`).join('')}</div>`;
   foglio(`${cosa === 'siri' ? siri : cal}
     <button class="btn bordo" id="cgP" type="button" style="margin-top:12px">Prova il collegamento</button>

@@ -166,6 +166,7 @@ Il calendario si aggiorna da solo (l'iPhone lo rilegge ogni tanto, di solito ent
 | "Cosa devo comprare" | Legge la lista della spesa | `&a=lista` |
 | "Nuovo appuntamento" | Lo aggiunge all'agenda del gruppo | `&a=appuntamento&titolo=…&data=AAAA-MM-GG&ora=HH:MM` (con **Chiedi data e ora** e **Formatta data**) |
 | "Ho pagato" | Spesa pagata da te, divisa in parti uguali | `&a=pagato&titolo=…&importo=24,50` |
+| **"Tablemates"** (un solo comando) | Capisce la frase che dici: «aggiungi latte alla spesa», «cosa devo comprare», «cosa mangio domani a cena», «ho pagato 24,50 per la pizza» | `&a=chiedi`, con **Chiedi input** e **Ottieni contenuti dell'URL** in metodo **POST**, corpo **Modulo**, campo `testo` = Input fornito |
 
 Il link personale non va mandato ad altri. Se pensi che l'abbia qualcun altro, in **Calendario e Siri** tocca **Crea un nuovo link**: il vecchio smette di funzionare.
 
@@ -236,6 +237,11 @@ Quando modifichi un file, in `sw.js` aumenta il numero di `VERSIONE` (per esempi
 - **Ricetta a schermo intero** con ingredienti "In casa / Da comprare", "Metti i mancanti in spesa", ricette salvate e **Modalità cucina** (un passo alla volta, timer, schermo acceso, comandi a voce dove il telefono li supporta).
 - **Spesa + Dispensa**: livelli di quanto resta, "stanno finendo → in lista", la Dispensa si riempie quando spunti un prodotto.
 - **Conti**: "Giulia ti deve", Segna saldato, Ricordaglielo (messaggio da mandare), speso nel mese, la tua parte, ultimi movimenti; saldi, statistiche e conti restano a un tocco.
+
+## Novità della versione 10.4
+
+- **Avviso della Spesa a comando:** mentre modifichi la lista non parte nulla. In cima alla Spesa (e in Oggi) compare «Hai modificato la lista»: quando hai finito tocchi **Avvisa**, oppure **No** per non avvisare. Gli altri ricevono solo «X ha aggiunto prodotti alla lista della spesa» se hai aggiunto qualcosa, altrimenti «X ha aggiornato la lista della spesa». Se chiudi l'app l'avviso resta in attesa.
+- **Siri con un solo comando** (`a=chiedi`): dici «Ehi Siri, Tablemates» e poi la frase; il server capisce se aggiungere alla spesa, leggere la lista, dire cosa mangi o registrare una spesa. Da Siri l'avviso agli altri parte subito, con lo stesso testo. Aggiorna la funzione `collega` su Supabase (Deploy).
 
 ## Novità della versione 10.3
 - **Avvisi in automatico**: chi entra nel gruppo (anche solo dal link d'invito) riceve subito la richiesta degli avvisi; dopo **Consenti** il telefono si iscrive da solo e arriva da solo un avviso di prova. Se si risponde "Non ora" la richiesta torna il giorno dopo, e in **Oggi** resta "Attiva gli avvisi" finché non sono attivi. Su iPhone aperto da Safari compare la guida per aggiungere l'app alla schermata Home (senza, Apple non consegna gli avvisi). Il tocco su **Consenti** resta obbligatorio: lo chiede il sistema del telefono e nessuna app può saltarlo.
