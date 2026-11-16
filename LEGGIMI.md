@@ -119,15 +119,16 @@ Mentre l'app è aperta, gli avvisi su spese e pasti arrivano già. Per riceverli
 2. In Supabase apri **Edge Functions → Secrets** e aggiungi tre segreti:
    - `VAPID_PUBLIC_KEY`, con la chiave pubblica;
    - `VAPID_PRIVATE_KEY`, con la chiave privata;
-   - `VAPID_SUBJECT`, con `mailto:` seguito dalla tua email, per esempio `mailto:ale@gmail.com`.
+   - `VAPID_SUBJECT`, con `mailto:` seguito dalla tua email, per esempio `mailto:ale@gmail.com` (senza `mailto:` Supabase risponde "vapid subject is not a valid URL").
 3. Apri **Edge Functions → Deploy a new function → Via Editor**.
-4. Chiama la funzione esattamente `notifica`. Cancella il codice di esempio e incolla tutto il contenuto di `tablemates/supabase/functions/notifica/index.ts`, poi premi **Deploy function**.
+4. **Cambia il nome** in alto in `notifica`: il nome è l'indirizzo che l'app chiama e il pannello ne propone uno casuale (se lo lasci, l'app risponde che la funzione non risponde). Cancella il codice di esempio e incolla tutto il contenuto di `tablemates/supabase/functions/notifica/index.ts`, poi premi **Deploy function**.
 5. In `config.js` incolla la chiave **pubblica** in `vapidPublic`.
 6. Su GitHub apri `config.js`, clicca la matita, incolla il nuovo contenuto e premi **Commit changes**.
 7. Riapri l'app un paio di volte per caricare l'aggiornamento. Poi ognuno va in **Impostazioni → Attiva le notifiche** e accetta.
 
-8. Per **"Ci sei a cena?"** alle 17 e per i **promemoria dell'agenda**: in **Edge Functions → Secrets** aggiungi `CRON_SECRET` (una parola segreta a tua scelta), poi in **SQL Editor** incolla `tablemates/supabase/promemoria.sql`, sostituisci `IL_TUO_PROGETTO`, `IL_TUO_SEGRETO` e `LA_TUA_CHIAVE` (la chiave publishable di `config.js`) e premi **Run**. Così il server controlla l'agenda ogni 5 minuti. Con la chiave nel SQL, la spunta *Verify JWT* sulla funzione `notifica` può restare attiva.
-9. Controllo: nell'app, in fondo all'**Agenda**, il riquadro **Promemoria** dice se le notifiche del telefono sono attive e quando il server ha controllato l'agenda l'ultima volta. **Manda una prova** ti fa arrivare subito una notifica.
+8. Per **"Ci sei a cena?"** alle 17, per i **promemoria dell'agenda** e per la **sincronizzazione dal vivo**: in **Edge Functions → Secrets** aggiungi `CRON_SECRET` (una parola segreta a tua scelta), poi in **SQL Editor** incolla `tablemates/supabase/avvisi-e-sincronizzazione.sql` (un solo file per tutto; il vecchio `promemoria.sql` fa solo la seconda parte), sostituisci `IL_TUO_PROGETTO`, `IL_TUO_SEGRETO` e `LA_TUA_CHIAVE` (la chiave publishable di `config.js`) e premi **Run**. Così il server controlla l'agenda ogni 5 minuti. Nella funzione `notifica` apri **Details** e **togli la spunta** *Verify JWT* (o *Verify JWT with legacy secret*): il controllo automatico non manda l'accesso di un utente, e la funzione verifica da sola chi la chiama (segreto `CRON_SECRET` per il controllo automatico, utente del gruppo per l'app).
+9. Controllo: in **Impostazioni → Notifiche → Chi riceve gli avvisi** vedi, per ogni persona del gruppo, se ha un telefono iscritto, se ha scelto «Chi sei» e quali avvisi ha spento, più l'ultimo controllo automatico dell'agenda. **Manda una prova agli altri** dice per ognuno se l'avviso è partito. In fondo all'**Agenda** il riquadro **Promemoria** compare solo se qualcosa non funziona.
+10. **Ogni persona** deve attivare gli avvisi **sul proprio telefono** (con l'app dalla schermata Home): il telefono dell'altra persona non si attiva da quello tuo.
 
 Su iPhone le notifiche funzionano solo con l'app aggiunta alla schermata Home (iOS 16.4 o successivo).
 
@@ -235,6 +236,19 @@ Quando modifichi un file, in `sw.js` aumenta il numero di `VERSIONE` (per esempi
 - **Ricetta a schermo intero** con ingredienti "In casa / Da comprare", "Metti i mancanti in spesa", ricette salvate e **Modalità cucina** (un passo alla volta, timer, schermo acceso, comandi a voce dove il telefono li supporta).
 - **Spesa + Dispensa**: livelli di quanto resta, "stanno finendo → in lista", la Dispensa si riempie quando spunti un prodotto.
 - **Conti**: "Giulia ti deve", Segna saldato, Ricordaglielo (messaggio da mandare), speso nel mese, la tua parte, ultimi movimenti; saldi, statistiche e conti restano a un tocco.
+
+## Novità della versione 10.3
+- **Avvisi in automatico**: chi entra nel gruppo (anche solo dal link d'invito) riceve subito la richiesta degli avvisi; dopo **Consenti** il telefono si iscrive da solo e arriva da solo un avviso di prova. Se si risponde "Non ora" la richiesta torna il giorno dopo, e in **Oggi** resta "Attiva gli avvisi" finché non sono attivi. Su iPhone aperto da Safari compare la guida per aggiungere l'app alla schermata Home (senza, Apple non consegna gli avvisi). Il tocco su **Consenti** resta obbligatorio: lo chiede il sistema del telefono e nessuna app può saltarlo.
+- **Chi entra con lo stesso nome** di una persona già nel gruppo viene collegato da solo, senza la domanda "Chi sei?". I promemoria e gli avvisi per una persona non ancora collegata arrivano all'account con lo stesso nome.
+- **Sincronizzazione**: se il collegamento dal vivo cade, al ritorno i dati si ricaricano da soli e, finché non torna, ogni 30 secondi.
+- **Siri** (spesa, appuntamento, ho pagato) ora avvisa anche gli altri del gruppo.
+- **Un solo file SQL**: `supabase/avvisi-e-sincronizzazione.sql` attiva la sincronizzazione dal vivo di tutte le tabelle e il controllo automatico ogni 5 minuti (promemoria dell'agenda e "Ci sei a cena?"). Sostituisce `promemoria.sql` e si può rieseguire.
+
+## Novità della versione 10.2
+- **Avvisi per tutto**: spesa (aggiunto, preso, modificato, tolto, lista svuotata, lista creata da dieta o ricetta), agenda (nuovo appuntamento o scadenza, modifica, eliminazione, scadenza pagata, promemoria all'orario), conti (nuova spesa o rimborso, modifica, eliminazione, conti creati, modificati, eliminati), persone (chi entra, aggiunto, rinominato, tolto), pasti (piano caricato, piatti pronti, mangiamo insieme, chi ci sarà a cena). Più avvisi ravvicinati sulla spesa diventano uno solo. In Impostazioni si possono spegnere per tipo (pasti, spesa, conti, agenda, piano, gruppo).
+- **Perché gli avvisi non arrivavano a tutti**: il server li mandava solo a chi era collegato a una persona del gruppo; ora arrivano a ogni account con un telefono iscritto. Su iPhone un avviso ricevuto con l'app aperta non veniva mostrato e, dopo qualche volta, iOS spegneva le notifiche del telefono: ora viene sempre mostrato (con l'app aperta sparisce da solo dopo pochi secondi). Uscire dall'account non spegne più le notifiche del telefono per chi entra dopo.
+- **Chi riceve gli avvisi** (Impostazioni): diagnosi per persona e prova a tutti, con il motivo se un telefono rifiuta l'avviso.
+- La funzione `notifica` va ripubblicata con il codice nuovo e **senza** la spunta Verify JWT.
 
 ## Novità della versione 10.0
 - **Oggi è una dashboard**: i pasti del giorno in breve (tocca un pasto per vedere quantità e idee), pranzo e cena "A tavola", l'agenda del giorno, spesa e conti. Con le frecce, scorrendo col dito o toccando la data passi agli altri giorni.

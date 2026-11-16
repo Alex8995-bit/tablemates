@@ -116,7 +116,7 @@ function mostraRicettaPagina(x, ctx) {
     if (!mancanti.length) return toast('Hai già tutto in casa');
     const righe = mancanti.map(i => ({ gruppo_id: G.id, nome: i.nome, quantita: i.qta, reparto: repartoDi(i.nome), giorno: 'Ricetta · ' + x.nome, comprato: false, aggiunto_da: CHI }));
     $('rcM').disabled = true;
-    if (await scrivi(() => ST.ins('spesa', righe))) { await ricarica(); toast((righe.length === 1 ? '1 prodotto aggiunto' : righe.length + ' prodotti aggiunti') + ' alla Spesa ✓'); mostraRicettaPagina(x, ctx); }
+    if (await scrivi(() => ST.ins('spesa', righe))) { await ricarica(); avvisaSpesa(righe.map(r => r.nome), 'agg'); toast((righe.length === 1 ? '1 prodotto aggiunto' : righe.length + ' prodotti aggiunti') + ' alla Spesa ✓'); mostraRicettaPagina(x, ctx); }
   };
 }
 

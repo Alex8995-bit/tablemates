@@ -169,22 +169,50 @@ async function apriGruppo(g) {
   chiudi(); ST.smetti(); live = false; D = VUOTO_D();
   if (ST.inAttesa && ST.inAttesa() && navigator.onLine) await ST.svuota();
   await ricarica();
-  ST.ascolta(g.id, cambiamento, s => { live = s; renderNav(); renderOggi(); renderPiano(); renderSpesa(); });
+  collegaDalVivo(g.id);
   if (!IO) scegliPartecipante(); else { setTimeout(promemoria, 1500); setTimeout(avviaNotifiche, 800); }
 }
+// Aggiornamenti dal vivo: ogni modifica dell'altro compare da sola. Se il collegamento cade (telefono in tasca, rete che cambia)
+// al ritorno si ricaricano i dati per non perdere nulla; finché non torna, i dati si ricaricano ogni 30 secondi.
+let _vivoGruppo = null, _vivoGiu = 0;
+function collegaDalVivo(gid) {
+  _vivoGruppo = gid; let prima = true;
+  ST.ascolta(gid, cambiamento, s => {
+    const era = live; live = s;
+    if (s) { _vivoGiu = 0; if (!era && !prima && G && G.id === gid) ricarica(); prima = false; }
+    else if (!_vivoGiu) _vivoGiu = Date.now();
+    renderNav(); renderOggi(); renderPiano(); renderSpesa();
+  });
+}
+setInterval(() => {
+  if (!G || !ST || ST.modo !== 'supabase' || live || document.hidden || !navigator.onLine) return;
+  ricarica();
+  if (_vivoGiu && Date.now() - _vivoGiu > 60000 && _vivoGruppo === G.id) { _vivoGiu = Date.now(); collegaDalVivo(G.id); }
+}, 30000);
 // Come in Tricount: ogni account corrisponde a una persona del gruppo
-function scegliPartecipante() {
+async function scegliPartecipante() {
   const liberi = D.partecipanti.filter(p => !p.user_id);
-  const giaNome = D.partecipanti.find(p => p.nome.toLowerCase() === (CHI || '').toLowerCase() && !p.user_id);
+  const giaNome = D.partecipanti.find(p => p.nome.trim().toLowerCase() === (CHI || '').trim().toLowerCase() && !p.user_id);
+  // chi entra con lo stesso nome di una persona già nel gruppo (e non ancora collegata) viene collegato da solo
+  if (giaNome && liberi.filter(p => p.nome.trim().toLowerCase() === giaNome.nome.trim().toLowerCase()).length === 1) {
+    if (await scrivi(() => ST.upd('partecipanti', giaNome.id, { user_id: UTENTE.id }))) {
+      await ricarica(); entratoNelGruppo(giaNome.nome); return;
+    }
+  }
   foglio(`<h2>Chi sei in ${esc(G.nome)}?</h2><p class="q" style="line-height:1.5">Scegli la persona che corrisponde a te, oppure aggiungiti.</p>
     ${liberi.map(p => `<button class="btn ghost" type="button" data-p="${p.id}">${esc(p.nome)}</button>`).join('')}
     ${giaNome ? '' : `<button class="btn" type="button" id="pNew">Aggiungi "${esc(CHI)}"</button>`}`, { fisso: true, senzaX: true });
   $('pop').querySelectorAll('[data-p]').forEach(b => b.onclick = async () => {
-    if (await scrivi(() => ST.upd('partecipanti', b.dataset.p, { user_id: UTENTE.id }))) { chiudi(); await ricarica(); }
+    if (await scrivi(() => ST.upd('partecipanti', b.dataset.p, { user_id: UTENTE.id }))) { chiudi(); await ricarica(); entratoNelGruppo(b.textContent.trim()); }
   });
   if ($('pNew')) $('pNew').onclick = async () => {
-    if (await scrivi(() => ST.ins('partecipanti', { gruppo_id: G.id, nome: CHI, user_id: UTENTE.id }))) { chiudi(); await ricarica(); }
+    if (await scrivi(() => ST.ins('partecipanti', { gruppo_id: G.id, nome: CHI, user_id: UTENTE.id }))) { chiudi(); await ricarica(); entratoNelGruppo(CHI); }
   };
+}
+// Appena una persona entra nel gruppo: gli altri lo sanno e sul suo telefono partono gli avvisi (permesso, iscrizione, prova)
+function entratoNelGruppo(nome) {
+  avvisaGruppo('Gruppo ' + G.nome, `${nome} è entrato nel gruppo`, { tipo: 'gruppo', scheda: 'gruppo' });
+  setTimeout(avviaNotifiche, 600); setTimeout(promemoria, 1500);
 }
 // Modifiche arrivate dagli altri dispositivi
 function cambiamento(t, ev, r) {

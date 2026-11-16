@@ -41,7 +41,7 @@ function renderConti() {
     const m = D.movimenti.find(x => x.id === r.dataset.m); if (!m) return ripristina();
     conferma('Eliminare questa voce?', `"${m.titolo}" verrà tolta dai conti di tutto il gruppo.`, 'Elimina', async () => {
       D.movimenti = D.movimenti.filter(x => x.id !== m.id); renderConti();
-      if (await scrivi(() => ST.del('movimenti', m.id))) toast('Eliminata');
+      if (await scrivi(() => ST.del('movimenti', m.id))) { toast('Eliminata'); avvisaGruppo('Voce eliminata', `${CHI} ha tolto «${m.titolo}» · ${eur(Conti.inValutaGruppo(m))}`, { tipo: 'conti', scheda: 'conti' }); }
     }, true, ripristina);
   });
   if ($('cerca')) { $('cerca').value = cercaConti; $('cerca').oninput = e => { cercaConti = e.target.value; const p = e.target.selectionStart; renderConti(); $('cerca').focus(); $('cerca').setSelectionRange(p, p); }; }
@@ -258,10 +258,10 @@ function gestisciConto(id) {
       if (nuovo) {
         const r = { id: c.id, gruppo_id: G.id, nome: c.nome.trim(), tipo: c.tipo, voci: c.voci, ordine: D.conti.length + 1, created_at: new Date().toISOString() };
         D.conti.push(r); filtroConto = r.id; renderConti();
-        if (await scrivi(() => ST.ins('conti', r))) toast('Conto creato ✓');
+        if (await scrivi(() => ST.ins('conti', r))) { toast('Conto creato ✓'); avvisaGruppo('Nuovo conto', `${CHI} ha creato il conto «${r.nome}»`, { tipo: 'conti', scheda: 'conti' }); }
       } else {
         const r = contoDi(id); Object.assign(r, { nome: c.nome.trim(), tipo: c.tipo, voci: c.voci }); renderConti();
-        if (await scrivi(() => ST.upd('conti', id, { nome: r.nome, tipo: r.tipo, voci: r.voci }))) toast('Salvato ✓');
+        if (await scrivi(() => ST.upd('conti', id, { nome: r.nome, tipo: r.tipo, voci: r.voci }))) { toast('Salvato ✓'); avvisaGruppo('Conto modificato', `${CHI} ha modificato il conto «${r.nome}»`, { tipo: 'conti', scheda: 'conti' }); }
       }
       if (emo !== undefined) salvaEmoji('c:' + c.id, emo.e);
     };
@@ -269,7 +269,7 @@ function gestisciConto(id) {
       if (D.movimenti.some(m => m.conto_id === id)) return toast('Questo conto ha delle spese: spostale o eliminale prima');
       conferma('Eliminare il conto?', `"${c.nome}" verrà tolto per tutti.`, 'Elimina', async () => {
         D.conti = D.conti.filter(x => x.id !== id); filtroConto = ''; renderConti();
-        await scrivi(() => ST.del('conti', id));
+        if (await scrivi(() => ST.del('conti', id))) avvisaGruppo('Conto eliminato', `${CHI} ha eliminato il conto «${c.nome}»`, { tipo: 'conti', scheda: 'conti' });
       }, true);
     };
   };
@@ -383,7 +383,7 @@ function formMovimento(m, preset) {
     $('mS').onclick = salva; $('mS2').onclick = salva;
     if ($('mE')) $('mE').onclick = () => conferma('Eliminare questa voce?', `"${m.titolo}" verrà tolta dai conti di tutto il gruppo.`, 'Elimina', async () => {
       D.movimenti = D.movimenti.filter(x => x.id !== m.id); renderConti();
-      if (await scrivi(() => ST.del('movimenti', m.id))) toast('Eliminata');
+      if (await scrivi(() => ST.del('movimenti', m.id))) { toast('Eliminata'); avvisaGruppo('Voce eliminata', `${CHI} ha tolto «${m.titolo}» · ${eur(Conti.inValutaGruppo(m))}`, { tipo: 'conti', scheda: 'conti' }); }
     }, true);
     anteprimaQuote();
   };
@@ -422,7 +422,8 @@ function formMovimento(m, preset) {
       riga.modificato_da = CHI; delete riga.gruppo_id;
       const i = D.movimenti.findIndex(x => x.id === m.id);
       D.movimenti[i] = { ...D.movimenti[i], ...riga, ha_foto: foto === undefined ? m.ha_foto : !!foto, foto: undefined };
-      renderConti(); if (await scrivi(() => ST.upd('movimenti', m.id, riga))) toast('Salvata ✓');
+      renderConti();
+      if (await scrivi(() => ST.upd('movimenti', m.id, riga))) { toast('Salvata ✓'); avvisaGruppo(tr ? 'Rimborso modificato' : 'Spesa modificata', `${CHI}: ${riga.titolo} · ${eur(Conti.inValutaGruppo(riga))}`, { tipo: 'conti', scheda: 'conti' }); }
     }
     ordinaMov(D.movimenti); renderConti();
     if (emo !== undefined) salvaEmoji(emo.regola ? EMO.chiaveTesto(riga.titolo) : 'm:' + mid, emo.e);
@@ -443,7 +444,7 @@ async function aggiungiPartecipante() {
   if (D.partecipanti.some(p => p.nome.toLowerCase() === n.toLowerCase())) return toast('C\'è già una persona con questo nome');
   const r = { id: uuid(), gruppo_id: G.id, nome: n, user_id: null, created_at: new Date().toISOString() };
   D.partecipanti.push(r); renderTutto();
-  if (await scrivi(() => ST.ins('partecipanti', r))) toast(n + ' aggiunto ✓');
+  if (await scrivi(() => ST.ins('partecipanti', r))) { toast(n + ' aggiunto ✓'); avvisaGruppo('Gruppo ' + G.nome, `${CHI} ha aggiunto ${n} al gruppo`, { tipo: 'gruppo', scheda: 'gruppo' }); }
 }
 function modificaPartecipante(id) { opzioniMembro(id); }
 function esportaCSV() {

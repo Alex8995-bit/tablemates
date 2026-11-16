@@ -1,6 +1,6 @@
 // Service worker di Tablemates: apre l'app anche senza rete, la aggiorna e mostra le notifiche ad app chiusa.
 // Quando cambi i file, aumenta il numero di VERSIONE: i dispositivi scaricheranno la nuova versione.
-const VERSIONE = 'tablemates-10.1';
+const VERSIONE = 'tablemates-10.3';
 const FILE = [
   './', 'index.html', 'app.css', 'config.js', 'manifest.webmanifest',
   'supabase.js', 'pdf.min.js', 'pdf.worker.min.js', 'manrope-latin-wght-normal.woff2', 'manrope-latin-ext-wght-normal.woff2',
@@ -31,12 +31,14 @@ self.addEventListener('fetch', e => {
 // Notifica arrivata dal server (funzione "notifica" su Supabase)
 self.addEventListener('push', e => {
   let d = {}; try { d = e.data ? e.data.json() : {}; } catch (er) { d = { titolo: 'Tablemates', testo: e.data ? e.data.text() : '' }; }
-  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(cl => {
-    // app aperta davanti: gli avvisi normali compaiono già dentro l'app; promemoria e messaggi personali si mostrano sempre
-    if (!d.sempre && cl.some(c => c.visibilityState === 'visible')) return;
-    return self.registration.showNotification(d.titolo || 'Tablemates', {
-      body: d.testo || '', icon: 'icon-192.png', badge: 'favicon-32.png', tag: d.tag || 'tablemates', renotify: true, data: { scheda: d.scheda || '' }
-    });
+  const tag = d.tag || 'tablemates';
+  // Ogni avviso ricevuto va SEMPRE mostrato: su iPhone, se un avviso arriva e non compare nulla, dopo qualche volta il sistema spegne
+  // le notifiche di quel telefono per sempre. Con l'app aperta davanti (dove compare già dentro l'app) l'avviso resta visibile pochi secondi.
+  e.waitUntil(self.registration.showNotification(d.titolo || 'Tablemates', {
+    body: d.testo || '', icon: 'icon-192.png', badge: 'favicon-32.png', tag, renotify: true, data: { scheda: d.scheda || '' }
+  }).then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true })).then(cl => {
+    if (d.sempre || !cl.some(c => c.visibilityState === 'visible')) return;
+    return new Promise(r => setTimeout(r, 5000)).then(() => self.registration.getNotifications({ tag })).then(l => l.forEach(n => n.close()));
   }));
 });
 self.addEventListener('notificationclick', e => {

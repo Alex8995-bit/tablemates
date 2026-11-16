@@ -179,7 +179,8 @@ async function generaGiorno(senzaIA) {
       }
     });
     await ricarica(); toast('Piatti e spesa pronti ✓');
-    avvisaGruppo('Nuovi pasti', `${CHI} ha preparato i piatti di ${nome} per ${g.giorno}`);
+    avvisaGruppo('Nuovi pasti', `${CHI} ha preparato i piatti di ${nome} per ${g.giorno}`, { tipo: 'piano', scheda: 'piano' });
+    if (out.spesa?.length) avvisaGruppo('Spesa', `${CHI} ha creato la lista della spesa per ${nome} · ${g.giorno}: ${out.spesa.length} prodotti`, { tipo: 'spesa', scheda: 'spesa' });
   } catch (e) { toast(e.message, senzaIA ? null : { testo: 'Ricette base', fn: () => generaGiorno(true) }); if ($('gen')) { $('gen').disabled = false; $('gen').textContent = 'Riprova'; } }
 }
 

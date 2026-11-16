@@ -17,11 +17,14 @@ function renderImp() {
   h += `<section aria-labelledby="aspetto" style="display:flex;flex-direction:column;gap:6px"><h2 id="aspetto" class="sez" style="margin:0">Aspetto</h2><div class="seg alto" role="radiogroup" aria-labelledby="aspetto">${TEMI.map(([k, n]) => `<button type="button" role="radio" data-tema="${k}" aria-checked="${t === k}" class="${t === k ? 'on' : ''}">${n}</button>`).join('')}</div></section>`;
   const sw = (k, label, hint) => `<div><span class="t"><b>${label}</b><small>${hint}</small></span><button type="button" class="switch" role="switch" aria-checked="${!!av[k]}" aria-label="${label}" data-av="${k}"></button></div>`;
   h += `<section aria-labelledby="notif" style="display:flex;flex-direction:column;gap:6px"><h2 id="notif" class="sez" style="margin:0">Notifiche</h2><div class="menu-righe">
-    ${sw('tavola', 'Ci sei a cena?', 'Notifica ogni giorno alle 17:00, se non hai ancora risposto')}
-    ${sw('spesa', 'Novità nella spesa', 'Quando qualcuno aggiunge o compra')}
-    ${sw('conti', 'Promemoria conti', 'Quando qualcuno ti ricorda un conto, e una volta a settimana se c\'è un saldo')}
-    ${sw('agenda', 'Agenda', 'Promemoria di appuntamenti e scadenze che ti riguardano')}
-    ${!ANTEPRIMA && G ? `<button type="button" id="imNot">${ic('campana', 20, 1.8)}<span class="t"><b>Avvisi sul telefono</b><small>${notificheAttive() ? (pushPossibile() ? 'Attivi anche ad app chiusa' : 'Attivi mentre l\'app è aperta: per averli ad app chiusa va completata la configurazione del server') : LS.get('notifiche') === 'no' ? 'Spenti su questo telefono' : ios() && !installata() ? 'Su iPhone servono con l\'app nella schermata Home' : 'Permetti all\'app di mostrare gli avvisi'}</small></span><span class="v ${notificheAttive() ? 'on' : ''}">${notificheAttive() ? 'Attivi' : 'Attiva'}</span>${ic('avanti', 18, 2)}</button>` : ''}</div></section>`;
+    ${sw('tavola', 'Pasti e presenze', 'Ci sei a cena? ogni giorno alle 17:00, chi mangia insieme e chi ci sarà')}
+    ${sw('spesa', 'Novità nella spesa', 'Quando qualcuno aggiunge, compra, modifica o toglie un prodotto')}
+    ${sw('conti', 'Conti', 'Nuove spese e rimborsi, modifiche, promemoria di un conto e saldo settimanale')}
+    ${sw('agenda', 'Agenda', 'Nuovi appuntamenti e scadenze, modifiche e promemoria che ti riguardano')}
+    ${sw('piano', 'Piano e dieta', 'Quando qualcuno carica o aggiorna la dieta o prepara i piatti')}
+    ${sw('gruppo', 'Gruppo', 'Quando entra, esce o cambia una persona del gruppo')}
+    ${!ANTEPRIMA && G ? `<button type="button" id="imNot">${ic('campana', 20, 1.8)}<span class="t"><b>Avvisi sul telefono</b><small>${notificheAttive() ? (pushPossibile() ? 'Attivi anche ad app chiusa' : 'Attivi mentre l\'app è aperta: per averli ad app chiusa va completata la configurazione del server') : notificheSpente() ? 'Spenti su questo telefono' : ios() && !installata() ? 'Su iPhone servono con l\'app nella schermata Home' : 'Permetti all\'app di mostrare gli avvisi'}</small></span><span class="v ${notificheAttive() ? 'on' : ''}">${notificheAttive() ? 'Attivi' : 'Attiva'}</span>${ic('avanti', 18, 2)}</button>
+    ${server ? `<button type="button" id="imDiag">${ic('gruppo', 20, 1.8)}<span class="t"><b>Chi riceve gli avvisi</b><small>Controlla i telefoni del gruppo e manda una prova agli altri</small></span>${ic('avanti', 18, 2)}</button>` : ''}` : ''}</div></section>`;
   if (server && G && IO) h += `<section aria-labelledby="colleg" style="display:flex;flex-direction:column;gap:6px"><h2 id="colleg" class="sez" style="margin:0">Calendario e Siri</h2><div class="menu-righe">
     <button type="button" id="imCal">${ic('calendario', 20, 1.8)}<span class="t"><b>Calendario del telefono</b><small>L'agenda compare nel Calendario dell'iPhone, con gli avvisi</small></span>${ic('avanti', 18, 2)}</button>
     <button type="button" id="imSiri">${ic('microfono', 20, 1.8)}<span class="t"><b>Siri e Comandi Rapidi</b><small>"Ehi Siri, cosa mangio?", "aggiungi alla spesa"…</small></span>${ic('avanti', 18, 2)}</button></div></section>`;
@@ -39,6 +42,7 @@ function renderImp() {
   $('imAcc').onclick = foglioAccount;
   el.querySelectorAll('[data-av]').forEach(b => b.onclick = () => { vibra(); salvaAvviso(b.dataset.av, !avvisoAttivo(b.dataset.av)); });
   if ($('imNot')) $('imNot').onclick = () => notificheAttive() ? conferma('Disattivare gli avvisi?', 'Non riceverai più avvisi su questo dispositivo.', 'Disattiva', disattivaNotifiche) : attivaNotifiche();
+  if ($('imDiag')) $('imDiag').onclick = foglioDiagnosiNotifiche;
   if ($('imIA')) $('imIA').onclick = foglioIA;
   if ($('imPin')) $('imPin').onclick = foglioSicurezza;
   $('imPiano').onclick = () => { personaPiano = IO || personaPiano; vai('piano'); renderPiano(); $('pdf').click(); };
@@ -49,7 +53,7 @@ function renderImp() {
     if (installaEvt) { installaEvt.prompt(); await installaEvt.userChoice.catch(() => {}); installaEvt = null; return renderImp(); }
     foglio(`<h2>Installa l'app</h2><p class="q" style="line-height:1.5">${ios() ? 'Su iPhone e iPad: apri questa pagina in Safari, tocca Condividi e poi <b>Aggiungi alla schermata Home</b>.' : 'Su PC con Chrome o Edge: clicca l\'icona di installazione a destra nella barra degli indirizzi. Su Android: menu ⋮ → <b>Installa app</b>.'}</p>`);
   };
-  if ($('esci')) $('esci').onclick = () => conferma('Uscire dall\'account?', 'Su questo dispositivo dovrai accedere di nuovo con email e password.', 'Esci', async () => { await disattivaNotifiche().catch(() => {}); await ST.esci(); SS.del('chi'); LS.del('chi'); LS.del('utente'); LS.del('gruppo'); location.reload(); }, true);
+  if ($('esci')) $('esci').onclick = () => conferma('Uscire dall\'account?', 'Su questo dispositivo dovrai accedere di nuovo con email e password.', 'Esci', async () => { await scollegaDispositivo().catch(() => {}); await ST.esci(); SS.del('chi'); LS.del('chi'); LS.del('utente'); LS.del('gruppo'); location.reload(); }, true);
   if ($('coll')) $('coll').onclick = () => conferma('Collegare il server?', 'I dati salvati solo su questo dispositivo non vengono spostati: nel nuovo spazio condiviso ricominci da capo.', 'Continua', () => { LS.del('modo'); LS.del('gruppo'); G = null; benvenuto(); });
 }
 
@@ -158,7 +162,7 @@ function modificaGruppo() {
 // ---------- Calendario del telefono e Siri (funzione "collega" su Supabase) ----------
 // Ogni persona ha un link personale con un codice segreto: il calendario dell'iPhone lo legge da solo ogni tanto,
 // i Comandi Rapidi lo usano per far rispondere Siri. Il codice si può rigenerare: il vecchio smette di funzionare.
-const urlFunzione = nome => S('sbUrl').replace(/\/+$/, '') + '/functions/v1/' + nome;
+const urlFunzione = nome => S('sbUrl').replace(/\/+$/, '') + '/functions/v1/' + nomeFn(nome);
 const mioPonte = () => { if (!IO) return ''; const k = Object.keys(D.stato).find(k => k.startsWith('ponte:') && D.stato[k] && D.stato[k].pid === IO); return k ? k.slice(6) : ''; };
 async function creaPonte(rigenera) {
   const vecchio = mioPonte(); if (vecchio && !rigenera) return vecchio;

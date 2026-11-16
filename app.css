@@ -619,3 +619,4 @@ a.btn{text-decoration:none}
 /* Niente barra di scorrimento: si scorre col dito come in un'app */
 html,body,*{scrollbar-width:none;-ms-overflow-style:none}
 html::-webkit-scrollbar,body::-webkit-scrollbar,*::-webkit-scrollbar{display:none;width:0;height:0;background:transparent}
+.og-avvisi{margin:0 0 12px}

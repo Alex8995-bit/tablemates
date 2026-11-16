@@ -119,7 +119,7 @@ function foglioSpesaDieta(pid) {
         await ST.delWhere('spesa', { gruppo_id: G.id, giorno: etichetta, comprato: false });
         await ST.ins('spesa', voci.map(x => ({ gruppo_id: G.id, nome: x.nome, quantita: quantitaSpesa(x), reparto: repartoDi(x.nome), giorno: etichetta, comprato: false, aggiunto_da: CHI })));
       });
-      await ricarica(); chiudi(); toast('Lista creata ✓ ' + voci.length + ' prodotti nella Spesa');
+      await ricarica(); chiudi(); toast('Lista creata ✓ ' + voci.length + ' prodotti nella Spesa'); avvisaGruppo('Spesa', `${CHI} ha creato la lista della spesa dalla dieta: ${voci.length} prodotti`, { tipo: 'spesa', scheda: 'spesa' });
     } catch (e) { toast(e.message); if ($('gGo')) { $('gGo').disabled = false; $('gGo').textContent = 'Riprova'; } }
   };
 }

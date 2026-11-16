@@ -1,3 +1,5 @@
+// Nome con cui una funzione è pubblicata su Supabase (config.js → funzioni); se non è indicato vale il nome standard
+const nomeFn = n => (window.CFG && window.CFG.funzioni && window.CFG.funzioni[n]) || n;
 // Livello dati: Supabase (condiviso tra dispositivi) oppure "locale" (solo questo dispositivo).
 const TABELLE = ['spesa', 'partecipanti', 'conti', 'movimenti'];
 // La foto dello scontrino si scarica solo quando la apri
@@ -52,7 +54,7 @@ function storeSupabase(url, key) {
     async disiscrivi(endpoint) { ok(await db.from('push_iscrizioni').delete().eq('endpoint', endpoint)); },
     // Funzione "cucina" sul server: intelligenza artificiale (Groq con la chiave del server) e importazione di ricette da un link
     async cucina(corpo) {
-      const r = await db.functions.invoke('cucina', { body: corpo });
+      const r = await db.functions.invoke(nomeFn('cucina'), { body: corpo });
       if (r.error) {
         const ctx = r.error.context; let m = '';
         try { m = (await ctx.clone().json()).errore || ''; } catch (e) {}
@@ -61,12 +63,20 @@ function storeSupabase(url, key) {
       }
       return r.data;
     },
-    async provaNotifica(g) {
-      const r = await db.functions.invoke('notifica', { body: { gruppo_id: g, prova: true } });
-      if (r.error) { let m = ''; try { m = (await r.error.context.clone().json()).errore || ''; } catch (e) {} throw new Error(m || 'La funzione "notifica" non risponde: controlla che sia pubblicata con il codice nuovo.'); }
+    // Chiamata alla funzione "notifica": se non risponde, l'errore dice che cosa controllare
+    async _notifica(corpo) {
+      const r = await db.functions.invoke(nomeFn('notifica'), { body: corpo });
+      if (r.error) { let m = ''; try { m = (await r.error.context.clone().json()).errore || ''; } catch (e) {} throw new Error(m || 'La funzione "notifica" non risponde: controlla che su Supabase si chiami proprio "notifica", che sia pubblicata con il codice nuovo e senza la spunta "Verify JWT".'); }
       return r.data || {};
     },
-    async notifica(g, titolo, testo, scheda, tipo, a) { try { const r = await db.functions.invoke('notifica', { body: { gruppo_id: g, titolo, testo, scheda, tipo, a } }); return (r.data && r.data.inviate) || 0; } catch (e) { return 0; } },
+    // quale: true = solo a me, "tutti" = a tutti gli altri del gruppo (con l'esito per ognuno)
+    async provaNotifica(g, quale) { return this._notifica({ gruppo_id: g, prova: quale || true, da: typeof CHI === 'string' ? CHI : '' }); },
+    // Chi riceve gli avvisi e, se qualcuno no, perché
+    async diagnosiNotifiche(g) { return this._notifica({ gruppo_id: g, diagnosi: true }); },
+    async notifica(g, titolo, testo, scheda, tipo, a) {
+      try { const r = await this._notifica({ gruppo_id: g, titolo, testo, scheda, tipo, a }); return (r && r.inviate) || 0; }
+      catch (e) { console.warn('Avviso non inviato:', e.message); return 0; }
+    },
     ascolta(g, cb, stato) {
       this.smetti();
       const F = 'gruppo_id=eq.' + g;
@@ -135,7 +145,7 @@ function storeLocale() {
       D[t] = D[t].filter(x => x.id !== id); salva();
     },
     async delWhere(t, f) { D[t] = D[t].filter(r => !match(r, f)); salva(); },
-    async iscrivi() {}, async disiscrivi() {}, async notifica() { return 0; }, async provaNotifica() { return { inviate: 0, dispositivi: 0 }; },
+    async iscrivi() {}, async disiscrivi() {}, async notifica() { return 0; }, async provaNotifica() { return { inviate: 0, dispositivi: 0 }; }, async diagnosiNotifiche() { return { persone: [] }; },
     async cucina() { throw new Error('Serve il server Supabase: in modalità "solo su questo dispositivo" non è disponibile.'); },
     ascolta(g, cb, stato) { stato(false); },
     smetti() {}

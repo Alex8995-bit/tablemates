@@ -23,7 +23,10 @@ async function segnaPresenza(pid, iso, quando, valore) {
   Object.keys(tutte).forEach(k => { if (k.slice(0, 10) < lim) delete tutte[k]; });
   if (valore === undefined) delete tutte[iso + '|' + quando]; else tutte[iso + '|' + quando] = valore;
   D.stato['presenze:' + pid] = tutte; vibra(); renderOggi(); renderPresenze();
-  await scrivi(() => ST.salvaStato(G.id, 'presenze:' + pid, tutte));
+  const salvata = await scrivi(() => ST.salvaStato(G.id, 'presenze:' + pid, tutte));
+  // la mia risposta arriva agli altri (se cambio idea in pochi secondi, parte solo l'ultima)
+  if (salvata && pid === IO && valore !== undefined)
+    ritarda('pres:' + iso + '|' + quando, 8000, () => avvisaGruppo('A tavola', `${CHI} ${valore ? 'ci sarà' : 'non ci sarà'} a ${quando === 'p' ? 'pranzo' : quando === 'c' ? 'cena' : 'tavola'} ${iso === oggiISO() ? 'oggi' : dataBreve(iso)}`, { tipo: 'tavola', scheda: 'oggi' }));
 }
 const conApp = () => D.partecipanti.filter(p => p.user_id || p.id === IO);
 
@@ -73,6 +76,7 @@ function renderOggi() {
     <button type="button" class="og-freccia" id="ogNext" aria-label="Giorno successivo">${ic('avanti', 20, 2.2)}</button></div>${gruppoAvatars()}
     <input type="date" id="ogPick" value="${iso}" tabindex="-1" aria-hidden="true" class="og-pick"></div>
     ${diff !== 0 ? `<button type="button" class="link og-torna" id="ogOggi">${ic('indietro', 15, 2.2)} Torna a oggi</button>` : ''}`;
+  h += htmlAvvisiOggi();
   // ---- Pasti del giorno, in breve: si apre quello che interessa
   const piano = IO ? pianoDi(IO) : null, gi = giornoPianoPer(piano, iso);
   const pasti = gi >= 0 ? pastiDelGiorno(piano.giorni[gi]) : [];
@@ -140,6 +144,7 @@ function renderOggi() {
   const sposta = n => { const d = dataDi(iso); d.setDate(d.getDate() + n); cambiaGiorno(isoDi(d)); };
   $('ogPrev').onclick = () => sposta(-1); $('ogNext').onclick = () => sposta(1);
   if ($('ogOggi')) $('ogOggi').onclick = () => cambiaGiorno(oggi);
+  if ($('ogAvvisi')) $('ogAvvisi').onclick = tocaAvvisiOggi;
   $('ogData').onclick = () => { const p = $('ogPick'); try { if (p.showPicker) p.showPicker(); else p.focus(); } catch (e) { p.focus(); } };
   $('ogPick').onchange = () => { if ($('ogPick').value) cambiaGiorno($('ogPick').value); };
   $('ogG').onclick = () => vai('gruppo');

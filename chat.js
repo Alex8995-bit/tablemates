@@ -47,7 +47,7 @@ async function chiediAI(q) {
     if (out.aggiungi?.length) {
       const righe = out.aggiungi.map(x => ({ id: uuid(), gruppo_id: G.id, nome: x.nome, quantita: x.quantita || '', reparto: REPARTI.includes(x.reparto) ? x.reparto : 'Altro', comprato: false, aggiunto_da: CHI, created_at: new Date().toISOString() }));
       D.spesa.push(...righe); renderSpesa();
-      if (await scrivi(() => ST.ins('spesa', righe))) toast('Aggiunto alla spesa ✓');
+      if (await scrivi(() => ST.ins('spesa', righe))) { toast('Aggiunto alla spesa ✓'); avvisaSpesa(righe.map(r => r.nome), 'agg'); }
     }
     renderChat(); scrollTo(0, document.body.scrollHeight); parla(out.risposta);
   } catch (e) { chat[chat.length - 1].t = 'Errore: ' + e.message; renderChat(); }

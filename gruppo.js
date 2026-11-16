@@ -39,7 +39,7 @@ function opzioniMembro(id) {
       ${tu ? `<button type="button" id="omU">${ic('utenti', 20, 1.8)}<span class="t"><b>Non sono io</b><small>Scegli un'altra persona del gruppo</small></span>${ic('avanti', 18, 2)}</button>` : ''}
       ${admin && !tu ? `<button type="button" id="omD" style="color:var(--danger)">${ic('cestino', 20, 1.8)}<span class="t"><b>Togli dal gruppo</b><small>Solo se non compare in nessuna spesa</small></span></button>` : ''}
     </div>${!admin && !tu ? '<p class="by" style="margin:10px 0 0">Solo un amministratore può togliere persone o nominare amministratori.</p>' : ''}`);
-  $('omN').onclick = () => chiedi('Nome', 'Come compare nel gruppo e nei conti.', p.nome, 'Salva', async n => { n = n.trim(); if (!n) return; p.nome = n; renderTutto(); await scrivi(() => ST.upd('partecipanti', id, { nome: n })); });
+  $('omN').onclick = () => chiedi('Nome', 'Come compare nel gruppo e nei conti.', p.nome, 'Salva', async n => { n = n.trim(); if (!n || n === p.nome) return; const prima = p.nome; p.nome = n; renderTutto(); if (await scrivi(() => ST.upd('partecipanti', id, { nome: n }))) avvisaGruppo('Gruppo ' + G.nome, `${CHI} ha cambiato il nome di ${prima} in ${n}`, { tipo: 'gruppo', scheda: 'gruppo' }); });
   if ($('omA')) $('omA').onclick = () => { chiudi(); cambiaAdmin(id, !eAdmin(p)); };
   if ($('omF')) $('omF').onclick = () => foglioFoto('profilo');
   if ($('omU')) $('omU').onclick = async () => { chiudi(); if (await scrivi(() => ST.upd('partecipanti', id, { user_id: null }))) { await ricarica(); scegliPartecipante(); } };
@@ -49,7 +49,7 @@ function opzioniMembro(id) {
     conferma('Togliere ' + p.nome + '?', 'Non comparirà più nel gruppo, nei pasti e nei conti.', 'Togli', async () => {
       if (eAdmin(p)) { D.stato.ruoli = { admin: adminDelGruppo().filter(u => u !== p.user_id) }; await scrivi(() => ST.salvaStato(G.id, 'ruoli', D.stato.ruoli)); }
       D.partecipanti = D.partecipanti.filter(x => x.id !== id); trovaIO(); renderTutto();
-      if (await scrivi(() => ST.del('partecipanti', id))) toast('Tolto dal gruppo');
+      if (await scrivi(() => ST.del('partecipanti', id))) { toast('Tolto dal gruppo'); avvisaGruppo('Gruppo ' + G.nome, `${CHI} ha tolto ${p.nome} dal gruppo`, { tipo: 'gruppo', scheda: 'gruppo' }); }
     }, true);
   };
 }
@@ -83,7 +83,7 @@ function renderGruppo() {
     if (D.partecipanti.some(p => p.nome.toLowerCase() === n.toLowerCase())) return toast('C\'è già una persona con questo nome');
     const r = { id: uuid(), gruppo_id: G.id, nome: n, user_id: null, created_at: new Date().toISOString() };
     D.partecipanti.push(r); renderTutto();
-    if (await scrivi(() => ST.ins('partecipanti', r))) toast(n + ' aggiunto ✓');
+    if (await scrivi(() => ST.ins('partecipanti', r))) { toast(n + ' aggiunto ✓'); avvisaGruppo('Gruppo ' + G.nome, `${CHI} ha aggiunto ${n} al gruppo`, { tipo: 'gruppo', scheda: 'gruppo' }); }
   });
   if ($('grInv')) $('grInv').onclick = invita;
   if ($('grCopia')) $('grCopia').onclick = async () => {

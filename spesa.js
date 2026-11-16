@@ -63,7 +63,7 @@ async function spunta(id) {
   const x = D.spesa.find(i => i.id === id); if (!x) return;
   x.comprato = !x.comprato; x.modificato_da = CHI; vibra(); renderSpesa(); renderOggi();
   if (x.comprato) riempiDispensa(x.nome);
-  if (await scrivi(() => ST.upd('spesa', id, { comprato: x.comprato, modificato_da: CHI })) && x.comprato) avvisaSpesa(x.nome, true);
+  if (await scrivi(() => ST.upd('spesa', id, { comprato: x.comprato, modificato_da: CHI })) && x.comprato) avvisaSpesa(x.nome, 'preso');
 }
 function modificaSpesa(id) {
   const x = D.spesa.find(i => i.id === id); if (!x) return;
@@ -74,8 +74,9 @@ function modificaSpesa(id) {
     <button class="btn" id="seS" type="button" style="margin-top:12px">Salva</button><button class="btn danger" id="seD" type="button">${ic('cestino', 18)}Togli dalla lista</button>`);
   $('seS').onclick = async () => {
     const n = $('seN').value.trim(); if (!n) return;
+    const cambiato = n !== x.nome || $('seQ').value.trim() !== (x.quantita || '') || $('seR').value !== x.reparto;
     Object.assign(x, { nome: n, quantita: $('seQ').value.trim(), reparto: $('seR').value }); chiudi(); renderSpesa();
-    await scrivi(() => ST.upd('spesa', id, { nome: x.nome, quantita: x.quantita, reparto: x.reparto }));
+    if (await scrivi(() => ST.upd('spesa', id, { nome: x.nome, quantita: x.quantita, reparto: x.reparto })) && cambiato) avvisaSpesa(x.nome, 'mod');
   };
   $('seD').onclick = () => { chiudi(); eliminaSpesa(id); };
   $('seEm').onclick = () => scegliEmoji({ testo: x.nome, chiave: 's:' + x.id, auto: EMO.scegli(x.nome) || EMO.reparto(x.reparto) });
@@ -83,11 +84,13 @@ function modificaSpesa(id) {
 async function eliminaSpesa(id, annullabile) {
   const x = D.spesa.find(i => i.id === id);
   D.spesa = D.spesa.filter(i => i.id !== id); renderSpesa(); renderOggi();
-  if (await scrivi(() => ST.del('spesa', id)) && annullabile && x) toast('Tolto dalla lista: ' + x.nome, { testo: 'Annulla', fn: async () => {
-    const c = { ...x }; delete c.id; delete c.created_at; if (await scrivi(() => ST.ins('spesa', [c]))) ricarica();
+  const tolto = await scrivi(() => ST.del('spesa', id));
+  if (tolto && x && !x.comprato) avvisaSpesa(x.nome, 'tolto');
+  if (tolto && annullabile && x) toast('Tolto dalla lista: ' + x.nome, { testo: 'Annulla', fn: async () => {
+    const c = { ...x }; delete c.id; delete c.created_at; if (await scrivi(() => ST.ins('spesa', [c]))) { ricarica(); avvisaSpesa(x.nome, 'agg'); }
   } });
 }
-async function svuota() { D.spesa = D.spesa.filter(i => !i.comprato); renderSpesa(); renderOggi(); await scrivi(() => ST.delWhere('spesa', { gruppo_id: G.id, comprato: true })); }
+async function svuota() { const n = D.spesa.filter(i => i.comprato).length; D.spesa = D.spesa.filter(i => !i.comprato); renderSpesa(); renderOggi(); if (await scrivi(() => ST.delWhere('spesa', { gruppo_id: G.id, comprato: true })) && n) avvisaSpesa(n === 1 ? '1 prodotto già preso' : n + ' prodotti già presi', 'tolto'); }
 
 // ---------- Dispensa ----------
 async function salvaDispensa(d) { D.stato.dispensa = d; renderSpesa(); await scrivi(() => ST.salvaStato(G.id, 'dispensa', d)); }
@@ -141,7 +144,7 @@ function collegaDispensa(el, valD, foc) {
     const bassi = dispensa().items.filter(x => x.livello <= 1 && !D.spesa.some(s => !s.comprato && senzaAccenti(s.nome) === senzaAccenti(x.nome)));
     if (!bassi.length) return toast('Sono già tutte nella lista');
     if (await scrivi(() => ST.ins('spesa', bassi.map(x => ({ gruppo_id: G.id, nome: x.nome, quantita: '', reparto: repartoDi(x.nome), comprato: false, aggiunto_da: CHI }))))) {
-      await ricarica(); toast((bassi.length === 1 ? '1 prodotto aggiunto' : bassi.length + ' prodotti aggiunti') + ' alla lista ✓');
+      await ricarica(); toast((bassi.length === 1 ? '1 prodotto aggiunto' : bassi.length + ' prodotti aggiunti') + ' alla lista ✓'); avvisaSpesa(bassi.map(x => x.nome), 'agg');
     }
   };
 }

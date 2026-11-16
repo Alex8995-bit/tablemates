@@ -110,6 +110,7 @@ function apriVoceAgenda(id, d) {
     const v = { ...e }; delete v.id; v.fatti = { ...(e.fatti || {}) }; if (pagata) delete v.fatti[d]; else v.fatti[d] = true;
     chiudi(); D.stato['evento:' + id] = v; renderAgenda(); renderOggi();
     if (!(await scrivi(() => ST.salvaStato(G.id, 'evento:' + id, v)))) return;
+    if (!pagata) avvisaGruppo('Scadenza pagata', `${CHI}: ${e.titolo}${e.importo ? ' · ' + euro(e.importo) : ''}`, { tipo: 'agenda', scheda: 'agenda', a: destinatariAgenda(e.chi) });
     if (!pagata) toast('Pagata ✓', { testo: 'Registra nei conti', fn: () => { vai('conti'); formMovimento(null, { tipo: 'spesa', titolo: e.titolo, importo: Math.round(parseFloat(String(e.importo || 0).replace(',', '.')) * 100) || 0, data: d, categoria: e.categoria || '' }); } });
   };
 }
@@ -118,7 +119,10 @@ function eliminaVoceAgenda(id, ripristina) {
   conferma('Eliminare "' + e.titolo + '"?', e.ripeti && e.ripeti !== 'no' ? 'Verranno tolte tutte le ripetizioni, per tutto il gruppo.' : 'Verrà tolto dall\'agenda di tutto il gruppo.', 'Elimina', async () => {
     const v = { ...e, eliminato: true, eliminato_da: CHI }; delete v.id;
     D.stato['evento:' + id] = v; renderAgenda(); renderOggi();
-    if (await scrivi(() => ST.salvaStato(G.id, 'evento:' + id, v))) toast('Eliminato');
+    if (await scrivi(() => ST.salvaStato(G.id, 'evento:' + id, v))) {
+      toast('Eliminato');
+      avvisaGruppo(e.tipo === 'scadenza' ? 'Scadenza eliminata' : 'Appuntamento eliminato', `${CHI} ha tolto ${e.titolo} · ${quandoTesto(e, e.data).toLowerCase()}`, { tipo: 'agenda', scheda: 'agenda', a: destinatariAgenda(e.chi) });
+    }
   }, true, ripristina);
 }
 
@@ -169,6 +173,7 @@ async function salvaVoceAgenda(f, nuovo) {
   if (f.tipo === 'evento' && !f.tutto_giorno && f.fine && f.fine === f.inizio) return !!toast('L\'ora di fine è uguale all\'inizio');
   if (f.importo && isNaN(parseFloat(String(f.importo).replace(',', '.')))) return !!toast('Importo non valido');
   const id = f.id || uuid(), v = { ...f }; delete v.id;
+  const prima = nuovo ? null : eventi().find(x => x.id === id);
   if (v.tipo === 'scadenza') { v.tutto_giorno = true; v.inizio = ''; v.fine = ''; v.luogo = ''; }
   v.promemoria = v.promemoria === '' ? null : +v.promemoria;
   if (nuovo) { v.da = CHI; v.creato_da = IO; v.creato_il = new Date().toISOString(); } else v.modificato_da = CHI;
@@ -176,7 +181,9 @@ async function salvaVoceAgenda(f, nuovo) {
   renderAgenda(); renderOggi();
   if (!(await scrivi(() => ST.salvaStato(G.id, 'evento:' + id, v)))) return;
   toast(nuovo ? 'Aggiunto all\'agenda ✓' : 'Salvato ✓');
-  if (nuovo) avvisaGruppo(v.tipo === 'scadenza' ? 'Nuova scadenza' : 'Nuovo appuntamento', `${CHI}: ${v.titolo} · ${quandoTesto(v, v.data).toLowerCase()}${v.luogo ? ' · ' + v.luogo : ''}`, { tipo: 'agenda', scheda: 'agenda', a: v.chi && v.chi.length ? v.chi : undefined });
+  const dove = `${CHI}: ${v.titolo} · ${quandoTesto(v, v.data).toLowerCase()}${v.luogo ? ' · ' + v.luogo : ''}`;
+  if (nuovo) avvisaGruppo(v.tipo === 'scadenza' ? 'Nuova scadenza' : 'Nuovo appuntamento', dove, { tipo: 'agenda', scheda: 'agenda', a: destinatariAgenda(v.chi) });
+  else avvisaGruppo(v.tipo === 'scadenza' ? 'Scadenza modificata' : 'Appuntamento modificato', dove, { tipo: 'agenda', scheda: 'agenda', a: destinatariAgenda(v.chi, prima && prima.chi) });
 }
 
 // Riquadro per la schermata Oggi: impegni di oggi e scadenze dei prossimi 3 giorni che mi riguardano
@@ -216,7 +223,7 @@ function collegaStatoPromemoria(el) {
     try {
       if (notificheAttive() && pushPossibile()) await iscriviDispositivo().catch(() => {});
       const r = await ST.provaNotifica(G.id);
-      toast(r.inviate ? 'Prova inviata: dovrebbe arrivare tra pochi secondi ✓' : r.dispositivi ? 'Il server non è riuscito a mandarla: riattiva le notifiche su questo telefono' : 'Nessun telefono iscritto alle notifiche: tocca "Attiva notifiche"');
+      toast(r.inviate ? 'Prova inviata: dovrebbe arrivare tra pochi secondi ✓' : r.dispositivi ? 'Il server non è riuscito a mandarla' + (r.errori && r.errori[0] ? ' (' + r.errori[0] + ')' : '') + ': riattiva le notifiche su questo telefono' : 'Nessun telefono iscritto alle notifiche: tocca "Attiva notifiche"');
     } catch (e) { toast(e.message); }
     b.disabled = false;
   };
