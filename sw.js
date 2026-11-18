@@ -1,10 +1,10 @@
 // Service worker di Tablemates: apre l'app anche senza rete, la aggiorna e mostra le notifiche ad app chiusa.
 // Quando cambi i file, aumenta il numero di VERSIONE: i dispositivi scaricheranno la nuova versione.
-const VERSIONE = 'tablemates-10.8';
+const VERSIONE = 'tablemates-11.0';
 const FILE = [
   './', 'index.html', 'app.css', 'config.js', 'manifest.webmanifest',
   'supabase.js', 'pdf.min.js', 'pdf.worker.min.js', 'manrope-latin-wght-normal.woff2', 'manrope-latin-ext-wght-normal.woff2',
-  'util.js', 'icone.js', 'emoji.js', 'emoji-dati.js', 'sicurezza.js', 'conti-calc.js', 'store.js', 'ai.js', 'lettore.js', 'notifiche.js', 'oggi.js', 'insieme.js', 'piano.js', 'dieta.js', 'cuoco.js', 'scorri.js', 'agenda.js', 'ricetta.js', 'spesa.js', 'conti.js', 'chat.js', 'gruppo.js', 'imp.js', 'app.js',
+  'util.js', 'icone.js', 'emoji.js', 'emoji-dati.js', 'sicurezza.js', 'conti-calc.js', 'store.js', 'ai.js', 'lettore.js', 'notifiche.js', 'oggi.js', 'insieme.js', 'pasti.js', 'piano.js', 'dieta.js', 'cuoco.js', 'scorri.js', 'agenda.js', 'ricetta.js', 'spesa.js', 'conti.js', 'chat.js', 'gruppo.js', 'imp.js', 'app.js',
   'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png', 'favicon-32.png'
 ];
 self.addEventListener('install', e => {

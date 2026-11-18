@@ -11,7 +11,7 @@ function renderImp() {
   const io = IO ? D.partecipanti.find(p => p.id === IO) : null, server = ST && ST.modo === 'supabase';
   const ia = iaAttiva(), av = avvisiDi(IO);
   const t = temaScelto();
-  let h = `<div class="sub-cap"><button type="button" class="indietro" id="imB" aria-label="Torna a Gruppo">${ic('indietro', 22, 2)}</button><div><h1>Impostazioni</h1></div></div>`;
+  let h = `<div class="sub-cap"><button type="button" class="indietro" id="imB" aria-label="Torna a Casa">${ic('indietro', 22, 2)}</button><div><h1>Impostazioni</h1></div></div>`;
   if (ANTEPRIMA) h += '<div class="nota">Questa è l\'anteprima: i dati restano solo in questa pagina. L\'app vera si installa e si sincronizza tra i dispositivi.</div>';
   h += `<button type="button" class="account" id="imAcc">${io ? avatar(io, idxP(IO), 'xl') : `<span class="av xl" style="background:var(--av1);color:var(--av1-tx)">${esc((CHI || '?').slice(0, 1).toUpperCase())}</span>`}<span class="t"><b>${esc(CHI || 'Account')}</b><small>${server ? 'Account e password' : 'Solo su questo dispositivo'}</small></span>${ic('avanti', 18, 2)}</button>`;
   h += `<section aria-labelledby="aspetto" style="display:flex;flex-direction:column;gap:6px"><h2 id="aspetto" class="sez" style="margin:0">Aspetto</h2><div class="seg alto" role="radiogroup" aria-labelledby="aspetto">${TEMI.map(([k, n]) => `<button type="button" role="radio" data-tema="${k}" aria-checked="${t === k}" class="${t === k ? 'on' : ''}">${n}</button>`).join('')}</div></section>`;
@@ -33,7 +33,7 @@ function renderImp() {
   h += `<p class="by" style="text-align:center;margin:0 0 12px">${NOME_APP} · versione ${window.VERSIONE || ''}</p>`;
   el.innerHTML = h;
   legaSicurezza();
-  $('imB').onclick = () => vai('gruppo');
+  $('imB').onclick = () => vai('casa');
   $('imAcc').onclick = foglioAccount;
   $('imNotif').onclick = foglioNotifiche;
   if ($('imIA')) $('imIA').onclick = foglioIA;

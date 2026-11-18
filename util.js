@@ -15,9 +15,10 @@ const SS = {
 };
 const S = k => LS.get(k) || (window.CFG && window.CFG[k]) || '';
 const ANTEPRIMA = !!window.ANTEPRIMA;
-window.VERSIONE = '10.8';
+window.VERSIONE = '11.0';
 const NOME_APP = 'Tablemates';
-const REPARTI = ['Frutta e verdura','Carne e pesce','Latticini e uova','Pane e cereali','Dispensa','Surgelati','Bevande','Casa e igiene','Altro'];
+// Le zone del supermercato, nell'ordine in cui si incontrano facendo la spesa
+const REPARTI = ['Ortofrutta e verdura','Panificio/Pasticceria','Banco frigo','Gastronomia','Macelleria','Pescheria','Extra','Surgelati'];
 const vibra = () => { try { navigator.vibrate && navigator.vibrate(10); } catch(e){} };
 
 function toast(t, azione){
@@ -51,14 +52,14 @@ function chiedi(titolo, testo, valore, siTesto, fn, tipo){
   const ok = () => { const x = v.value; chiudi(); fn(x); };
   $('chS').onclick = ok; v.onkeydown = e => { if (e.key === 'Enter') ok(); };
 }
-// Schede: Oggi, Piano, Comuni, Spesa, Conti, Agenda, Gruppo. A tavola, Assistente e Impostazioni si aprono da queste.
-const SCHEDE = ['oggi', 'piano', 'comuni', 'spesa', 'conti', 'agenda', 'gruppo', 'presenze', 'chat', 'imp'];
-const SCHEDA_NAV = { presenze: 'oggi', chat: 'oggi', imp: 'gruppo' };
+// Barra: Oggi, Pasti, Spesa, Casa. Pasti = il piano e i pasti insieme; Casa = conti, agenda, persone, impostazioni e assistente.
+const SCHEDE = ['oggi', 'piano', 'comuni', 'spesa', 'casa', 'conti', 'agenda', 'gruppo', 'presenze', 'chat', 'imp'];
+const SCHEDA_NAV = { comuni: 'piano', presenze: 'oggi', conti: 'casa', agenda: 'casa', gruppo: 'casa', chat: 'casa', imp: 'casa' };
 function vai(t){
   if (!SCHEDE.includes(t)) t = 'oggi';
   const nav = SCHEDA_NAV[t] || t;
   document.querySelectorAll('nav.sezioni button[data-t]').forEach(b => { const on = b.dataset.t === nav || b.dataset.t === t; b.classList.toggle('on', on); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
-  if (t === 'chat') document.querySelectorAll('nav.sezioni button[data-t="oggi"]').forEach(b => { if (matchMedia('(min-width:900px)').matches) { b.classList.remove('on'); b.removeAttribute('aria-current'); } });
+  if (t === 'chat') document.querySelectorAll('nav.sezioni button[data-t="casa"]').forEach(b => { if (matchMedia('(min-width:900px)').matches) { b.classList.remove('on'); b.removeAttribute('aria-current'); } });
   SCHEDE.forEach(x => { const e = $('t-' + x); if (e) e.hidden = x !== t; });
   LS.set('scheda', t); scrollTo(0, 0);
   if (typeof ridisegnaSeServe === 'function') ridisegnaSeServe(t);

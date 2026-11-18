@@ -74,7 +74,7 @@ function renderAgenda() {
   }
   const delGiorno = vociDelGiorno(agendaGiorno), sc = prossimeScadenze();
   const titoloGiorno = daIso(agendaGiorno).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }).replace(/^./, c => c.toUpperCase());
-  el.innerHTML = `<div class="cap"><div><p class="q" style="font-weight:600;margin:0">${esc(G.nome)} · appuntamenti e scadenze</p><h1>Agenda</h1></div></div>
+  el.innerHTML = `<div class="sub-cap"><button type="button" class="indietro" data-casa aria-label="Torna a Casa">${ic('indietro', 22, 2)}</button><div><h1>Agenda</h1><p>${esc(G.nome)} · appuntamenti e scadenze</p></div></div>
     <section class="card ag-cal" aria-label="Calendario">
       <div class="ag-testa"><button type="button" class="og-freccia" id="agP" aria-label="Mese precedente">${ic('indietro', 20, 2)}</button><h2>${MESI[m].replace(/^./, c => c.toUpperCase())} ${y}</h2><button type="button" class="og-freccia" id="agN" aria-label="Mese successivo">${ic('avanti', 20, 2)}</button></div>
       <div class="ag-sett" aria-hidden="true">${['L', 'M', 'M', 'G', 'V', 'S', 'D'].map(x => `<span>${x}</span>`).join('')}</div>

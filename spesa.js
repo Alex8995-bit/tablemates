@@ -63,14 +63,14 @@ function htmlLista(seg) {
   h += `<div class="agg-box"><div class="agg"><label for="nv" class="sr">Aggiungi alla lista</label><input id="nv" placeholder="Aggiungi qualcosa…" enterkeyhint="done"><button id="add" type="button" aria-label="Aggiungi">${ic('piu', 22, 2.2)}</button></div>
     <div class="agg-q"><label for="nq" class="sr">Quantità da comprare</label><input id="nq" inputmode="decimal" placeholder="${unitaSpesa === 'g' ? 'es. 500' : 'es. 2'}" enterkeyhint="done" autocomplete="off">${htmlUnita(unitaSpesa, 'n')}</div></div>`;
   REPARTI.forEach(r => {
-    const v = spesa.filter(x => (REPARTI.includes(x.reparto) ? x.reparto : 'Altro') === r).sort((a, b) => (a.comprato ? 1 : 0) - (b.comprato ? 1 : 0));
+    const v = spesa.filter(x => zonaDi(x) === r).sort((a, b) => (a.comprato ? 1 : 0) - (b.comprato ? 1 : 0));
     if (v.length) h += `<section style="display:flex;flex-direction:column;gap:12px"><h2 class="sez" style="margin:0">${EMO.reparto(r)} ${r}</h2><div class="sc">${v.map(rigaSpesa).join('')}</div></section>`;
   });
   if (!tot) h += `<div class="vuoto">${ic('sacchetto', 32)}La lista è vuota.<br>Aggiungi i prodotti qui sopra, oppure creala dal Piano con le quantità della dieta.</div>`;
   if (fatti) h += `<div style="display:flex;flex-direction:column;gap:4px"><button class="btn scuro" id="reg" type="button">${ic('scontrino2', 20, 1.8)}Spesa fatta? Dividi lo scontrino</button><button class="link-txt" id="clr" type="button" style="text-align:center">Togli i prodotti presi dalla lista</button></div>`;
   return h + '<div style="height:8px"></div>';
 }
-const rigaSpesa = x => `<div class="sp-riga ${x.comprato ? 'done' : ''}"><button type="button" class="sp-ck" data-sk="${x.id}" aria-pressed="${!!x.comprato}" aria-label="${x.comprato ? 'Togli la spunta: ' : 'Segna come preso: '}${esc(x.nome)}">${x.comprato ? ic('spunta', 16, 3) : ''}</button><button type="button" class="sp-nm" data-se="${x.id}" aria-label="Modifica ${esc(x.nome)}"><b>${EMO.html(x.nome, EMO.reparto(x.reparto), 's:' + x.id, true)}${esc(x.nome)}</b>${chiTxt(x)}</button>${x.quantita ? `<span class="sp-q num">${esc(x.quantita)}</span>` : ''}</div>`;
+const rigaSpesa = x => `<div class="sp-riga ${x.comprato ? 'done' : ''}"><button type="button" class="sp-ck" data-sk="${x.id}" aria-pressed="${!!x.comprato}" aria-label="${x.comprato ? 'Togli la spunta: ' : 'Segna come preso: '}${esc(x.nome)}">${x.comprato ? ic('spunta', 16, 3) : ''}</button><button type="button" class="sp-nm" data-se="${x.id}" aria-label="Modifica ${esc(x.nome)}"><b>${EMO.html(x.nome, EMO.reparto(zonaDi(x)), 's:' + x.id, true)}${esc(x.nome)}</b>${chiTxt(x)}</button>${x.quantita ? `<span class="sp-q num">${esc(x.quantita)}</span>` : ''}</div>`;
 // Per chi e per quando serve un prodotto (scritto nel campo "giorno"):
 // "Dieta · Ale — Lunedì · Pranzo · Ale; ven 20 nov · Cena · Pasto comune" (dal piano) oppure "Per: ven 20 nov · Pranzo · Giulia" (a mano)
 function perTesto(g) {
@@ -116,7 +116,7 @@ function modificaSpesa(id) {
     <select id="sePg"><option value="">Nessun giorno</option>${giorniPer.map(([v, n]) => `<option value="${esc(v)}" ${v === perG ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>
     <div class="riga" style="gap:8px;margin-top:8px"><select id="sePp" style="flex:1;min-width:0" aria-label="Pasto"><option value="">Pasto</option>${PASTI_SPESA.map(t => `<option ${t === perP ? 'selected' : ''}>${t}</option>`).join('')}</select>
     <select id="sePc" style="flex:1;min-width:0" aria-label="Per chi"><option value="">Per chi</option>${D.partecipanti.map(z => `<option ${z.nome === perC ? 'selected' : ''}>${esc(z.nome)}</option>`).join('')}<option ${perC === 'Pasto comune' ? 'selected' : ''}>Pasto comune</option></select></div>`}
-    <label class="lb" for="seR">Reparto</label><select id="seR">${REPARTI.map(r => `<option ${r === x.reparto ? 'selected' : ''}>${r}</option>`).join('')}</select>
+    <label class="lb" for="seR">Zona del supermercato</label><select id="seR">${REPARTI.map(r => `<option ${r === zonaDi(x) ? 'selected' : ''}>${r}</option>`).join('')}</select>
     <button class="btn" id="seS" type="button" style="margin-top:12px">Salva</button><button class="btn danger" id="seD" type="button">${ic('cestino', 18)}Togli dalla lista</button>`);
   $('pop').querySelectorAll('[data-seu]').forEach(b => b.onclick = () => { u = b.dataset.seu; vibra(); $('pop').querySelectorAll('[data-seu]').forEach(z => { const on = z === b; z.classList.toggle('on', on); z.setAttribute('aria-pressed', on); }); });
   $('seS').onclick = async () => {

@@ -238,6 +238,14 @@ Quando modifichi un file, in `sw.js` aumenta il numero di `VERSIONE` (per esempi
 - **Spesa + Dispensa**: livelli di quanto resta, "stanno finendo → in lista", la Dispensa si riempie quando spunti un prodotto.
 - **Conti**: "Giulia ti deve", Segna saldato, Ricordaglielo (messaggio da mandare), speso nel mese, la tua parte, ultimi movimenti; saldi, statistiche e conti restano a un tocco.
 
+## Novità della versione 11.0
+
+- **Barra a 4 voci: Oggi · Pasti · Spesa · Casa.** *Pasti* riunisce «Il mio piano» e «Insieme» (i pasti comuni). *Casa* riunisce conti, agenda, A tavola, persone, notifiche, Siri, assistente e impostazioni; da ogni pagina la freccia in alto torna a Casa.
+- **Scambiare i pasti:** in Pasti, dentro ogni pasto, «Scambia» lo inverte con un altro dello stesso giorno (pranzo ↔ cena) o di un altro giorno. Piatto, ricetta e pasti comuni seguono lo scambio; «Annulla» rimette tutto com'era.
+- **Scrivere il piatto:** da Oggi o da Pasti, «Scrivi cosa mangi» per un giorno e un pasto («pizza», «hamburger», «rustico ripieno», «riso, salmone e zucchine»). Vale per quella data al posto del piano. L'app ricava gli ingredienti (con l'intelligenza artificiale se è impostata, altrimenti da un elenco interno di piatti e alimenti) e chiede quali mettere in lista, con per chi e per quando.
+- **Zone della spesa come al supermercato:** Ortofrutta e verdura, Panificio/Pasticceria, Banco frigo, Gastronomia, Macelleria, Pescheria, Extra, Surgelati. I prodotti già in lista si risistemano da soli. Aggiorna anche la funzione `collega` (Siri) su Supabase.
+- **Oggi:** «Da mangiare» mostra sempre pranzo e cena, anche senza piano, e si può andare avanti e indietro con i giorni.
+
 ## Novità della versione 10.8
 
 Rifinitura grafica (stessa palette, nessuna funzione cambiata): i messaggi di conferma compaiono in basso e non coprono più il titolo; righe del foglio Notifiche più ariose; in Oggi una sola etichetta per pasto; nel Gruppo le azioni sono in riquadri ordinati come in Impostazioni; icona forchetta e coltello per le ricette; pulsanti del Piano allineati; testi di spiegazione più brevi.

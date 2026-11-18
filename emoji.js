@@ -129,7 +129,7 @@ const EMO = (() => {
     conto: c => manuale('c:' + c.id) || luogo(c.nome) || di(c.nome) || TIPO_CONTO[c.tipo] || '📁',
     gruppo: n => manuale('g') || luogo(n) || di(n) || '🍽️',
     cat: k => CAT[k] || '',
-    reparto: r => ({ 'Frutta e verdura': '🥬', 'Carne e pesce': '🥩', 'Latticini e uova': '🧀', 'Pane e cereali': '🍞', 'Dispensa': '🥫', 'Surgelati': '🧊', 'Bevande': '🥤', 'Casa e igiene': '🧴', 'Altro': '🛒' })[r] || '',
+    reparto: r => ({ 'Ortofrutta e verdura': '🥬', 'Panificio/Pasticceria': '🥖', 'Banco frigo': '🥛', 'Gastronomia': '🧀', 'Macelleria': '🥩', 'Pescheria': '🐟', 'Extra': '🛒', 'Surgelati': '🧊', 'Frutta e verdura': '🥬', 'Carne e pesce': '🥩', 'Latticini e uova': '🧀', 'Pane e cereali': '🍞', 'Dispensa': '🥫', 'Bevande': '🥤', 'Casa e igiene': '🧴', 'Altro': '🛒' })[r] || '',
     // l'emoji di un testo (con la scelta a mano, se c'è)
     per: (t, base, chiave, alimento) => manuale(chiave, t) || (alimento ? cibo(t) : scegli(t)) || base || '',
     // piccola emoji davanti a un testo, già pronta da mettere in pagina

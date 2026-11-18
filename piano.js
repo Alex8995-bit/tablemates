@@ -36,9 +36,9 @@ function renderPiano() {
   if (!G) { el.innerHTML = '<div class="testa"><h1>Piano</h1></div><div class="vuoto">Accedi e scegli un gruppo per iniziare.</div>'; return; }
   if (!personaPiano || idxP(personaPiano) < 0) personaPiano = IO || (D.partecipanti[0] || {}).id || '';
   const pid = personaPiano, p = D.partecipanti.find(x => x.id === pid), piano = pianoDi(pid), tu = pid === IO;
-  let h = `<div class="cap"><div><p class="q" style="font-weight:600;margin:0">${puntoLive()}${tu || !p ? 'Il tuo piano alimentare' : 'Piano alimentare di ' + esc(p.nome)}</p><h1>Piano</h1></div><div class="dx">` +
+  let h = `<div class="cap"><div><p class="q" style="font-weight:600;margin:0">${puntoLive()}${tu || !p ? 'Il tuo piano alimentare' : 'Piano alimentare di ' + esc(p.nome)}</p><h1>Pasti</h1></div><div class="dx">` +
     (piano?.giorni?.length ? `<button type="button" class="ico-btn" id="pnMod" aria-label="Modifica il piano">${ic('matita', 20, 1.8)}</button>` : '') +
-    `<button type="button" class="ico-btn" id="up" aria-label="Carica un nuovo PDF della dieta">${ic('carica', 22, 1.8)}</button></div></div>`;
+    `<button type="button" class="ico-btn" id="up" aria-label="Carica un nuovo PDF della dieta">${ic('carica', 22, 1.8)}</button></div></div>` + segPasti('piano');
   if (D.partecipanti.length > 1) h += `<div class="chips" role="tablist" aria-label="Di chi è il piano">` + D.partecipanti.map((x, i) => `<button type="button" role="tab" class="chip ${pid === x.id ? 'on' : ''}" data-pp="${x.id}" aria-selected="${pid === x.id}">${avatar(x, i, 'p')}${esc(x.id === IO ? 'Tu' : x.nome)}</button>`).join('') + '</div>';
   h += p ? vistaPersona(pid) : '<div class="vuoto">Aggiungi le persone del gruppo dalla scheda Gruppo.</div>';
   el.innerHTML = h;
@@ -46,6 +46,8 @@ function renderPiano() {
   el.querySelectorAll('[data-gg]').forEach(b => b.onclick = () => { LS.set('giorno:' + personaPiano, b.dataset.gg); pianoAperto = ''; vibra(); renderPiano(); });
   el.querySelectorAll('[data-apri]').forEach(b => b.onclick = () => { pianoAperto = b.dataset.apri; vibra(); renderPiano(); });
   el.querySelectorAll('[data-re]').forEach(b => b.onclick = () => altroPiatto(+b.dataset.re, b));
+  el.querySelectorAll('[data-scm]').forEach(b => b.onclick = () => foglioScambia(personaPiano, giornoScelto(personaPiano), +b.dataset.scm));
+  el.querySelectorAll('[data-scr]').forEach(b => b.onclick = () => { const gi = giornoScelto(personaPiano), pl = pianoDi(personaPiano); foglioScrivi(personaPiano, chiaveGiorno(pl, gi), pl.giorni[gi].pasti[+b.dataset.scr].tipo); });
   el.querySelectorAll('[data-prop]').forEach(b => b.onclick = () => proponiPiatto(personaPiano, giornoScelto(personaPiano), +b.dataset.prop));
   el.querySelectorAll('[data-ric]').forEach(d => d.onclick = () => apriRicetta(d.dataset.pid || personaPiano, +d.dataset.g, +d.dataset.ric));
   el.querySelectorAll('[data-salva]').forEach(b => b.onclick = () => salvaLink(+b.dataset.salva));
@@ -88,6 +90,7 @@ function vistaPersona(pid) {
     h = `<div class="giorni7 scorri" role="tablist" aria-label="Giorni del piano">` + piano.giorni.map((x, i) => `<button type="button" role="tab" class="${i === gi ? 'on' : ''}" aria-selected="${i === gi}" data-gg="${i}" aria-label="${esc(x.giorno)}"><span>${esc(String(x.giorno).slice(0, 3))}</span><b>${i + 1}</b></button>`).join('') + '</div>';
   }
   const iso = settimana ? chiaveGiorno(piano, gi) : 'g' + gi, ora = new Date().getHours() * 60 + new Date().getMinutes();
+  const scr = pa => settimana ? scrittoDi(pid, iso, pa.tipo) : null; // il piatto scritto a mano per quella data
   const elenco = (haVoci(piano) ? elencoSlot(g) : g.pasti.map((pa, k) => ({ pa, k, tipo: pa.tipo }))).sort((a, b) => ordinePasto(a.tipo) - ordinePasto(b.tipo));
   // Il pasto aperto: quello scelto, altrimenti il prossimo di oggi, altrimenti il primo
   const chiave = pid + '|' + gi + '|';
@@ -104,8 +107,11 @@ function vistaPersona(pid) {
     return `<section class="pc-aperto" aria-labelledby="pc-${k}"><div class="tp"><h2 id="pc-${k}">${EMO.bottone(pa.tipo)}${esc(pa.tipo)}</h2><span>${n ? n + (n === 1 ? ' alimento' : ' alimenti') : 'ore ' + esc(oraDi(pa.tipo))}</span></div>` +
       (pa.voci ? htmlCibi(pid, gi, k, pa) : `<p style="margin:0;font-size:15px;line-height:1.5">${esc(pa.alimenti)}</p>${pa.alternative ? `<p class="q" style="margin:0">In alternativa: ${esc(pa.alternative)}</p>` : ''}`) +
       (pa.nota ? `<div class="avviso">${ic('info', 18, 2)}<div style="min-width:0"><div class="nota-lunga ${notaLunga ? 'chiusa' : ''}"><strong>Nota del nutrizionista:</strong> ${esc(pa.nota)}</div>${notaLunga ? '<button type="button" class="link" data-nl style="color:var(--warn-ic);padding:4px 0 0;font-size:13px">Leggi tutto</button>' : ''}</div></div>` : '') +
+      (scr(pa) ? `<div class="og-scritto"><small>Per ${esc(dataBreve(iso))} hai scritto</small><b>${EMO.html(scr(pa).nome, '', '', true)}${esc(scr(pa).nome)}</b></div>` : '') +
       (x ? `<button type="button" class="piatto" data-ric="${k}" data-g="${gi}"><span class="tt"><b>${EMO.html(x.nome, '🍽️', '', true)}${esc(x.nome)}</b><span class="by" style="display:flex;align-items:center;gap:4px">${ic('orologio', 13, 2)}${esc(x.tempo || '')}${x.da ? ' · scelto da ' + esc(x.da) : ''}</span></span><span class="piccolo pieno">${ic('libro', 15, 2)}Ricetta</span></button>` : '') +
       `<div class="pc-azioni">
+        <button type="button" class="piccolo neutro" data-scm="${k}">${ic('scambio', 15, 2)}Scambia</button>
+        ${settimana ? `<button type="button" class="piccolo neutro" data-scr="${k}">${ic('matita', 15, 2)}${scr(pa) ? 'Cambia il piatto scritto' : 'Scrivi il piatto'}</button>` : ''}
         ${!x ? `<button type="button" class="piccolo neutro" data-prop="${k}">${ic('scintille', 15, 2)}Proponi un piatto</button>` : ''}
         ${x && haAI() ? `<button type="button" class="piccolo neutro" data-re="${k}">${ic('scintille', 15, 2)}Altro piatto</button>` : ''}
         <a class="piccolo neutro" href="https://www.google.com/search?q=${encodeURIComponent('ricetta ' + testoRicerca({ alimenti: testoPasto(pid, gi, pa) }))}" target="_blank" rel="noopener">${ic('cerca', 15, 2)}Cerca ricetta</a>
@@ -175,7 +181,7 @@ async function generaGiorno(senzaIA) {
       await ST.salvaStato(G.id, 'ricette:' + pid, ric);
       if (out.spesa?.length) {
         await ST.delWhere('spesa', { gruppo_id: G.id, giorno: etichetta, comprato: false });
-        await ST.ins('spesa', out.spesa.map(x => ({ gruppo_id: G.id, nome: x.nome, quantita: x.quantita || '', reparto: REPARTI.includes(x.reparto) ? x.reparto : 'Altro', giorno: etichetta, comprato: false, aggiunto_da: CHI })));
+        await ST.ins('spesa', out.spesa.map(x => ({ gruppo_id: G.id, nome: x.nome, quantita: x.quantita || '', reparto: REPARTI.includes(x.reparto) ? x.reparto : repartoDi(x.nome), giorno: etichetta, comprato: false, aggiunto_da: CHI })));
       }
     });
     await ricarica(); toast('Piatti e spesa pronti ✓');

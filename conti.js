@@ -65,7 +65,7 @@ function homeConti(s) {
   const spesoMese = delMese.reduce((t, m) => t + Conti.inValutaGruppo(m), 0);
   const miaMese = IO ? delMese.reduce((t, m) => { const q = Conti.quote(m)[IO]; return t + (q || 0); }, 0) : 0;
   let etichetta = !IO ? 'Il tuo saldo' : mio > 0 ? (altro ? altro + ' ti deve' : 'Ti devono') : mio < 0 ? (altro ? 'Devi a ' + altro : 'Devi') : 'Siete in pari';
-  let h = `<div class="cap"><div><p class="q" style="font-weight:600;margin:0">Gruppo ${esc(G.nome)} · ${esc(mese)}</p><h1>Conti</h1></div><div class="dx solo-pc"><button type="button" class="ico-btn" id="csv" aria-label="Esporta per Excel">${ic('scarica', 20)}</button></div></div>`;
+  let h = `<div class="sub-cap"><button type="button" class="indietro" data-casa aria-label="Torna a Casa">${ic('indietro', 22, 2)}</button><div style="flex:1;min-width:0"><h1>Conti</h1><p>Gruppo ${esc(G.nome)} · ${esc(mese)}</p></div><div class="dx solo-pc"><button type="button" class="ico-btn" id="csv" aria-label="Esporta per Excel">${ic('scarica', 20)}</button></div></div>`;
   h += `<section class="hero" aria-label="Saldo"><small>${esc(etichetta)}</small><span class="grande num">${IO ? eur(Math.abs(mio)) : '—'}</span>
     ${IO && mio ? `<div class="bt"><button type="button" id="saldato" data-r='${verso.length === 1 ? esc(JSON.stringify(verso[0])) : 'null'}'>Segna saldato</button><button type="button" class="out" id="ricorda">${mio > 0 ? 'Ricordaglielo' : 'Vedi i saldi'}</button></div>` : ''}
     ${!IO ? '<div class="bt"><button type="button" id="chiP">Indica chi sei</button></div>' : ''}</section>`;

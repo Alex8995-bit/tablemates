@@ -67,16 +67,21 @@ async function scegliAlternativa(pid, gi, tipo, i, idx) {
 }
 
 // ---------- Lista della spesa dalla dieta ----------
+// In quale zona del supermercato si trova un prodotto. Vince la prima regola che corrisponde; quello che non si riconosce va in Extra.
 const REGOLE_REPARTO = [
-  [/scatola|in acqua|al naturale|passata|sugo|olio|marmellat|cacao|burro d|burro di|cioccolat|mandorl|pistacch|noci|olive|popcorn|cracker|barretta|dressing|frutta secca|semi|miele|aceto|sale\b|legumi|lenticchi|ceci|fagioli/, 'Dispensa'],
-  [/caff|succo|\bte\b|tisana|^acqua\b|bevand/, 'Bevande'],
-  [/surgelat/, 'Surgelati'],
-  [/yogurt|latte|kefir|parmigian|mozzarella|ricotta|philadelphia|feta|uov|formaggio|dessert|burrata|grana/, 'Latticini e uova'],
-  [/pollo|tacchino|manzo|vitello|maiale|prosciutto|fesa|hamburger|bresaola|salume|pesce|spigola|branzino|merluzzo|nasello|orata|salmone|polpo|seppia|calamar|gamber|trota|sgombro|tonno|spada|carne|cotolett|affettat/, 'Carne e pesce'],
-  [/pane|pasta|riso|couscous|farro|orzo|avena|fiocchi|cereali|biscott|biscotti|piadina|gnocchi|grissini|pizza|magretti|gallette|fette/, 'Pane e cereali'],
-  [/frutta|verdur|ortagg|insalata|rughetta|rucola|spinaci|zucchin|patat|pomodor|mel[ae]\b|banan|aranc|limon|carot|cipoll|finocchi|funghi|peperon|melanzan|broccol|cavol|fagiolin/, 'Frutta e verdura']
+  [/surgelat|congelat|gelat[oi]\b|bastoncini|minestrone surgelato|ghiaccio/, 'Surgelati'],
+  // confezionati e scatolame che contengono parole di altri reparti (tonno in scatola, latte di mandorla, frutta secca…)
+  [/in scatola|scatolett|al naturale|sott.?olio|sott.?aceto|passata|pelati|sugo|pesto|burro d(i |.)?arachidi|semi di|crema di|latte di (mandorl|soia|riso|avena|cocco)|bevanda di|frutta secca|frutta a guscio|succo|marmellat|confettura|fette biscottate|cracker|gallette|cereali|muesli|fiocchi d.?avena|barrett|farina|lievito|zucchero|cacao|cioccolat|miele|olio\b|aceto|sale\b|pepe\b|spezie|dado|brodo|caffe|\bte\b|tisana|acqua\b|vino|birra|bibit|detersiv|sapone|shampoo|dentifric|carta |spugn|sacchett|pellicola|alluminio|tovagliol|lettiera|crocchett/, 'Extra'],
+  [/pesce|spigola|branzino|orata|merluzzo|nasello|salmone|tonno|trota|sgombro|sardin|alici|acciugh|spada|platessa|sogliola|baccala|polpo|seppi|calamar|totan|gamber|scampi|cozze|vongole|frutti di mare/, 'Pescheria'],
+  [/pollo|tacchino|manzo|vitello|vitellone|maiale|agnello|coniglio|macinato|hamburger|salsicc|bistecca|fettin|cotolett|arrosto|spezzatino|costat|carne\b|scaloppin|polpett|fesa di tacchino/, 'Macelleria'],
+  [/prosciutto|bresaola|speck|salame|mortadella|affettat|salum|pancetta|guanciale|wurstel|porchetta|parmigian|grana|pecorino|provol|gorgonzola|asiago|fontina|scamorza|caciocavallo|emmental|formaggio stagionato|olive|rosticceria|pollo arrosto|insalata di riso|insalata russa|hummus|gastronomia/, 'Gastronomia'],
+  [/latte\b|yogurt|kefir|skyr|uov|album|burro\b|panna|mozzarella|ricotta|philadelphia|stracchino|crescenza|feta|burrata|fiocchi di latte|mascarpone|formaggio|sottilette|pasta fresca|pasta sfoglia|pasta brisee|tortellini|ravioli|gnocchi|tofu|seitan|budino|dessert/, 'Banco frigo'],
+  [/pane\b|panin|pan bauletto|pancarre|focacc|piadin|tortill|pizza|rustic|cornett|brioche|croissant|torta|crostata|pasticc|ciambell|biscott|grissini|taralli|friselle/, 'Panificio/Pasticceria'],
+  [/frutta|verdur|ortagg|insalata|lattuga|rughetta|rucola|spinaci|bietol|zucchin|zucca|patat|pomodor|mel[ae]\b|per[ae]\b|banan|aranc|mandarin|limon|kiwi|fragol|uva\b|pesc(a|he)\b|albicocc|prugn|susin|cilieg|anguria|melone|ananas|mango|avocado|mirtill|lampon|carot|cipoll|aglio|porr|sedano|finocchi|funghi|peperon|melanzan|broccol|cavol|verza|fagiolin|asparag|carciof|cetriol|ravanell|radicchio|barbabietol|basilico|prezzemolo|rosmarino|salvia|erbe/, 'Ortofrutta e verdura']
 ];
-const repartoDi = nome => { const n = senzaAccenti(nome); const r = REGOLE_REPARTO.find(([re]) => re.test(n)); return r ? r[1] : 'Altro'; };
+const repartoDi = nome => { const n = senzaAccenti(String(nome || '')).toLowerCase(); const r = REGOLE_REPARTO.find(([re]) => re.test(n)); return r ? r[1] : 'Extra'; };
+// La zona di un prodotto già in lista: quella salvata se è una delle zone di oggi, altrimenti (liste fatte con i vecchi reparti) si ricava dal nome
+const zonaDi = x => REPARTI.includes(x.reparto) ? x.reparto : repartoDi(x.nome);
 function quantitaSpesa(e) {
   if (!(e.tot > 0)) return '';
   if (e.unita === 'ml' && e.tot >= 1000) return LETTORE.fmt(e.tot / 1000) + ' l';

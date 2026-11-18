@@ -166,7 +166,7 @@ function renderComuni() {
   const el = $('t-comuni'); if (!el) return;
   if (!G) { el.innerHTML = '<div class="testa"><h1>Pasti comuni</h1></div><div class="vuoto">Accedi e scegli un gruppo per iniziare.</div>'; return; }
   const l = typeof insiemiMiei === 'function' && IO ? insiemiMiei() : [];
-  let h = `<div class="cap"><div><p class="q" style="font-weight:600;margin:0">${puntoLive()}${esc(G.nome)} · insieme</p><h1>Pasti comuni</h1></div></div>
+  let h = `<div class="cap"><div><p class="q" style="font-weight:600;margin:0">${puntoLive()}${esc(G.nome)} · i pasti insieme</p><h1>Pasti</h1></div></div>${segPasti('comuni')}
     <p class="q" style="margin:0;line-height:1.5">I pasti che mangiate insieme, scelti dal piano di uno di voi.</p>
     ${IO ? `<button class="btn" id="cmAgg" type="button">${ic('piu', 18, 2.2)}Aggiungi un pasto comune</button>` : `<button class="btn" id="cmChi" type="button">Indica chi sei</button>`}`;
   const date = [...new Set(l.map(e => e.iso))];

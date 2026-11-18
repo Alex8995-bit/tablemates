@@ -5,13 +5,13 @@ let D = VUOTO_D();
 let CHI = SS.get('chi') || LS.get('chi'), IO = null;
 
 function renderNav() {
-  const voci = { oggi: ['oggi', 'Oggi'], piano: ['calendario', 'Piano'], comuni: ['posate', 'Comuni'], spesa: ['sacchetto', 'Spesa'], conti: ['borsello', 'Conti'], agenda: ['agenda', 'Agenda'], gruppo: ['gruppo', 'Gruppo'], chat: ['scintille', 'Assistente'] };
+  const voci = { oggi: ['sole', 'Oggi'], piano: ['posate', 'Pasti'], spesa: ['sacchetto', 'Spesa'], casa: ['casa', 'Casa'], chat: ['scintille', 'Assistente'] };
   document.querySelectorAll('nav.sezioni button[data-t]').forEach(b => { const [i, n] = voci[b.dataset.t]; b.innerHTML = `<span class="pl">${ic(i, 24, 1.8)}</span><span>${n}</span>`; });
   $('navMarchio').innerHTML = marchioCompleto(32);
   const io = IO ? D.partecipanti.find(p => p.id === IO) : null;
   $('navIo').innerHTML = io ? `${avatar(io, idxP(IO))}<span style="display:flex;flex-direction:column"><span>${esc(io.nome)}</span><span class="by">${ST && ST.modo === 'supabase' ? (live ? 'Sincronizzato' : 'Non collegato') : 'Solo su questo dispositivo'}</span></span>` : '';
 }
-function renderTutto() { renderNav(); renderOggi(); renderPiano(); renderComuni(); renderSpesa(); renderConti(); renderAgenda(); renderGruppo(); renderPresenze(); renderChat(); renderImp(); }
+function renderTutto() { renderNav(); renderOggi(); renderPiano(); renderComuni(); renderCasa(); renderSpesa(); renderConti(); renderAgenda(); renderGruppo(); renderPresenze(); renderChat(); renderImp(); }
 const nomeP = id => (D.partecipanti.find(p => p.id === id) || {}).nome || '?';
 
 // Copia degli ultimi dati per aprire l'app anche senza rete (senza foto, per stare nello spazio del telefono)
@@ -224,7 +224,7 @@ function cambiamento(t, ev, r) {
       avvisoLocale('Pasti aggiornati', `${r.data.da} ha aggiornato la dieta di ${nomeP(r.id.slice(6))}`, 'piano');
     if (/^evento:/.test(r.id) && r.data && !r.data.eliminato && !prima && r.data.da && r.data.da !== CHI && avvisoAttivo('agenda') && (!r.data.chi || !r.data.chi.length || r.data.chi.includes(IO)))
       avvisoLocale(r.data.tipo === 'scadenza' ? 'Nuova scadenza' : 'Nuovo appuntamento', `${r.data.da}: ${r.data.titolo}`, 'agenda');
-    renderOggi(); renderPiano(); renderComuni(); renderPresenze(); renderSpesa(); renderAgenda(); renderGruppo(); renderChat(); renderImp(); snap(); return;
+    renderOggi(); renderPiano(); renderComuni(); renderCasa(); renderPresenze(); renderSpesa(); renderAgenda(); renderGruppo(); renderChat(); renderImp(); snap(); return;
   }
   if (t === 'movimenti' && r && 'foto' in r) { r.ha_foto = !!r.foto; delete r.foto; }
   const arr = D[t]; if (!arr) return;
@@ -268,7 +268,7 @@ async function avvio() {
 }
 
 // ---------- Velocità: si disegna solo la scheda che si vede, le altre quando le apri ----------
-const RENDER_SCHEDE = { oggi: 'renderOggi', piano: 'renderPiano', comuni: 'renderComuni', spesa: 'renderSpesa', conti: 'renderConti', agenda: 'renderAgenda', gruppo: 'renderGruppo', presenze: 'renderPresenze', chat: 'renderChat', imp: 'renderImp' };
+const RENDER_SCHEDE = { oggi: 'renderOggi', piano: 'renderPiano', comuni: 'renderComuni', casa: 'renderCasa', spesa: 'renderSpesa', conti: 'renderConti', agenda: 'renderAgenda', gruppo: 'renderGruppo', presenze: 'renderPresenze', chat: 'renderChat', imp: 'renderImp' };
 const daRidisegnare = new Set();
 Object.entries(RENDER_SCHEDE).forEach(([t, nome]) => {
   const vero = window[nome]; if (typeof vero !== 'function') return;

@@ -669,3 +669,11 @@ html::-webkit-scrollbar,body::-webkit-scrollbar,*::-webkit-scrollbar{display:non
 .sg-var{display:inline-flex;align-items:center;gap:4px;color:#0a84ff;background:#1c2b3d;border-radius:6px;padding:1px 6px}
 .sg-var.verde{color:#30d158;background:#18321f}.sg-var.ico{width:26px;height:26px;padding:0;background:#ff6b6b;border-radius:7px}
 .sg-frasi{margin-top:14px;background:var(--acc-soft);color:var(--acc-soft-tx);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;line-height:1.5}.sg-frasi span{color:var(--tx)}
+
+.og-scritto{display:flex;flex-direction:column;gap:2px;padding:10px 12px;background:var(--acc-soft);color:var(--acc-soft-tx);border-radius:12px}.og-scritto small{font-size:12px;font-weight:600}.og-scritto b{font-size:16px;color:var(--tx)}
+.casa-saldo{background:var(--acc);color:var(--acc-tx);border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:14px}
+.casa-saldo>div:first-child{display:flex;flex-direction:column;gap:2px}.casa-saldo span{font-size:14px;font-weight:600}.casa-saldo b{font-size:36px;font-weight:800;letter-spacing:-.5px}
+.casa-saldo button{min-height:46px;padding:0 16px;border-radius:12px;font:inherit;font-size:15px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.casa-saldo .b1{border:0;background:#fff;color:#155C39}.casa-saldo .b2{border:1px solid currentColor;background:none;color:inherit}
+.sub-cap>.dx,.sub-cap>.ico-btn{margin-left:auto}
+@media (max-width:899px){nav.sezioni button .pl{padding:4px 16px}nav.sezioni button{font-size:11.5px}}

@@ -2,17 +2,17 @@
 let chat = [];
 function renderChat() {
   const el = $('t-chat');
-  const testa = `<div class="sub-cap"><button type="button" class="indietro" id="chB" aria-label="Torna a Oggi">${ic('indietro', 22, 2)}</button><div><h1>Assistente</h1><p>Pasti, spesa e conti di ${esc(G ? G.nome : 'tutto il gruppo')}</p></div></div>`;
+  const testa = `<div class="sub-cap"><button type="button" class="indietro" id="chB" aria-label="Torna a Casa">${ic('indietro', 22, 2)}</button><div><h1>Assistente</h1><p>Pasti, spesa e conti di ${esc(G ? G.nome : 'tutto il gruppo')}</p></div></div>`;
   if (!haAI()) {
     el.innerHTML = testa + `<div class="card vuoto" style="text-align:left">${ic('scintille', 28)}<b>Serve un'intelligenza artificiale</b><p class="q" style="margin:6px 0 0;line-height:1.5">${ANTEPRIMA ? 'Nell\'anteprima non si collega nessuna intelligenza artificiale.' : 'In Impostazioni (dalla scheda Gruppo) inserisci una chiave di Gemini, Groq, ChatGPT o Claude: puoi condividerla con tutto il gruppo.'} Poi qui chiedi "cosa mangio domani?", "cosa mangia Giulia stasera?", "aggiungi il latte alla spesa" o "quanto devo e a chi?", e ti risponde anche a voce.</p></div>`;
-    $('chB').onclick = () => vai('oggi');
+    $('chB').onclick = () => vai('casa');
     return;
   }
   el.innerHTML = testa + `<div class="sug">` +
     ['Cosa mangio oggi?', 'Cosa mangiamo stasera?', 'Cosa devo comprare?', 'Quanto devo e a chi?', 'Quanto abbiamo speso in casa?'].map(s => `<button type="button">${s}</button>`).join('') +
     `</div><div class="msgs" id="msgs">${chat.length ? chat.map(m => `<div class="m ${m.r}">${esc(m.t)}</div>`).join('') : `<p class="q" style="text-align:center;margin-top:30px">Scrivi o detta una domanda.${iaAttiva().condivisa ? '<br><span class="by">Usi l\'intelligenza artificiale condivisa da ' + esc(iaAttiva().da || 'un membro del gruppo') + '.</span>' : ''}</p>`}</div>` +
     `<div class="ask"><input id="dom" placeholder="Scrivi o detta…" enterkeyhint="send" aria-label="Domanda"><button class="mic" id="mic" type="button" aria-label="Detta">${ic('microfono', 20)}</button><button id="inv" type="button" aria-label="Invia">${ic('invia', 20)}</button></div>`;
-  $('chB').onclick = () => vai('oggi');
+  $('chB').onclick = () => vai('casa');
   el.querySelectorAll('.sug button').forEach(b => b.onclick = () => chiediAI(b.textContent));
   $('inv').onclick = () => chiediAI($('dom').value);
   $('dom').onkeydown = e => { if (e.key === 'Enter') chiediAI($('dom').value); };
@@ -45,7 +45,7 @@ async function chiediAI(q) {
     const out = await ia([{ text: `Sei l'assistente di ${NOME_APP}, l'app con cui un gruppo (famiglia o coinquilini) gestisce pasti, spesa e conti condivisi. Chi ti scrive è ${IO ? nomeP(IO) : CHI}. Rispondi in italiano, in modo breve e naturale, adatto a essere letto ad alta voce, senza elenchi puntati con simboli. Oggi è ${oggi}. Usa SOLO i dati qui sotto, non inventare pasti né importi. Ognuno può avere una dieta diversa: se la domanda non dice di chi, rispondi per chi scrive e, se utile, cita gli altri. Se i giorni di una dieta non hanno il nome del giorno della settimana, chiedi a quale giorno corrisponde oggi. Saldo positivo = deve ricevere soldi, negativo = deve darne. Se l'utente chiede di aggiungere prodotti alla spesa mettili in "aggiungi". JSON: {"risposta":"","aggiungi":[{"nome":"","quantita":"","reparto":""}]} con reparto tra: ${REPARTI.join(', ')}.\nDIETE: ${JSON.stringify(diete)}\nSPESA: ${JSON.stringify(D.spesa.map(x => ({ nome: x.nome, quantita: x.quantita, comprato: x.comprato })))}\nCONTI: ${JSON.stringify(conti)}\nCONVERSAZIONE: ${JSON.stringify(chat.slice(-10, -1))}\nDOMANDA: ${q}` }]);
     chat[chat.length - 1].t = out.risposta;
     if (out.aggiungi?.length) {
-      const righe = out.aggiungi.map(x => ({ id: uuid(), gruppo_id: G.id, nome: x.nome, quantita: x.quantita || '', reparto: REPARTI.includes(x.reparto) ? x.reparto : 'Altro', comprato: false, aggiunto_da: CHI, created_at: new Date().toISOString() }));
+      const righe = out.aggiungi.map(x => ({ id: uuid(), gruppo_id: G.id, nome: x.nome, quantita: x.quantita || '', reparto: REPARTI.includes(x.reparto) ? x.reparto : repartoDi(x.nome), comprato: false, aggiunto_da: CHI, created_at: new Date().toISOString() }));
       D.spesa.push(...righe); renderSpesa();
       if (await scrivi(() => ST.ins('spesa', righe))) { toast('Aggiunto alla spesa ✓'); avvisaSpesa(righe.map(r => r.nome), 'agg'); }
     }
