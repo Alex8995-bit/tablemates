@@ -310,7 +310,7 @@ function inerteSotto(si) { ['main', 'nav.sezioni'].forEach(s => { const e = docu
 
 async function salvaPianoNuovo(pid, piano, nuovo) {
   const nome = nomeP(pid);
-  if (nuovo) { D.stato['ricette:' + pid] = {}; D.stato['scelte:' + pid] = {}; LS.del('giorno:' + pid); }
+  if (nuovo) { D.stato['ricette:' + pid] = {}; D.stato['scelte:' + pid] = {}; delete giornoPiano[pid]; LS.del('giorno:' + pid); }
   personaPiano = pid; renderPiano(); renderOggi();
   if (await salvaPiano(pid, piano)) {
     if (nuovo) await scrivi(async () => { await ST.salvaStato(G.id, 'ricette:' + pid, {}); await ST.salvaStato(G.id, 'scelte:' + pid, {}); });

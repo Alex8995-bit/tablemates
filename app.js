@@ -292,7 +292,14 @@ function ridisegnaSeServe(t) { if (daRidisegnare.has(t) && RENDER_SCHEDE[t]) win
   if (cond) SS.set('importa', cond);
   if (cond || q.has('condividi') || q.has('testo')) history.replaceState(null, '', location.pathname);
   if (inv || dom || sq || q.get('srv')) history.replaceState(null, '', location.pathname);
-  document.querySelectorAll('nav.sezioni button[data-t]').forEach(b => b.onclick = () => vai(b.dataset.t));
+  document.querySelectorAll('nav.sezioni button[data-t]').forEach(b => b.onclick = () => {
+    // dalla barra, «Pasti» si apre sempre sul giorno di oggi
+    if (b.dataset.t === 'piano') { giornoPiano = {}; pianoAperto = ''; renderPiano(); }
+    vai(b.dataset.t);
+  });
+  // tornando nell'app dopo un po' (iPhone la tiene aperta in sottofondo) il piano riparte da oggi
+  let nascostaDa = 0;
+  document.addEventListener('visibilitychange', () => { if (document.hidden) nascostaDa = Date.now(); else if (nascostaDa && Date.now() - nascostaDa > 10 * 60000) { giornoPiano = {}; pianoAperto = ''; if (typeof renderPiano === 'function') renderPiano(); } });
   renderNav();
   avviaBlocco();
   const sch = sq || LS.get('scheda'); vai(sch && $('t-' + sch) ? sch : 'oggi');

@@ -35,7 +35,8 @@ async function apriRicetta(pid, gi, k) {
   mostraRicettaPagina(x, { pid, gi, k });
   if (!x.ricetta && haAI()) {
     try {
-      const p = pianoDi(pid).giorni[gi].pasti[k];
+      const p = pianoDi(pid).giorni[gi]?.pasti[k];
+      if (!p) throw new Error('Questo pasto non è più nel piano: la ricetta completa non si può creare.');
       x.ricetta = await ricettaIA(x, pid, gi, p);
       D.stato['ricette:' + pid] = ric; if ($('pagina')?.querySelector('[data-ricetta]')) mostraRicettaPagina(x, { pid, gi, k });
       await salvaRicette(pid);
@@ -90,7 +91,8 @@ function mostraRicettaPagina(x, ctx) {
   const h = `<div class="pagina" data-ricetta role="dialog" aria-modal="true" aria-labelledby="rcT">
     <div class="r-top"><button type="button" class="indietro" id="rcB" aria-label="Chiudi la ricetta">${ic('indietro', 22, 2)}</button>
       ${IO ? `<button type="button" class="indietro salva" id="rcS" aria-label="${salvata ? 'Togli dalle ricette salvate' : 'Salva ricetta'}" aria-pressed="${salvata}" style="right:16px;left:auto">${salvata ? ic('segnalibro', 20, 2).replace('fill="none"', 'fill="currentColor"') : ic('segnalibro', 20, 2)}</button>` : ''}
-      ${ILLU_PIATTO}</div>
+      ${x.img ? `<img class="r-img" id="rcFoto" src="${esc(x.img)}" alt="Foto del piatto: ${esc(x.nome)}">` : ILLU_PIATTO}
+      ${piattoOriginale(x, ctx) ? `<button type="button" class="r-imgbtn" id="rcImg">${ic('scintille', 16, 2)}<span>${x.img ? 'Nuova immagine' : 'Crea l\'immagine'}</span></button>` : ''}</div>
     <div class="r-corpo"><div style="display:flex;flex-direction:column;gap:10px"><h1 id="rcT">${EMO.html(x.nome, '🍽️', '', true)}${esc(x.nome)}</h1>
       <div class="etich">${tempo ? `<span>${esc(tempo)}</span>` : ''}${condivisa ? `<span>${comm.length} persone</span>` : R && R.porzioni ? `<span>${esc(/\d+$/.test(R.porzioni) ? R.porzioni + (R.porzioni === '1' ? ' persona' : ' persone') : R.porzioni)}</span>` : ''}${R && R.difficolta ? `<span>${esc(R.difficolta)}</span>` : ''}${ctx && !x.fonte ? `<span class="ok">${ic('spunta', 14, 2.6)}Rispetta il piano</span>` : ''}${x.adattata ? `<span class="ok">${ic('spunta', 14, 2.6)}Adattata al piano</span>` : ''}${x.base ? '<span>Ricetta base</span>' : ''}</div>
       ${x.fonte && x.fonte.url ? `<a class="fonte" href="${esc(x.fonte.url)}" target="_blank" rel="noopener">${ic('link', 15, 2)}<span>Ricetta originale${x.fonte.autore ? ' di ' + esc(x.fonte.autore) : ''} · ${esc(x.fonte.sito || '')}</span>${ic('avanti', 14, 2)}</a>` : ''}</div>
@@ -106,6 +108,8 @@ function mostraRicettaPagina(x, ctx) {
       ${passi.length ? `<button type="button" class="quad" id="rcC" aria-label="Avvia la modalità cucina">${ic('play', 22, 1.8)}</button>` : ''}</div></div>`;
   contenitorePagina().innerHTML = h; inerteSotto(true);
   $('rcB').onclick = chiudiPagina; if ($('rcB2')) $('rcB2').onclick = chiudiPagina;
+  if ($('rcFoto')) $('rcFoto').onerror = () => { const f = $('rcFoto'); if (f) f.outerHTML = ILLU_PIATTO; };
+  if ($('rcImg')) $('rcImg').onclick = () => creaImmaginePiatto(x, ctx);
   if ($('rcS')) $('rcS').onclick = () => salvaPreferita(x, ctx);
   $('pagina').querySelectorAll('[data-comm]').forEach(b => b.onclick = async () => {
     const p = b.dataset.comm, l = comm.includes(p) ? comm.filter(z => z !== p) : comm.concat(p); vibra();
@@ -252,4 +256,43 @@ function modalitaCucina(x, passi, ingr) {
   };
   tieniSchermo().then(v => { acceso = v; disegna(); });
   disegna();
+}
+
+
+// ---------- Immagine del piatto ----------
+// La crea un servizio gratuito (Pollinations) a partire dal nome e dagli ingredienti. Senza chiave accetta circa
+// un'immagine ogni 45 secondi: l'app aspetta da sola e si salva l'indirizzo solo quando l'immagine è arrivata.
+const ATTESA_IMG = 45000;
+// Il piatto vero (non la copia mostrata per un pasto comune), con la persona a cui appartiene
+function piattoOriginale(x, ctx) {
+  const e = x.insieme ? D.stato[x.insieme] : null;
+  if (e && e.da != null) { const o = ricetteDi(e.da)[e.gi]?.[e.k]; return o ? { o, pid: e.da } : null; }
+  if (!ctx || ctx.pid == null) return null;
+  const o = ricetteDi(ctx.pid)[ctx.gi]?.[ctx.k];
+  return o && o.nome === x.nome ? { o, pid: ctx.pid } : null;
+}
+function indirizzoImmagine(x) {
+  const ingr = (x.ricetta?.ingredienti || []).map(t => dividiIngrediente(t).nome).filter(Boolean).slice(0, 6);
+  const testo = `Appetizing professional food photography of the Italian home-made dish "${x.nome}"` + (ingr.length ? ', made with ' + ingr.join(', ') : '') + ', plated on a simple plate, natural daylight, close-up, realistic, no text, no people';
+  return 'https://image.pollinations.ai/prompt/' + encodeURIComponent(testo) + '?width=768&height=576&seed=' + (1 + Math.floor(Math.random() * 99999));
+}
+function creaImmaginePiatto(x, ctx) {
+  const rif = piattoOriginale(x, ctx), b = $('rcImg'); if (!rif || !b) return;
+  const manca = (+LS.get('imgUltima') || 0) + ATTESA_IMG - Date.now();
+  if (manca > 0) return toast('Il servizio gratuito crea un\'immagine alla volta: riprova tra ' + Math.ceil(manca / 1000) + ' secondi');
+  LS.set('imgUltima', String(Date.now()));
+  const url = indirizzoImmagine(rif.o), img = new Image(); let finito = false;
+  b.disabled = true; b.innerHTML = '<span class="spin"></span><span>Creo l\'immagine…</span>';
+  const fine = msg => { if (finito) return; finito = true; clearTimeout(tm); if ($('rcImg')) { $('rcImg').disabled = false; $('rcImg').innerHTML = ic('scintille', 16, 2) + '<span>' + (rif.o.img ? 'Nuova immagine' : 'Crea l\'immagine') + '</span>'; } if (msg) toast(msg); };
+  const tm = setTimeout(() => fine('Il servizio immagini non ha risposto: riprova tra un minuto'), 90000);
+  img.onload = async () => {
+    if (finito) return;
+    rif.o.img = url; x.img = url; fine();
+    const top = $('pagina')?.querySelector('.r-top');
+    if (top) { const vecchia = top.querySelector('#rcFoto, svg.illu'); const n = document.createElement('img'); n.className = 'r-img'; n.id = 'rcFoto'; n.alt = 'Foto del piatto: ' + x.nome; n.src = url; if (vecchia) vecchia.replaceWith(n); else top.prepend(n); }
+    vibra(); toast('Immagine del piatto pronta ✓');
+    await salvaRicette(rif.pid);
+  };
+  img.onerror = () => fine('Non riesco a creare l\'immagine adesso: riprova tra un minuto');
+  img.src = url;
 }

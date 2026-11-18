@@ -14,10 +14,14 @@ function giornoDiOggi(piano) {
   const i = (piano?.giorni || []).findIndex(g => senzaAccenti(g.giorno).includes(oggi) || senzaAccenti(g.giorno).startsWith(oggi.slice(0, 3)));
   return i;
 }
+// Il giorno scelto in «Il mio piano» vale finché resti nell'app e solo per la data di oggi:
+// aprendo l'app, toccando «Pasti» nella barra o il giorno dopo si riparte sempre da oggi
+let giornoPiano = {};
+function scegliGiornoPiano(pid, gi) { giornoPiano[pid] = { gi: +gi, iso: oggiISO() }; }
 function giornoScelto(pid) {
   const p = pianoDi(pid); if (!p || !p.giorni?.length) return 0;
-  const salvato = LS.get('giorno:' + pid);
-  if (salvato !== '' && +salvato < p.giorni.length) return +salvato;
+  const s = giornoPiano[pid];
+  if (s && s.iso === oggiISO() && s.gi >= 0 && s.gi < p.giorni.length) return s.gi;
   const o = giornoDiOggi(p); return o >= 0 ? o : 0;
 }
 function pastoProssimo(tipo) {
@@ -43,7 +47,7 @@ function renderPiano() {
   h += p ? vistaPersona(pid) : '<div class="vuoto">Aggiungi le persone del gruppo dalla scheda Gruppo.</div>';
   el.innerHTML = h;
   el.querySelectorAll('[data-pp]').forEach(b => b.onclick = () => { personaPiano = b.dataset.pp; LS.set('pianoPersona', personaPiano); vibra(); renderPiano(); });
-  el.querySelectorAll('[data-gg]').forEach(b => b.onclick = () => { LS.set('giorno:' + personaPiano, b.dataset.gg); pianoAperto = ''; vibra(); renderPiano(); });
+  el.querySelectorAll('[data-gg]').forEach(b => b.onclick = () => { scegliGiornoPiano(personaPiano, b.dataset.gg); pianoAperto = ''; vibra(); renderPiano(); });
   el.querySelectorAll('[data-apri]').forEach(b => b.onclick = () => { pianoAperto = b.dataset.apri; vibra(); renderPiano(); });
   el.querySelectorAll('[data-re]').forEach(b => b.onclick = () => altroPiatto(+b.dataset.re, b));
   el.querySelectorAll('[data-scm]').forEach(b => b.onclick = () => foglioScambia(personaPiano, giornoScelto(personaPiano), +b.dataset.scm));

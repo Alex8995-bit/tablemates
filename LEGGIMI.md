@@ -238,6 +238,12 @@ Quando modifichi un file, in `sw.js` aumenta il numero di `VERSIONE` (per esempi
 - **Spesa + Dispensa**: livelli di quanto resta, "stanno finendo → in lista", la Dispensa si riempie quando spunti un prodotto.
 - **Conti**: "Giulia ti deve", Segna saldato, Ricordaglielo (messaggio da mandare), speso nel mese, la tua parte, ultimi movimenti; saldi, statistiche e conti restano a un tocco.
 
+## Novità della versione 11.2
+
+- **Il mio piano si apre su oggi.** Entrando nell'app (o toccando «Pasti» nella barra) è già selezionato il giorno di oggi.
+- **Immagine del piatto.** Nella ricetta, «Crea l'immagine» genera una foto del piatto con un servizio gratuito (Pollinations): un'immagine circa ogni 45 secondi, con un piccolo logo nell'angolo. Si salva nella ricetta e la vedono tutti.
+- Corretto l'errore «undefined is not an object (evaluating 'pa.tipo')» quando si crea la ricetta di un pasto comune con l'intelligenza artificiale.
+
 ## Novità della versione 11.1
 
 - **Spesa fatta → in dispensa.** Dopo aver spuntato i prodotti, il pulsante «Metti tutto in dispensa» li divide in Frigo, Dispensa, Freezer ed Extra (il posto è proposto in automatico e lo cambi con un tocco; la volta dopo l'app ricorda la tua scelta). Puoi anche togliere i prodotti dalla lista in un colpo solo.

@@ -495,7 +495,7 @@ async function inviaADrive(m, foto) {
 function foglioDrive() {
   const c = driveCfg() || {}, o = { ...c };
   foglio(`<h2>Google Drive</h2><p class="q" style="line-height:1.5;margin:4px 0 10px">Quando aggiungi la foto di una bolletta, l'app la salva da sola nella cartella Drive che scegli. Funziona per tutti e due, sullo stesso gruppo.</p>
-    <details style="margin-bottom:10px"><summary style="font-weight:700;cursor:pointer;min-height:44px;display:flex;align-items:center">Come si prepara (5 minuti, una volta sola)</summary>
+    <details ${driveCfg() ? '' : 'open'} style="margin-bottom:10px"><summary style="font-weight:800;cursor:pointer;min-height:48px;display:flex;align-items:center;justify-content:space-between;gap:8px;list-style:none;background:var(--card);border:1px solid var(--card-line);border-radius:12px;padding:0 14px"><span>Come si prepara (5 minuti, una volta sola)</span><span aria-hidden="true">▾</span></summary>
       <ol class="q" style="line-height:1.55;padding-left:20px;margin:6px 0">
         <li>Su Google Drive crea una cartella (es. «Bollette»), aprila e copia il suo indirizzo dalla barra del browser.</li>
         <li>Vai su <b>script.google.com</b> → «Nuovo progetto», cancella tutto e incolla questo codice. Cambia <b>SCEGLI-UNA-PAROLA</b> con una parola tua.</li>

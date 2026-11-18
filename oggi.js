@@ -162,7 +162,7 @@ function renderOggi() {
   if ($('ogChi')) $('ogChi').onclick = scegliPartecipante;
   if ($('ogUp')) $('ogUp').onclick = () => { personaPiano = IO; $('pdf').click(); };
   if ($('ogMan')) $('ogMan').onclick = () => editorPiano(IO);
-  if ($('ogPiano')) $('ogPiano').onclick = () => { if (gi >= 0) LS.set('giorno:' + IO, String(gi)); personaPiano = IO; vai('piano'); renderPiano(); };
+  if ($('ogPiano')) $('ogPiano').onclick = () => { if (gi >= 0) scegliGiornoPiano(IO, gi); personaPiano = IO; vai('piano'); renderPiano(); };
   el.querySelectorAll('[data-ogp]').forEach(b => b.onclick = () => { ogAperto = aperto === b.dataset.ogp ? '' : b.dataset.ogp; vibra(); renderOggi(); });
   el.querySelectorAll('[data-ogric]').forEach(b => b.onclick = () => apriRicetta(IO, gi, +b.dataset.ogric));
   el.querySelectorAll('[data-ogidea]').forEach(b => b.onclick = () => proponiPiatto(IO, gi, +b.dataset.ogidea));

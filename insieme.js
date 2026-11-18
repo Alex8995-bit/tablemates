@@ -67,9 +67,9 @@ async function apriInsieme(e) {
   const ctx = e.da === IO || !mio ? { pid: e.da, gi: e.gi, k: e.k } : { pid: IO, gi: mio.gi, k: mio.k };
   const vista = () => Object.assign({}, x, { commensali: e.chi.slice(), insieme: e.id });
   mostraRicettaPagina(vista(), ctx);
-  if (!x.ricetta && haAI() && pianoDi(e.da).giorni?.[e.gi]) {
+  if (!x.ricetta && haAI() && pastoSorgente(e)) {
     try {
-      x.ricetta = await ricettaIA(x, e.da, pianoDi(e.da).giorni[e.gi].pasti[e.k]);
+      x.ricetta = await ricettaIA(x, e.da, e.gi, pastoSorgente(e));
       if ($('pagina')?.querySelector('[data-ricetta]')) mostraRicettaPagina(vista(), ctx);
       await salvaRicette(e.da);
     } catch (er) { if ($('rcCorpo')) $('rcCorpo').innerHTML = `<p class="q" style="color:var(--neg);line-height:1.5;margin:0">${esc(er.message)}</p>`; }
