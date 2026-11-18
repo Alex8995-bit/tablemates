@@ -15,7 +15,7 @@ const SS = {
 };
 const S = k => LS.get(k) || (window.CFG && window.CFG[k]) || '';
 const ANTEPRIMA = !!window.ANTEPRIMA;
-window.VERSIONE = '11.0';
+window.VERSIONE = '11.1';
 const NOME_APP = 'Tablemates';
 // Le zone del supermercato, nell'ordine in cui si incontrano facendo la spesa
 const REPARTI = ['Ortofrutta e verdura','Panificio/Pasticceria','Banco frigo','Gastronomia','Macelleria','Pescheria','Extra','Surgelati'];

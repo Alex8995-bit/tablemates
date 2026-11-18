@@ -1,6 +1,6 @@
 // Scheda Spesa: Lista (per reparti, spunte, chi ha aggiunto e chi ha preso, collegamento ai Conti) e Dispensa (quanto resta in casa).
 let modoSpesa = LS.get('modoSpesa') === 'dispensa' ? 'dispensa' : 'lista';
-const ZONE = ['Frigo', 'Dispensa', 'Freezer'];
+const ZONE = ['Frigo', 'Dispensa', 'Freezer', 'Extra'];
 const LIVELLI = ['Finito', 'Sta finendo', 'A metà', 'Quasi pieno', 'Pieno'];
 const dispensa = () => { const d = D.stato.dispensa; return d && Array.isArray(d.items) ? d : { items: [] }; };
 // "zucchine 500 g" → nome e quantità
@@ -48,6 +48,7 @@ function renderSpesa() {
   el.querySelectorAll('[data-se]').forEach(b => b.onclick = () => modificaSpesa(b.dataset.se));
   scorriElimina([...el.querySelectorAll('.sp-riga')], r => eliminaSpesa(r.querySelector('[data-se]').dataset.se, true), 'Togli dalla lista');
   if ($('clr')) $('clr').onclick = () => conferma('Togliere i prodotti presi?', 'I prodotti spuntati verranno tolti dalla lista per tutti.', 'Togli', svuota);
+  if ($('cas')) $('cas').onclick = foglioInDispensa;
   if ($('reg')) $('reg').onclick = () => {
     const nomi = D.spesa.filter(x => x.comprato).map(x => x.nome + (x.quantita ? ' (' + x.quantita + ')' : ''));
     const casa = D.conti.find(c => c.tipo === 'casa');
@@ -67,7 +68,7 @@ function htmlLista(seg) {
     if (v.length) h += `<section style="display:flex;flex-direction:column;gap:12px"><h2 class="sez" style="margin:0">${EMO.reparto(r)} ${r}</h2><div class="sc">${v.map(rigaSpesa).join('')}</div></section>`;
   });
   if (!tot) h += `<div class="vuoto">${ic('sacchetto', 32)}La lista è vuota.<br>Aggiungi i prodotti qui sopra, oppure creala dal Piano con le quantità della dieta.</div>`;
-  if (fatti) h += `<div style="display:flex;flex-direction:column;gap:4px"><button class="btn scuro" id="reg" type="button">${ic('scontrino2', 20, 1.8)}Spesa fatta? Dividi lo scontrino</button><button class="link-txt" id="clr" type="button" style="text-align:center">Togli i prodotti presi dalla lista</button></div>`;
+  if (fatti) h += `<div style="display:flex;flex-direction:column;gap:4px"><button class="btn" id="cas" type="button">${ic('casa', 20, 1.8)}Spesa fatta? Metti tutto in dispensa</button><button class="btn scuro" id="reg" type="button">${ic('scontrino2', 20, 1.8)}Spesa fatta? Dividi lo scontrino</button><button class="link-txt" id="clr" type="button" style="text-align:center">Togli i prodotti presi dalla lista</button></div>`;
   return h + '<div style="height:8px"></div>';
 }
 const rigaSpesa = x => `<div class="sp-riga ${x.comprato ? 'done' : ''}"><button type="button" class="sp-ck" data-sk="${x.id}" aria-pressed="${!!x.comprato}" aria-label="${x.comprato ? 'Togli la spunta: ' : 'Segna come preso: '}${esc(x.nome)}">${x.comprato ? ic('spunta', 16, 3) : ''}</button><button type="button" class="sp-nm" data-se="${x.id}" aria-label="Modifica ${esc(x.nome)}"><b>${EMO.html(x.nome, EMO.reparto(zonaDi(x)), 's:' + x.id, true)}${esc(x.nome)}</b>${chiTxt(x)}</button>${x.quantita ? `<span class="sp-q num">${esc(x.quantita)}</span>` : ''}</div>`;
@@ -142,6 +143,46 @@ async function eliminaSpesa(id, annullabile) {
 async function svuota() { const n = D.spesa.filter(i => i.comprato).length; D.spesa = D.spesa.filter(i => !i.comprato); renderSpesa(); renderOggi(); if (await scrivi(() => ST.delWhere('spesa', { gruppo_id: G.id, comprato: true })) && n) avvisaSpesa(n === 1 ? '1 prodotto già preso' : n + ' prodotti già presi', 'tolto'); }
 
 // ---------- Dispensa ----------
+// Dove si conserva un prodotto appena comprato: prima quello che la dispensa già sa, poi la zona del supermercato e il nome
+function zonaCasaDi(x) {
+  const n = senzaAccenti(x.nome).toLowerCase(), gia = dispensa().items.find(i => senzaAccenti(i.nome).toLowerCase() === n);
+  if (gia && ZONE.includes(gia.zona)) return gia.zona;
+  const r = zonaDi(x);
+  if (r === 'Surgelati') return 'Freezer';
+  if (['Banco frigo', 'Gastronomia', 'Macelleria', 'Pescheria'].includes(r)) return 'Frigo';
+  if (r === 'Panificio/Pasticceria') return 'Dispensa';
+  if (r === 'Ortofrutta e verdura') return /patat|cipoll|aglio|banan|zucca|avocado|ananas|mango|aranc|limon|mandarin|\bmel[ae]\b|\bper[ae]\b|kiwi/.test(n) ? 'Dispensa' : 'Frigo';
+  if (/detersiv|sapone|shampoo|carta (igienica|cucina)|spugn|sacchett|pellicola|alluminio|dentifric|ammorbid|candeggin|bagnoschiuma|deodorant|lampad|pile\b|fazzolett|lavastoviglie|igienizz|sgrassat|pulizia/.test(n)) return 'Extra';
+  if (/pasta|riso|farina|olio|aceto|\bsale\b|zucchero|caffe|\bte\b|\bthe\b|tisana|biscott|cereali|passata|pelati|scatola|legum|lenticch|ceci|fagioli|tonno|conserv|sugo|miele|marmellata|nutella|cioccolat|cracker|snack|acqua|bevand|succo|vino|birra|cola|avena|muesli|frutta secca|noci|mandorle|spezie|lievito|couscous|orzo|farro|semola|polenta/.test(n)) return 'Dispensa';
+  return 'Extra';
+}
+// "Spesa fatta": i prodotti presi vanno in dispensa, divisi per dove si tengono
+function foglioInDispensa() {
+  const presi = D.spesa.filter(x => x.comprato); if (!presi.length) return toast('Prima spunta i prodotti presi');
+  foglio(`<h2>Metti in dispensa</h2><p class="q" style="line-height:1.5;margin:4px 0 10px">Per ogni prodotto scegli dove lo tieni. Ho già proposto il posto più probabile: cambialo se serve.</p>
+    <div class="sp-conf">${presi.map((x, i) => `<div class="sp-c" style="cursor:default;align-items:center"><input type="checkbox" data-dk="${i}" checked aria-label="Metti in dispensa: ${esc(x.nome)}"><span class="t"><b>${EMO.html(x.nome, EMO.reparto(zonaDi(x)), 's:' + x.id, true)}${esc(x.nome)}</b>${x.quantita ? `<small>${esc(x.quantita)}</small>` : ''}</span><select data-dz2="${i}" aria-label="Dove va: ${esc(x.nome)}" style="flex:none;width:auto;min-width:104px">${ZONE.map(z => `<option ${z === zonaCasaDi(x) ? 'selected' : ''}>${z}</option>`).join('')}</select></div>`).join('')}</div>
+    <label class="sp-c" style="margin-top:10px"><input type="checkbox" id="dpT" checked><span class="t"><b>Togli dalla lista della spesa</b><small>I prodotti spuntati escono dalla lista per tutti.</small></span></label>
+    <button class="btn" id="dpS" type="button" style="margin-top:12px">Metti in dispensa</button>`);
+  $('dpS').onclick = async () => {
+    const scelti = presi.map((x, i) => ({ x, on: document.querySelector(`[data-dk="${i}"]`).checked, zona: document.querySelector(`[data-dz2="${i}"]`).value })).filter(o => o.on);
+    if (!scelti.length) return toast('Nessun prodotto scelto');
+    const togli = $('dpT').checked, d = dispensa(), items = d.items.slice();
+    for (const { x, zona } of scelti) {
+      const n = senzaAccenti(x.nome), it = items.find(k => senzaAccenti(k.nome) === n);
+      if (it) Object.assign(it, { zona, livello: 4 }); else items.push({ id: uuid(), nome: x.nome, zona, livello: 4 });
+    }
+    chiudi(); vibra();
+    const per = ZONE.map(z => [z, scelti.filter(o => o.zona === z).length]).filter(o => o[1]).map(([z, n]) => n + ' in ' + z.toLowerCase());
+    toast('Messi in dispensa: ' + per.join(', ') + ' ✓');
+    if (togli) { const ids = new Set(scelti.map(o => o.x.id)); D.spesa = D.spesa.filter(i => !ids.has(i.id)); }
+    await salvaDispensa({ items });
+    renderOggi();
+    if (togli) {
+      let ok = 0; for (const { x } of scelti) if (await scrivi(() => ST.del('spesa', x.id))) ok++;
+      if (ok) avvisaSpesa(ok === 1 ? '1 prodotto già preso' : ok + ' prodotti già presi', 'tolto');
+    }
+  };
+}
 async function salvaDispensa(d) { D.stato.dispensa = d; renderSpesa(); await scrivi(() => ST.salvaStato(G.id, 'dispensa', d)); }
 function riempiDispensa(nome) {
   const d = dispensa(), n = senzaAccenti(nome), it = d.items.find(x => senzaAccenti(x.nome) === n);

@@ -49,6 +49,7 @@ function renderConti() {
   el.querySelectorAll('[data-pe]').forEach(b => b.onclick = () => modificaPartecipante(b.dataset.pe));
   if ($('pAdd')) { $('pAdd').onclick = aggiungiPartecipante; $('pNome').onkeydown = e => { if (e.key === 'Enter') aggiungiPartecipante(); }; }
   el.querySelectorAll('#csv,#csv2').forEach(b => b.onclick = esportaCSV);
+  if ($('drv')) $('drv').onclick = foglioDrive;
   if ($('chiP')) $('chiP').onclick = scegliPartecipante;
   el.querySelectorAll('[data-gc]').forEach(b => b.onclick = () => gestisciConto(b.dataset.gc));
   if ($('saldato')) $('saldato').onclick = () => { const r = JSON.parse($('saldato').dataset.r || 'null'); if (r) segnaRimborso(r); else { vistaConti = 'saldi'; renderConti(); } };
@@ -77,7 +78,8 @@ function homeConti(s) {
     <button type="button" data-v="saldi">${ic('gruppo', 20, 1.8)}<span class="t"><b>Saldi e persone</b><small>Chi deve a chi, come pareggiare</small></span>${ic('avanti', 18, 2)}</button>
     <button type="button" data-v="stat">${ic('borsello', 20, 1.8)}<span class="t"><b>Statistiche</b><small>Per conto, per mese, chi ha pagato di più</small></span>${ic('avanti', 18, 2)}</button>
     <button type="button" data-v="spese">${ic('cartella', 20, 1.8)}<span class="t"><b>Conti e voci</b><small>${D.conti.length ? esc(D.conti.map(c => c.nome).join(', ')) : 'Casa, Viaggi, Extra…'}</small></span>${ic('avanti', 18, 2)}</button>
-    <button type="button" id="csv2">${ic('scarica', 20, 1.8)}<span class="t"><b>Esporta per Excel</b><small>Tutti i movimenti in un file</small></span>${ic('avanti', 18, 2)}</button></div>`;
+    <button type="button" id="csv2">${ic('scarica', 20, 1.8)}<span class="t"><b>Esporta per Excel</b><small>Tutti i movimenti in un file</small></span>${ic('avanti', 18, 2)}</button>
+    <button type="button" id="drv">${ic('foto', 20, 1.8)}<span class="t"><b>Google Drive</b><small>${driveCfg() ? 'Foto delle bollette salvate in automatico' : 'Salva qui le foto delle bollette'}</small></span>${ic('avanti', 18, 2)}</button></div>`;
   return h;
 }
 const ICONE_MOV = m => m.tipo === 'trasferimento' ? 'scambio' : m.tipo === 'entrata' ? 'entrata' : /pizz/i.test(m.titolo) ? 'pizza' : /frutta|verdur|mercato/i.test(m.titolo) ? 'foglia' : iconaVoce(m.categoria || m.titolo, contoDi(m.conto_id)?.tipo)[0];
@@ -425,6 +427,7 @@ function formMovimento(m, preset) {
       renderConti();
       if (await scrivi(() => ST.upd('movimenti', m.id, riga))) { toast('Salvata ✓'); avvisaGruppo(tr ? 'Rimborso modificato' : 'Spesa modificata', `${CHI}: ${riga.titolo} · ${eur(Conti.inValutaGruppo(riga))}`, { tipo: 'conti', scheda: 'conti' }); }
     }
+    if (typeof foto === 'string') inviaADrive({ data: riga.data, titolo: riga.titolo, categoria: riga.categoria, importo: riga.importo, valuta: riga.valuta }, foto);
     ordinaMov(D.movimenti); renderConti();
     if (emo !== undefined) salvaEmoji(emo.regola ? EMO.chiaveTesto(riga.titolo) : 'm:' + mid, emo.e);
   };
@@ -456,4 +459,73 @@ function esportaCSV() {
     righe.push([m.data, m.tipo === 'trasferimento' ? 'rimborso' : m.tipo, m.titolo, contoDi(m.conto_id)?.nome || '', m.categoria || '', n(m.importo), m.valuta, String(m.cambio).replace('.', ','), n(Conti.inValutaGruppo(m)), nomeP(m.pagato_da)].concat(pp.map(p => n(e[p.id] || 0))).concat([m.nota || '']).map(q).join(';'));
   });
   scarica(`tablemates-${G.nome.replace(/[^\w-]+/g, '_')}-${oggiISO()}.csv`, '﻿' + righe.join('\r\n'), 'text/csv;charset=utf-8');
+}
+
+
+// ---------- Google Drive: la foto delle bollette finisce da sola in una cartella ----------
+// Un sito non può scrivere su Drive da solo: serve un piccolo script Google (Apps Script) collegato alla cartella. Lo crei una volta sola.
+const driveCfg = () => { const d = D.stato.drive; return d && d.url && d.cartella ? d : null; };
+const eBolletta = m => /bollett|\bluce\b|\bgas\b|\bacqua\b|internet|fibra|telefon|rifiut|\btari\b|utenz|condomini|enel|a2a|hera|iren|tim\b|vodafone|wind/i.test([m.titolo, m.categoria].join(' '));
+const idCartellaDrive = t => { const m = String(t || '').match(/folders\/([\w-]{10,})/) || String(t || '').match(/[?&]id=([\w-]{10,})/) || String(t || '').trim().match(/^([\w-]{20,})$/); return m ? m[1] : ''; };
+const SCRIPT_DRIVE = `var CHIAVE = 'SCEGLI-UNA-PAROLA';
+
+function doPost(e) {
+  var d = JSON.parse(e.postData.contents);
+  if (d.chiave !== CHIAVE) return risposta({ ok: false, errore: 'chiave' });
+  var blob = Utilities.newBlob(Utilities.base64Decode(d.dati), d.mime, d.nome);
+  var file = DriveApp.getFolderById(d.cartella).createFile(blob);
+  return risposta({ ok: true, url: file.getUrl() });
+}
+
+function risposta(o) {
+  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
+}`;
+async function postDrive(c, nome, foto) {
+  const r = await fetch(c.url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ chiave: c.chiave || '', cartella: c.cartella, nome, mime: (String(foto).match(/^data:([^;]+);/) || [])[1] || 'image/jpeg', dati: String(foto).split(',')[1] || '' }) });
+  return r.json();
+}
+async function inviaADrive(m, foto) {
+  const c = driveCfg(); if (!c || (c.solo !== 'tutte' && !eBolletta(m))) return;
+  const nome = (m.data + ' · ' + m.titolo + ' · ' + Conti.soldi(m.importo, m.valuta) + '.jpg').replace(/[\\/:*?"<>|]/g, '-');
+  try {
+    const j = await postDrive(c, nome, foto);
+    toast(j.ok ? 'Foto salvata su Drive ✓' : j.errore === 'chiave' ? 'Drive: la parola segreta non coincide con lo script' : 'Drive: non riesco a salvare la foto');
+  } catch (e) { toast('Drive non raggiungibile: la foto resta nell\'app'); }
+}
+function foglioDrive() {
+  const c = driveCfg() || {}, o = { ...c };
+  foglio(`<h2>Google Drive</h2><p class="q" style="line-height:1.5;margin:4px 0 10px">Quando aggiungi la foto di una bolletta, l'app la salva da sola nella cartella Drive che scegli. Funziona per tutti e due, sullo stesso gruppo.</p>
+    <details style="margin-bottom:10px"><summary style="font-weight:700;cursor:pointer;min-height:44px;display:flex;align-items:center">Come si prepara (5 minuti, una volta sola)</summary>
+      <ol class="q" style="line-height:1.55;padding-left:20px;margin:6px 0">
+        <li>Su Google Drive crea una cartella (es. «Bollette»), aprila e copia il suo indirizzo dalla barra del browser.</li>
+        <li>Vai su <b>script.google.com</b> → «Nuovo progetto», cancella tutto e incolla questo codice. Cambia <b>SCEGLI-UNA-PAROLA</b> con una parola tua.</li>
+        <li>In alto: <b>Distribuisci → Nuova distribuzione</b> → tipo «App web». «Esegui come»: <b>Me</b> · «Chi ha accesso»: <b>Chiunque</b>. Premi Distribuisci e autorizza l'accesso a Drive.</li>
+        <li>Copia l'indirizzo «App web» (finisce con /exec) e incollalo qui sotto, insieme alla parola e al link della cartella.</li>
+      </ol>
+      <pre id="drC" style="white-space:pre-wrap;word-break:break-word;font-size:12px;background:var(--card);border:1px solid var(--card-line);border-radius:12px;padding:10px;user-select:all">${esc(SCRIPT_DRIVE)}</pre>
+      <button class="btn bordo" type="button" id="drCp">Copia il codice</button></details>
+    <label class="lb" for="drU">Indirizzo dello script (App web)</label><input id="drU" inputmode="url" autocomplete="off" placeholder="https://script.google.com/macros/s/…/exec" value="${esc(c.url || '')}">
+    <label class="lb" for="drK">Parola segreta (la stessa dello script)</label><input id="drK" autocomplete="off" value="${esc(c.chiave || '')}">
+    <label class="lb" for="drL">Link della cartella Drive</label><input id="drL" inputmode="url" autocomplete="off" placeholder="https://drive.google.com/drive/folders/…" value="${esc(c.link || '')}">
+    <label class="lb" for="drS">Cosa salvare</label><select id="drS"><option value="bollette" ${c.solo !== 'tutte' ? 'selected' : ''}>Solo le bollette (luce, gas, acqua, internet…)</option><option value="tutte" ${c.solo === 'tutte' ? 'selected' : ''}>Tutte le foto degli scontrini</option></select>
+    <button class="btn" id="drSv" type="button" style="margin-top:12px">Salva</button>
+    <button class="btn bordo" id="drT" type="button">Invia una foto di prova</button>
+    ${c.link ? `<a class="btn bordo" href="${esc(c.link)}" target="_blank" rel="noopener" style="text-align:center;text-decoration:none">Apri la cartella</a>` : ''}
+    ${driveCfg() ? '<button class="btn danger" id="drX" type="button">Scollega Drive</button>' : ''}`);
+  const leggiF = () => ({ url: $('drU').value.trim(), chiave: $('drK').value.trim(), link: $('drL').value.trim(), cartella: idCartellaDrive($('drL').value), solo: $('drS').value });
+  const valida = v => !/^https:\/\/script\.google(usercontent)?\.com\//.test(v.url) ? 'L\'indirizzo dello script deve iniziare con https://script.google.com' : !v.chiave ? 'Scrivi la parola segreta' : !v.cartella ? 'Il link della cartella non è valido' : '';
+  $('drCp').onclick = async () => { try { await navigator.clipboard.writeText(SCRIPT_DRIVE); toast('Codice copiato ✓'); } catch (e) { const r = document.createRange(); r.selectNodeContents($('drC')); getSelection().removeAllRanges(); getSelection().addRange(r); toast('Selezionato: copialo'); } };
+  $('drSv').onclick = async () => {
+    const v = leggiF(), er = valida(v); if (er) return toast(er);
+    chiudi(); D.stato.drive = v; renderConti();
+    if (await scrivi(() => ST.salvaStato(G.id, 'drive', v))) toast('Drive collegato ✓');
+  };
+  $('drT').onclick = async () => {
+    const v = leggiF(), er = valida(v); if (er) return toast(er);
+    const px = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    toast('Invio la prova…');
+    try { const j = await postDrive(v, 'Prova Tablemates.png', px); toast(j.ok ? 'Funziona: trovi «Prova Tablemates» nella cartella ✓' : j.errore === 'chiave' ? 'La parola segreta non coincide con lo script' : 'Lo script ha risposto con un errore'); }
+    catch (e) { toast('Non riesco a raggiungere lo script: controlla l\'indirizzo e che l\'accesso sia «Chiunque»'); }
+  };
+  if ($('drX')) $('drX').onclick = async () => { chiudi(); D.stato.drive = null; renderConti(); await scrivi(() => ST.salvaStato(G.id, 'drive', {})); toast('Drive scollegato'); };
 }

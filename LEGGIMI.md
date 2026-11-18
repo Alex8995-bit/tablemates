@@ -238,6 +238,12 @@ Quando modifichi un file, in `sw.js` aumenta il numero di `VERSIONE` (per esempi
 - **Spesa + Dispensa**: livelli di quanto resta, "stanno finendo → in lista", la Dispensa si riempie quando spunti un prodotto.
 - **Conti**: "Giulia ti deve", Segna saldato, Ricordaglielo (messaggio da mandare), speso nel mese, la tua parte, ultimi movimenti; saldi, statistiche e conti restano a un tocco.
 
+## Novità della versione 11.1
+
+- **Spesa fatta → in dispensa.** Dopo aver spuntato i prodotti, il pulsante «Metti tutto in dispensa» li divide in Frigo, Dispensa, Freezer ed Extra (il posto è proposto in automatico e lo cambi con un tocco; la volta dopo l'app ricorda la tua scelta). Puoi anche togliere i prodotti dalla lista in un colpo solo.
+- **Conti → Google Drive.** Le foto delle bollette (o di tutti gli scontrini, a scelta) vengono salvate da sole in una cartella Drive. Serve uno script Google da creare una volta: la guida è dentro l'app, nel foglio «Google Drive».
+- La Dispensa ha ora anche la zona **Extra** (prodotti per la casa, cose che non vanno in frigo né in dispensa).
+
 ## Novità della versione 11.0
 
 - **Barra a 4 voci: Oggi · Pasti · Spesa · Casa.** *Pasti* riunisce «Il mio piano» e «Insieme» (i pasti comuni). *Casa* riunisce conti, agenda, A tavola, persone, notifiche, Siri, assistente e impostazioni; da ogni pagina la freccia in alto torna a Casa.
