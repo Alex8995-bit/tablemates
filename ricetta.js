@@ -22,7 +22,8 @@ function statoIngrediente(nome) {
 
 // La ricetta completa di un piatto, con le grammature del pasto
 function ricettaIA(x, pid, gi, p) {
-  return ia([{ text: 'Scrivi la ricetta completa del piatto "' + x.nome + '" per questo pasto di dieta. ' + REGOLE + ' Riporta ogni ingrediente con la grammatura della dieta, nel formato "Ingrediente quantità" (es. "Petto di pollo 150 g"). Passaggi chiari e dettagliati, da 4 a 8; se un passaggio ha un tempo di cottura scrivilo in minuti (es. "8 min"). JSON: {"tempo":"","porzioni":"","difficolta":"","ingredienti":[""],"passaggi":[""],"consigli":""}. Pasto: ' + pastoPerIA(pid, gi, p) }]);
+  const menu = x.portate && x.portate.length > 1 ? ' È un menù in portate: ' + x.portate.map(z => z.tipo + ' «' + z.nome + '»').join(', ') + '. Negli ingredienti metti una sola riga per alimento con la grammatura totale del piano; nei passaggi spiega le portate una dopo l\'altra, iniziando ogni passaggio con il nome della portata (es. "Vellutata: …") e dicendo quanto di ogni alimento usare in quella portata.' : '';
+  return ia([{ text: 'Scrivi la ricetta completa del piatto "' + x.nome + '" per questo pasto di dieta. ' + REGOLE + menu + ' Riporta ogni ingrediente con la grammatura della dieta, nel formato "Ingrediente quantità" (es. "Petto di pollo 150 g"). Passaggi chiari e dettagliati, da 4 a 8; se un passaggio ha un tempo di cottura scrivilo in minuti (es. "8 min"). JSON: {"tempo":"","porzioni":"","difficolta":"","ingredienti":[""],"passaggi":[""],"consigli":""}. Pasto: ' + pastoPerIA(pid, gi, p) }]);
 }
 
 async function apriRicetta(pid, gi, k) {
@@ -32,6 +33,12 @@ async function apriRicetta(pid, gi, k) {
   const ins = typeof insiemiMiei === 'function' && insiemiMiei().find(e => { if (e.da !== pid || e.gi !== gi || e.k !== k) return false; const g = giornoPerData(pianoDi(pid), new Date(e.iso + 'T12:00:00')); return g < 0 || g === gi; });
   if (ins) return apriInsieme(ins);
   vibra();
+  // ricette create prima della regola del dolce: a cena il cioccolato non va nel piatto, la ricetta si rifà
+  const pa0 = pianoDi(pid).giorni[gi]?.pasti[k];
+  if (pa0 && x.ricetta && (x.ricetta.ingredienti || []).some(t => eDolceAParte(pa0.tipo, dividiIngrediente(t).nome))) {
+    if (x.base) { const b = CUOCO.crea(pid, gi, pa0); b.da = x.da; if (x.img) b.img = x.img; ric[gi][k] = b; return apriRicetta(pid, gi, k).then(() => salvaRicette(pid)); }
+    if (haAI()) delete x.ricetta;
+  }
   mostraRicettaPagina(x, { pid, gi, k });
   if (!x.ricetta && haAI()) {
     try {
@@ -88,6 +95,7 @@ function mostraRicettaPagina(x, ctx) {
   const mancanti = ingr.filter(i => i.st === 'compra' || (i.st === '' && !dispensa().items.length));
   const tag = st => st === 'casa' ? '<span class="tag casa">In casa</span>' : st === 'compra' ? '<span class="tag compra">Da comprare</span>' : st === 'lista' ? '<span class="tag casa">In lista</span>' : '';
   const tempo = (R && R.tempo) || x.tempo;
+  const dolce = conPiano ? dolceAParte(ctx.pid, ctx.gi, pianoDi(ctx.pid).giorni[ctx.gi].pasti[ctx.k]) : [];
   const h = `<div class="pagina" data-ricetta role="dialog" aria-modal="true" aria-labelledby="rcT">
     <div class="r-top"><button type="button" class="indietro" id="rcB" aria-label="Chiudi la ricetta">${ic('indietro', 22, 2)}</button>
       ${IO ? `<button type="button" class="indietro salva" id="rcS" aria-label="${salvata ? 'Togli dalle ricette salvate' : 'Salva ricetta'}" aria-pressed="${salvata}" style="right:16px;left:auto">${salvata ? ic('segnalibro', 20, 2).replace('fill="none"', 'fill="currentColor"') : ic('segnalibro', 20, 2)}</button>` : ''}
@@ -96,9 +104,11 @@ function mostraRicettaPagina(x, ctx) {
     <div class="r-corpo"><div style="display:flex;flex-direction:column;gap:10px"><h1 id="rcT">${EMO.html(x.nome, '🍽️', '', true)}${esc(x.nome)}</h1>
       <div class="etich">${tempo ? `<span>${esc(tempo)}</span>` : ''}${condivisa ? `<span>${comm.length} persone</span>` : R && R.porzioni ? `<span>${esc(/\d+$/.test(R.porzioni) ? R.porzioni + (R.porzioni === '1' ? ' persona' : ' persone') : R.porzioni)}</span>` : ''}${R && R.difficolta ? `<span>${esc(R.difficolta)}</span>` : ''}${ctx && !x.fonte ? `<span class="ok">${ic('spunta', 14, 2.6)}Rispetta il piano</span>` : ''}${x.adattata ? `<span class="ok">${ic('spunta', 14, 2.6)}Adattata al piano</span>` : ''}${x.base ? '<span>Ricetta base</span>' : ''}</div>
       ${x.fonte && x.fonte.url ? `<a class="fonte" href="${esc(x.fonte.url)}" target="_blank" rel="noopener">${ic('link', 15, 2)}<span>Ricetta originale${x.fonte.autore ? ' di ' + esc(x.fonte.autore) : ''} · ${esc(x.fonte.sito || '')}</span>${ic('avanti', 14, 2)}</a>` : ''}</div>
+      ${x.portate && x.portate.length > 1 ? `<ol class="r-menu" aria-label="Il menù">${x.portate.map(z => `<li><small>${esc(z.tipo)}</small><b>${esc(z.nome)}</b></li>`).join('')}</ol>` : ''}
       <div id="rcCorpo" style="display:flex;flex-direction:column;gap:16px">${!R && haAI() && ctx ? `<div class="vuoto"><div class="giro"></div><br>Preparo la ricetta con gli alimenti del piano…</div>` : ''}
       ${conPiano && D.partecipanti.length > 1 ? `<section class="chi-mangia" aria-labelledby="rcChi"><h2 id="rcChi">Chi mangia questo piatto</h2><div class="chips">${D.partecipanti.map((p, i) => `<button type="button" class="chip ${comm.includes(p.id) ? 'on' : ''}" data-comm="${p.id}" aria-pressed="${comm.includes(p.id)}" ${p.id === ctx.pid ? 'disabled' : ''}>${avatar(p, i, 'p')}${esc(nomeCorto(p.id))}</button>`).join('')}</div>${condivisa ? '<p class="by" style="margin:8px 0 0;line-height:1.45">Dosi sommate: ognuno con le grammature del suo piano; chi non ha quell\'alimento nel piano ha la stessa porzione.</p>' : ''}</section>` : ''}
       ${ingr.length ? `<section class="ingr" aria-labelledby="rcI"><h2 id="rcI">${condivisa ? 'Ingredienti per ' + comm.length : ctx ? 'Ingredienti dal piano' : 'Ingredienti'}</h2>${ingr.map(i => `<div class="ir"><b>${EMO.bottone(i.nome, '', '', true)}${esc(i.nome)}${i.parti ? `<small class="parti">${i.parti.map(z => esc(nomeCorto(z.p)) + ' ' + esc(z.t)).join(' · ')}</small>` : ''}</b>${tag(i.st)}<span class="qt">${esc(i.qta)}</span></div>`).join('')}</section>` : ''}
+      ${dolce.length ? `<div class="info-verde">${ic('info', 20, 2)}<span><strong>A parte, come dolce:</strong> ${esc(dolce.join(', '))}. Non va nel piatto.</span></div>` : ''}
       ${condivisa && !x.base && passi.length ? '<p class="by" style="margin:-6px 0 0">Nei passaggi le quantità sono per una persona: usa i totali qui sopra.</p>' : ''}
       ${passi.length ? `<section class="passi" aria-labelledby="rcP"><h2 id="rcP">Procedimento</h2>${passi.map((t, n) => `<div class="passo"><i>${n + 1}</i><span>${esc(t)}</span></div>`).join('')}</section>` : ''}
       ${R && R.consigli ? `<div class="info-verde">${ic('info', 20, 2)}<span>${esc(R.consigli)}</span></div>` : ''}

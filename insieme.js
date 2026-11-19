@@ -34,7 +34,7 @@ async function piattoPer(pid, gi, k) {
   if (haAI()) {
     const att = attesaIA('Cerco un piatto per ' + pa.tipo.toLowerCase(), 'Uso gli alimenti e le grammature del piano. Di solito bastano pochi secondi.');
     try {
-      x = await ia([{ text: 'Proponi un piatto per questo pasto. ' + REGOLE + ' JSON: {"nome":"","tempo":"es. 15 min","preparazione":""}. Pasto: ' + pastoPerIA(pid, gi, pa) }]);
+      x = piattoDaIA(await ia([{ text: 'Proponi un piatto per questo pasto. ' + REGOLE + PORTATE_IA + ' JSON: ' + JSON_PIATTO + '. Pasto: ' + pastoPerIA(pid, gi, pa) }]));
       if (!x || !x.nome) throw new Error('nessun piatto');
       att.fine();
     } catch (e) { x = null; att.fine(); toast('L\'IA non ha risposto: uso la ricetta base'); }
@@ -108,7 +108,7 @@ function pastoPerInsieme(p, e) {
 
 // ---------- Scheda «Comuni»: i pasti che si mangiano insieme ----------
 // Si sceglie un pasto dal proprio piano (anche di un altro giorno), poi quando mangiarlo e con chi. La ricetta si crea qui.
-function foglioComune(iso0, slot0) {
+function foglioComune(iso0, slot0, pre) {
   if (!IO) return scegliPartecipante();
   const piano = pianoDi(IO);
   if (!piano?.giorni?.length) return toast('Prima carica o scrivi il tuo piano alimentare (scheda Piano)');
@@ -118,7 +118,8 @@ function foglioComune(iso0, slot0) {
   let gsel = Math.max(0, giornoPianoPer(piano, iso)), ksel = -1;
   const sel = new Set(altri.length === 1 ? [altri[0].id] : []);
   const pastiDi = gi => piano.giorni[gi].pasti.map((pa, k) => ({ pa, k })).filter(x => x.pa.voci ? x.pa.voci.length : x.pa.alimenti).sort((a, b) => ordinePasto(a.pa.tipo) - ordinePasto(b.pa.tipo));
-  if (slot) { const x = pastiDi(gsel).find(z => stessoPasto(z.pa.tipo, slot)); ksel = x ? x.k : -1; }
+  if (pre && piano.giorni[pre.gi]?.pasti[pre.k]) { gsel = pre.gi; ksel = pre.k; }
+  else if (slot) { const x = pastiDi(gsel).find(z => stessoPasto(z.pa.tipo, slot)); ksel = x ? x.k : -1; }
   const leggi = () => { if ($('cmD')) iso = $('cmD').value || iso; };
   const disegna = () => {
     const pasti = pastiDi(gsel), pronto = ksel >= 0 && slot && sel.size && iso >= oggiISO();

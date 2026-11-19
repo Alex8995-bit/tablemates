@@ -45,7 +45,7 @@ const CUOCO = (() => {
 
   // altreVoci: dosi già sommate (piatto condiviso con altre persone)
   function crea(pid, gi, pa, altreVoci) {
-    const vv = (altreVoci || voci(pid, gi, pa)).filter(v => v && v.nome);
+    const vv = (altreVoci || voci(pid, gi, pa)).filter(v => v && v.nome && !eDolceAParte(pa.tipo, v.nome)); // a cena il cioccolato è il dolce, a parte
     const g = {}; vv.forEach(v => { const t = tipoDi(v.nome); (g[t] = g[t] || []).push(v); });
     const usati = new Set(), has = k => !!(g[k] && g[k].length), L = k => { (g[k] || []).forEach(v => usati.add(v)); return g[k] || []; };
     const lista = k => elenco(L(k).map(conQ));

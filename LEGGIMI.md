@@ -238,6 +238,13 @@ Quando modifichi un file, in `sw.js` aumenta il numero di `VERSIONE` (per esempi
 - **Spesa + Dispensa**: livelli di quanto resta, "stanno finendo → in lista", la Dispensa si riempie quando spunti un prodotto.
 - **Conti**: "Giulia ti deve", Segna saldato, Ricordaglielo (messaggio da mandare), speso nel mese, la tua parte, ultimi movimenti; saldi, statistiche e conti restano a un tocco.
 
+## Novità della versione 11.3
+
+- **Oggi lo decidete voi**: la scheda Oggi non mette più da sola i pasti del piano. In «Il mio piano» ogni pasto ha il pulsante **Metti in Oggi** (scegli il giorno e il momento: puoi mangiare oggi anche il pasto di un altro giorno). Da Oggi: «Scegli dal mio piano», «Mangiamo insieme…» o «Scrivi cosa mangi…». Ognuno sceglie dal suo telefono.
+- **Il pasto comune in primo piano**: se c'è un pasto insieme, chi apre l'app lo vede per primo, già aperto, anche se non ha scelto nient'altro.
+- **Cioccolato a cena = dolce**: a cena il cioccolato (o il cacao) non entra nel piatto né nella ricetta; nella ricetta compare «A parte, come dolce». Nella lista della spesa resta. Le ricette di cena già create con il cioccolato si rifanno da sole quando le apri.
+- **Menù in portate**: a pranzo e a cena l'intelligenza artificiale può proporre un primo e un secondo (o solo uno dei due) con un contorno, dividendo gli alimenti del piano. Nella ricetta vedi il menù e i passaggi per ogni portata. La ricetta base senza IA resta un piatto unico.
+
 ## Novità della versione 11.2
 
 - **Il mio piano si apre su oggi.** Entrando nell'app (o toccando «Pasti» nella barra) è già selezionato il giorno di oggi.

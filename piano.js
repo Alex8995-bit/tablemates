@@ -50,6 +50,7 @@ function renderPiano() {
   el.querySelectorAll('[data-gg]').forEach(b => b.onclick = () => { scegliGiornoPiano(personaPiano, b.dataset.gg); pianoAperto = ''; vibra(); renderPiano(); });
   el.querySelectorAll('[data-apri]').forEach(b => b.onclick = () => { pianoAperto = b.dataset.apri; vibra(); renderPiano(); });
   el.querySelectorAll('[data-re]').forEach(b => b.onclick = () => altroPiatto(+b.dataset.re, b));
+  el.querySelectorAll('[data-inoggi]').forEach(b => b.onclick = () => foglioInOggi(personaPiano, giornoScelto(personaPiano), +b.dataset.inoggi));
   el.querySelectorAll('[data-scm]').forEach(b => b.onclick = () => foglioScambia(personaPiano, giornoScelto(personaPiano), +b.dataset.scm));
   el.querySelectorAll('[data-scr]').forEach(b => b.onclick = () => { const gi = giornoScelto(personaPiano), pl = pianoDi(personaPiano); foglioScrivi(personaPiano, chiaveGiorno(pl, gi), pl.giorni[gi].pasti[+b.dataset.scr].tipo); });
   el.querySelectorAll('[data-prop]').forEach(b => b.onclick = () => proponiPiatto(personaPiano, giornoScelto(personaPiano), +b.dataset.prop));
@@ -114,6 +115,7 @@ function vistaPersona(pid) {
       (scr(pa) ? `<div class="og-scritto"><small>Per ${esc(dataBreve(iso))} hai scritto</small><b>${EMO.html(scr(pa).nome, '', '', true)}${esc(scr(pa).nome)}</b></div>` : '') +
       (x ? `<button type="button" class="piatto" data-ric="${k}" data-g="${gi}"><span class="tt"><b>${EMO.html(x.nome, '🍽️', '', true)}${esc(x.nome)}</b><span class="by" style="display:flex;align-items:center;gap:4px">${ic('orologio', 13, 2)}${esc(x.tempo || '')}${x.da ? ' · scelto da ' + esc(x.da) : ''}</span></span><span class="piccolo pieno">${ic('libro', 15, 2)}Ricetta</span></button>` : '') +
       `<div class="pc-azioni">
+        ${pid === IO ? (() => { const z = sceltaPerPasto(pid, gi, k); return `<button type="button" class="piccolo ${z ? 'neutro' : ''}" data-inoggi="${k}">${ic(z ? 'spunta' : 'piu', 15, 2.2)}${z ? (z.iso === oggiISO() ? 'In Oggi' : 'Per ' + esc(dataBreve(z.iso))) + ' · ' + esc(z.slot.toLowerCase()) : 'Metti in Oggi'}</button>`; })() : ''}
         <button type="button" class="piccolo neutro" data-scm="${k}">${ic('scambio', 15, 2)}Scambia</button>
         ${settimana ? `<button type="button" class="piccolo neutro" data-scr="${k}">${ic('matita', 15, 2)}${scr(pa) ? 'Cambia il piatto scritto' : 'Scrivi il piatto'}</button>` : ''}
         ${!x ? `<button type="button" class="piccolo neutro" data-prop="${k}">${ic('scintille', 15, 2)}Proponi un piatto</button>` : ''}
@@ -131,6 +133,11 @@ function vistaPersona(pid) {
   return h;
 }
 
+// Il primo giorno (da oggi in poi) in cui questo pasto del piano è stato messo in Oggi
+function sceltaPerPasto(pid, gi, k) {
+  const l = Object.entries(inOggiDi(pid)).filter(([c, s]) => c.slice(0, 10) >= oggiISO() && s.gi === gi && s.k === k && sceltoValido(pid, s)).sort((a, b) => a[0].localeCompare(b[0]));
+  return l.length ? { iso: l[0][0].slice(0, 10), slot: l[0][1].slot } : null;
+}
 async function salvaPiano(pid, piano) { D.stato['piano:' + pid] = piano; return scrivi(() => ST.salvaStato(G.id, 'piano:' + pid, piano)); }
 async function salvaRicette(pid) { return scrivi(() => ST.salvaStato(G.id, 'ricette:' + pid, ricetteDi(pid))); }
 
@@ -177,7 +184,8 @@ async function generaGiorno(senzaIA) {
   if (b) { b.disabled = true; b.innerHTML = '<span class="spin"></span>Creo i piatti…'; }
   try {
     // senza intelligenza artificiale: ricette base dal cuoco dell'app e spesa sommata dal piano
-    const out = senzaIA || !haAI() ? { piatti: g.pasti.map(pa => CUOCO.crea(pid, gi, pa)), spesa: sommaSpesa(pid, [gi]).map(e => ({ nome: e.nome, quantita: quantitaSpesa(e), reparto: repartoDi(e.nome) })) } : await ia([{ text: 'Per ogni pasto di questa giornata di dieta proponi un piatto. ' + REGOLE + ' Poi crea la lista della spesa aggregata, con ogni prodotto assegnato a un reparto tra: ' + REPARTI.join(', ') + '. JSON: {"piatti":[{"nome":"","tempo":"es. 15 min","preparazione":""}],"spesa":[{"nome":"","quantita":"","reparto":""}]} con i piatti nello stesso ordine dei pasti. Giornata: ' + giornoPerIA(pid, gi) }]);
+    const out = senzaIA || !haAI() ? { piatti: g.pasti.map(pa => CUOCO.crea(pid, gi, pa)), spesa: sommaSpesa(pid, [gi]).map(e => ({ nome: e.nome, quantita: quantitaSpesa(e), reparto: repartoDi(e.nome) })) } : await ia([{ text: 'Per ogni pasto di questa giornata di dieta proponi un piatto (un elemento di "piatti" per ogni pasto, anche quando è un menù in più portate). ' + REGOLE + PORTATE_IA + ' "dolce_a_parte" si mangia a parte come dolce: non metterlo nel piatto. Poi crea la lista della spesa aggregata, compresi gli alimenti in "dolce_a_parte", con ogni prodotto assegnato a un reparto tra: ' + REPARTI.join(', ') + '. JSON: {"piatti":[' + JSON_PIATTO + '],"spesa":[{"nome":"","quantita":"","reparto":""}]} con i piatti nello stesso ordine dei pasti. Giornata: ' + giornoPerIA(pid, gi) }]);
+    if (!senzaIA && haAI()) { if (!Array.isArray(out.piatti) || out.piatti.length !== g.pasti.length) throw new Error('L\'intelligenza artificiale non ha proposto un piatto per ogni pasto. Riprova.'); out.piatti = out.piatti.map(piattoDaIA); }
     out.piatti.forEach(p => p.da = CHI);
     const ric = ricetteDi(pid); ric[gi] = out.piatti; D.stato['ricette:' + pid] = ric;
     const etichetta = nome + ' · ' + g.giorno;
@@ -199,7 +207,8 @@ async function altroPiatto(k, b) {
   b.textContent = 'Cerco…';
   try {
     const p = pianoDi(pid).giorni[gi].pasti[k], ric = ricetteDi(pid), vecchio = ric[gi][k]?.nome;
-    const x = await ia([{ text: 'Proponi un piatto diverso da "' + vecchio + '" per questo pasto. ' + REGOLE + ' JSON: {"nome":"","tempo":"","preparazione":""}. Pasto: ' + pastoPerIA(pid, gi, p) }]);
+    const x = piattoDaIA(await ia([{ text: 'Proponi un piatto diverso da "' + vecchio + '" per questo pasto. ' + REGOLE + PORTATE_IA + ' JSON: ' + JSON_PIATTO + '. Pasto: ' + pastoPerIA(pid, gi, p) }]));
+    if (!x || !x.nome) throw new Error('L\'intelligenza artificiale non ha proposto nessun piatto. Riprova.');
     x.da = CHI; ric[gi][k] = x; D.stato['ricette:' + pid] = ric; renderPiano();
     await salvaRicette(pid);
   } catch (e) { toast(e.message); renderPiano(); }

@@ -22,8 +22,28 @@ function voceEffettiva(pid, gi, pa, i) {
 }
 const testoPasto = (pid, gi, pa) => pa.voci ? pa.voci.map((_, i) => LETTORE.testoVoce(voceEffettiva(pid, gi, pa, i))).join('; ') : pa.alimenti;
 // Testi per l'intelligenza artificiale: solo ciò che si mangia, senza le note né l'elenco delle alternative
-const pastoPerIA = (pid, gi, pa) => JSON.stringify({ tipo: pa.tipo, alimenti: testoPasto(pid, gi, pa), ...(pa.voci || !pa.alternative ? {} : { alternative: pa.alternative }) });
-const giornoPerIA = (pid, gi) => { const g = pianoDi(pid).giorni[gi]; return JSON.stringify({ giorno: g.giorno, pasti: g.pasti.map(pa => JSON.parse(pastoPerIA(pid, gi, pa))) }); };
+// A cena il cioccolato (o il cacao) è il dolce: si mangia a parte e non entra nel piatto né nella ricetta (resta nella spesa)
+const DOLCE_A_PARTE = /cioccolat|cacao|nutella/;
+const eDolceAParte = (tipo, nome) => /cena/.test(senzaAccenti(tipo)) && DOLCE_A_PARTE.test(senzaAccenti(nome));
+const pezziPasto = (pid, gi, pa) => pa.voci ? pa.voci.map((_, i) => { const v = voceEffettiva(pid, gi, pa, i); return { nome: v.nome, testo: LETTORE.testoVoce(v) }; })
+  : String(pa.alimenti || '').split(/[;\n]|,(?![^(]*\))/).map(t => t.trim()).filter(Boolean).map(t => ({ nome: t, testo: t }));
+const dolceAParte = (pid, gi, pa) => pa ? pezziPasto(pid, gi, pa).filter(x => eDolceAParte(pa.tipo, x.nome)).map(x => x.testo) : [];
+const testoPiatto = (pid, gi, pa) => { const l = pezziPasto(pid, gi, pa); return l.some(x => eDolceAParte(pa.tipo, x.nome)) ? l.filter(x => !eDolceAParte(pa.tipo, x.nome)).map(x => x.testo).join('; ') : testoPasto(pid, gi, pa); };
+const pastoPerIA = (pid, gi, pa) => JSON.stringify({ tipo: pa.tipo, alimenti: testoPiatto(pid, gi, pa), ...(pa.voci || !pa.alternative ? {} : { alternative: pa.alternative }) });
+const giornoPerIA = (pid, gi) => { const g = pianoDi(pid).giorni[gi]; return JSON.stringify({ giorno: g.giorno, pasti: g.pasti.map(pa => { const d = dolceAParte(pid, gi, pa); return Object.assign(JSON.parse(pastoPerIA(pid, gi, pa)), d.length ? { dolce_a_parte: d.join('; ') } : {}); }) }); };
+// Pranzo e cena possono diventare un menù in più portate (primo, secondo, contorno): resta UN solo piatto per pasto,
+// con le portate dentro, così ricette, spesa e pasti comuni continuano a funzionare come prima
+const PORTATE_IA = ' Se è pranzo o cena non fare per forza un piatto unico: se gli alimenti lo permettono componi un menù di portate (un primo e un secondo, oppure solo un primo o solo un secondo, con un eventuale contorno), dividendo gli alimenti tra le portate senza superare le grammature totali; es. con patate, zucca, carote, uova e zucchine: vellutata di carote e patate, poi frittata di zucchine (o sformato di patate, zucca e uova) e carote lesse come contorno. Se gli alimenti sono pochi o adatti a un piatto solo, fai un piatto unico. Colazione e spuntini sono sempre un piatto unico. "portate" elenca le portate in ordine con tipo tra Primo, Secondo, Contorno, Piatto unico; "nome" è il nome delle portate unite con " · ".';
+const JSON_PIATTO = '{"nome":"","portate":[{"tipo":"Primo","nome":""}],"tempo":"es. 15 min","preparazione":""}';
+function piattoDaIA(x) {
+  if (!x || typeof x !== 'object') return x;
+  const TIPI = ['Primo', 'Secondo', 'Contorno', 'Piatto unico'];
+  const pp = Array.isArray(x.portate) ? x.portate.filter(p => p && typeof p.nome === 'string' && p.nome.trim()).map(p => ({ tipo: TIPI.find(t => senzaAccenti(t) === senzaAccenti(p.tipo || '')) || 'Piatto unico', nome: p.nome.trim() })).slice(0, 4) : [];
+  if (pp.length > 1) x.portate = pp; else delete x.portate;
+  if ((!x.nome || !String(x.nome).trim()) && pp.length) x.nome = pp.map(p => p.nome).join(' · ');
+  if (x.nome) x.nome = String(x.nome).trim();
+  return x;
+}
 
 function elencoSlot(g) {
   const out = LETTORE.SLOT.map(t => { const k = g.pasti.findIndex(p => p.tipo === t); return { pa: k >= 0 ? g.pasti[k] : null, k, tipo: t }; });
@@ -310,10 +330,10 @@ function inerteSotto(si) { ['main', 'nav.sezioni'].forEach(s => { const e = docu
 
 async function salvaPianoNuovo(pid, piano, nuovo) {
   const nome = nomeP(pid);
-  if (nuovo) { D.stato['ricette:' + pid] = {}; D.stato['scelte:' + pid] = {}; delete giornoPiano[pid]; LS.del('giorno:' + pid); }
+  if (nuovo) { D.stato['ricette:' + pid] = {}; D.stato['scelte:' + pid] = {}; D.stato['inoggi:' + pid] = {}; delete giornoPiano[pid]; LS.del('giorno:' + pid); }
   personaPiano = pid; renderPiano(); renderOggi();
   if (await salvaPiano(pid, piano)) {
-    if (nuovo) await scrivi(async () => { await ST.salvaStato(G.id, 'ricette:' + pid, {}); await ST.salvaStato(G.id, 'scelte:' + pid, {}); });
+    if (nuovo) await scrivi(async () => { await ST.salvaStato(G.id, 'ricette:' + pid, {}); await ST.salvaStato(G.id, 'scelte:' + pid, {}); await ST.salvaStato(G.id, 'inoggi:' + pid, {}); });
     const np = piano.giorni.reduce((n, g) => n + g.pasti.length, 0);
     toast((nuovo ? 'Dieta caricata ✓ ' : 'Dieta salvata ✓ ') + piano.giorni.length + (piano.giorni.length === 1 ? ' giorno, ' : ' giorni, ') + np + ' pasti');
     avvisaGruppo(nuovo ? 'Nuova dieta' : 'Pasti aggiornati', `${CHI} ha ${nuovo ? 'caricato' : 'aggiornato'} la dieta di ${pid === IO ? CHI : nome}`);

@@ -56,6 +56,58 @@ async function salvaScritto(pid, iso, tipo, nome) {
   return scrivi(() => ST.salvaStato(G.id, 'scritti:' + pid, tutti));
 }
 
+// ---------- I pasti scelti per Oggi ----------
+// Oggi non si riempie da solo con il piano: ognuno sceglie dal suo piano cosa mangia, quando e in quale momento.
+// Documento "inoggi:<persona>" (ognuno scrive solo il suo): { "2026-11-19|cena": { gi, k, giorno, tipo, slot, t } }
+const inOggiDi = pid => D.stato['inoggi:' + pid] || {};
+let inOggiData = ''; // la data mostrata in Oggi quando si va a scegliere dal piano
+function sceltoValido(pid, s) {
+  const g = pianoDi(pid)?.giorni?.[s?.gi], pa = g?.pasti?.[s.k];
+  return pa && g.giorno === s.giorno && pa.tipo === s.tipo ? { ...s, g, pa } : null; // il piano è cambiato: la scelta non vale più
+}
+const sceltoPerOggi = (pid, iso, slot) => sceltoValido(pid, inOggiDi(pid)[chiaveScritto(iso, slot)]);
+const sceltiDelGiorno = (pid, iso) => Object.entries(inOggiDi(pid)).filter(([c]) => c.slice(0, 10) === iso).map(([, s]) => sceltoValido(pid, s)).filter(Boolean);
+async function salvaInOggi(pid, iso, slot, v) {
+  const tutti = Object.assign({}, inOggiDi(pid)), c = chiaveScritto(iso, slot), lim = isoDi(Date.now() - 21 * 864e5);
+  Object.keys(tutti).forEach(k => { if (k.slice(0, 10) < lim) delete tutti[k]; });
+  if (v) tutti[c] = Object.assign({ slot, t: Date.now() }, v); else delete tutti[c];
+  D.stato['inoggi:' + pid] = tutti; renderOggi(); renderPiano();
+  return scrivi(() => ST.salvaStato(G.id, 'inoggi:' + pid, tutti));
+}
+// Foglio «Metti in Oggi»: il pasto del piano, il giorno in cui lo mangi e il momento
+function foglioInOggi(pid, gi, k) {
+  const g = pianoDi(pid).giorni[gi], pa = g.pasti[k];
+  let iso = inOggiData && inOggiData >= oggiISO() ? inOggiData : oggiISO(), slot = SLOT_COMUNI.find(x => stessoPasto(x, pa.tipo)) || pa.tipo;
+  const domani = isoDi(Date.now() + 864e5);
+  const disegna = () => {
+    const ora = sceltoPerOggi(pid, iso, slot), stesso = ora && ora.gi === gi && ora.k === k, quando = iso === oggiISO() ? 'oggi' : iso === domani ? 'domani' : dataBreve(iso);
+    const comune = typeof insiemeDi === 'function' && pid === IO ? insiemeDi(iso, slot) : null;
+    foglio(`<h2 style="padding-right:36px">Metti in Oggi</h2><p class="q" style="line-height:1.5;margin:4px 0 0"><b>${esc(g.giorno)} · ${esc(pa.tipo)}</b>: ${esc(riassuntoDi(pid, gi, pa))}</p>
+      <label class="lb">Quando lo mangi</label><div class="chips" style="margin-top:6px"><button type="button" class="chip ${iso === oggiISO() ? 'on' : ''}" data-io="${oggiISO()}" aria-pressed="${iso === oggiISO()}">Oggi</button><button type="button" class="chip ${iso === domani ? 'on' : ''}" data-io="${domani}" aria-pressed="${iso === domani}">Domani</button></div>
+      <input id="ioD" type="date" value="${iso}" min="${oggiISO()}" style="width:100%;margin-top:8px" aria-label="Oppure scegli la data">
+      <label class="lb">In quale momento</label><div class="chips" style="margin-top:6px" role="group" aria-label="Momento del giorno">${SLOT_COMUNI.map(x => `<button type="button" class="chip ${x === slot ? 'on' : ''}" data-is="${esc(x)}" aria-pressed="${x === slot}" style="padding:0 14px">${esc(x)}</button>`).join('')}</div>
+      ${comune ? `<div class="avviso" style="margin-top:10px">${ic('info', 18, 2)}<span>Per ${esc(slot.toLowerCase())} di ${esc(quando)} c'è già un pasto comune: in Oggi si vede quello.</span></div>` : ora && !stesso ? `<p class="by" style="margin:10px 0 0">Prende il posto di ${esc(ora.g.giorno + ' · ' + ora.pa.tipo)}, già scelto per ${esc(slot.toLowerCase())} di ${esc(quando)}.</p>` : ''}
+      <button class="btn" id="ioOk" type="button" style="margin-top:14px" ${stesso ? 'disabled' : ''}>${stesso ? 'Già in Oggi ✓' : 'Mangio questo ' + esc(quando)}</button>
+      ${stesso ? `<button class="link-txt" id="ioVia" type="button" style="text-align:center">Togli da ${esc(quando)}</button>` : ''}`);
+    const pop = $('pop');
+    pop.querySelectorAll('[data-io]').forEach(b => b.onclick = () => { iso = b.dataset.io; disegna(); });
+    pop.querySelectorAll('[data-is]').forEach(b => b.onclick = () => { slot = b.dataset.is; disegna(); });
+    $('ioD').onchange = () => { if ($('ioD').value && $('ioD').value >= oggiISO()) { iso = $('ioD').value; disegna(); } };
+    $('ioOk').onclick = async () => {
+      chiudi(); vibra();
+      if (await salvaInOggi(pid, iso, slot, { gi, k, giorno: g.giorno, tipo: pa.tipo })) toast(pa.tipo + ' di ' + g.giorno + ' → ' + slot.toLowerCase() + ' ' + quando + ' ✓', { testo: 'Vai a Oggi', fn: () => { ogData = iso === oggiISO() ? '' : iso; ogAperto = slot; vai('oggi'); renderOggi(); } });
+    };
+    if ($('ioVia')) $('ioVia').onclick = async () => { chiudi(); await salvaInOggi(pid, iso, slot, null); toast('Tolto da ' + quando); };
+  };
+  disegna();
+}
+// «Scrivi cosa mangi» da Oggi senza un pasto scelto: prima il momento
+function foglioMomentoScrivi(iso) {
+  foglio(`<h2>Scrivi cosa mangi</h2><p class="q" style="line-height:1.5;margin:4px 0 0">Per quale momento di ${esc(iso === oggiISO() ? 'oggi' : dataBreve(iso))}?</p>
+    <div class="cm-scelte">${SLOT_COMUNI.map(x => `<button type="button" class="cm-scelta" data-ms="${esc(x)}"><span class="og-em" aria-hidden="true">${EMO.per(x, '🍽️')}</span><span class="t"><b>${esc(x)}</b><small>ore ${esc(oraDi(x))}</small></span></button>`).join('')}</div>`);
+  $('pop').querySelectorAll('[data-ms]').forEach(b => b.onclick = () => foglioScrivi(IO, iso, b.dataset.ms));
+}
+
 // Piatti conosciuti → cosa serve comprare (per una persona, quantità indicative)
 const PIATTI_NOTI = [
   [/pizza/, [['Base per pizza', '1 pacco'], ['Passata di pomodoro', '1 pacco'], ['Mozzarella', '1 pacco']]],

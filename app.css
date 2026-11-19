@@ -681,3 +681,11 @@ html::-webkit-scrollbar,body::-webkit-scrollbar,*::-webkit-scrollbar{display:non
 .casa-saldo .b1{border:0;background:#fff;color:#155C39}.casa-saldo .b2{border:1px solid currentColor;background:none;color:inherit}
 .sub-cap>.dx,.sub-cap>.ico-btn{margin-left:auto}
 @media (max-width:899px){nav.sezioni button .pl{padding:4px 16px}nav.sezioni button{font-size:11.5px}}
+/* Ricetta: il menù in portate (primo, secondo, contorno) */
+.r-menu{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.r-menu li{display:flex;flex-direction:column;gap:1px;padding:8px 12px;border:1px solid var(--card-line);background:var(--card);border-radius:12px}
+.r-menu small{color:var(--acc-text);font-weight:700;font-size:12px;letter-spacing:.04em;text-transform:uppercase}
+.r-menu b{font-size:15px;line-height:1.35}
+/* Oggi: nessun pasto scelto */
+.og-scegli{display:flex;flex-direction:column;gap:8px;padding:4px 0 2px}
+.og-scegli p{margin:0;line-height:1.5}

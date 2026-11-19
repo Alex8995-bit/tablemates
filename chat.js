@@ -35,6 +35,15 @@ async function chiediAI(q) {
   const oggi = new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   const s = Conti.saldi(D.movimenti, D.partecipanti);
   const diete = D.partecipanti.map(p => ({ persona: p.nome, dieta: pianoDi(p.id), piatti_scelti: ricetteDi(p.id) })).filter(x => x.dieta);
+  // cosa ha scelto davvero ognuno per oggi e domani (Oggi non si riempie da solo con il piano)
+  const giorniScelti = [oggiISO(), isoDi(Date.now() + 864e5)];
+  const scelti = D.partecipanti.map(p => ({ persona: p.nome, giorni: giorniScelti.map(iso => ({
+    data: iso,
+    pasti_comuni: Object.keys(D.stato).filter(k => k.startsWith('insieme:')).map(k => D.stato[k]).filter(e => insiemeValido(e) && e.iso === iso && e.chi.includes(p.id))
+      .map(e => ({ momento: e.tipo, con: e.chi.filter(z => z !== p.id).map(nomeP), piatto: (ricetteDi(e.da)[e.gi] || [])[e.k]?.nome || '', alimenti: pastoSorgente(e) ? riassuntoDi(e.da, e.gi, pastoSorgente(e)) : '' })),
+    scelti_dal_piano: sceltiDelGiorno(p.id, iso).map(z => ({ momento: z.slot, dal_piano: z.g.giorno + ' · ' + z.pa.tipo, piatto: (ricetteDi(p.id)[z.gi] || [])[z.k]?.nome || '', alimenti: riassuntoDi(p.id, z.gi, z.pa) })),
+    scritti_a_mano: Object.entries(scrittiDi(p.id)).filter(([c]) => c.slice(0, 10) === iso).map(([c, x]) => ({ momento: c.slice(11), piatto: x.nome }))
+  })) }));
   const conti = {
     valuta: VG(), conti: D.conti.map(c => ({ nome: c.nome, voci: c.voci })),
     saldi: D.partecipanti.map(p => ({ nome: p.nome, saldo: (s[p.id] || 0) / 100 })),
@@ -42,7 +51,7 @@ async function chiediAI(q) {
     ultime_spese: D.movimenti.slice(0, 40).map(m => ({ data: m.data, tipo: m.tipo, titolo: m.titolo, conto: contoDi(m.conto_id)?.nome || '', voce: m.categoria, importo: Conti.inValutaGruppo(m) / 100, pagato_da: nomeP(m.pagato_da) }))
   };
   try {
-    const out = await ia([{ text: `Sei l'assistente di ${NOME_APP}, l'app con cui un gruppo (famiglia o coinquilini) gestisce pasti, spesa e conti condivisi. Chi ti scrive è ${IO ? nomeP(IO) : CHI}. Rispondi in italiano, in modo breve e naturale, adatto a essere letto ad alta voce, senza elenchi puntati con simboli. Oggi è ${oggi}. Usa SOLO i dati qui sotto, non inventare pasti né importi. Ognuno può avere una dieta diversa: se la domanda non dice di chi, rispondi per chi scrive e, se utile, cita gli altri. Se i giorni di una dieta non hanno il nome del giorno della settimana, chiedi a quale giorno corrisponde oggi. Saldo positivo = deve ricevere soldi, negativo = deve darne. Se l'utente chiede di aggiungere prodotti alla spesa mettili in "aggiungi". JSON: {"risposta":"","aggiungi":[{"nome":"","quantita":"","reparto":""}]} con reparto tra: ${REPARTI.join(', ')}.\nDIETE: ${JSON.stringify(diete)}\nSPESA: ${JSON.stringify(D.spesa.map(x => ({ nome: x.nome, quantita: x.quantita, comprato: x.comprato })))}\nCONTI: ${JSON.stringify(conti)}\nCONVERSAZIONE: ${JSON.stringify(chat.slice(-10, -1))}\nDOMANDA: ${q}` }]);
+    const out = await ia([{ text: `Sei l'assistente di ${NOME_APP}, l'app con cui un gruppo (famiglia o coinquilini) gestisce pasti, spesa e conti condivisi. Chi ti scrive è ${IO ? nomeP(IO) : CHI}. Rispondi in italiano, in modo breve e naturale, adatto a essere letto ad alta voce, senza elenchi puntati con simboli. Oggi è ${oggi}. Usa SOLO i dati qui sotto, non inventare pasti né importi. Ognuno può avere una dieta diversa: se la domanda non dice di chi, rispondi per chi scrive e, se utile, cita gli altri. Se i giorni di una dieta non hanno il nome del giorno della settimana, chiedi a quale giorno corrisponde oggi. Per sapere cosa mangia qualcuno oggi o domani usa PASTI SCELTI (pasti comuni, poi scritti a mano, poi scelti dal piano): se per quel momento non ha scelto nulla, dillo e, se utile, proponi cosa c'è nel suo piano. Saldo positivo = deve ricevere soldi, negativo = deve darne. Se l'utente chiede di aggiungere prodotti alla spesa mettili in "aggiungi". JSON: {"risposta":"","aggiungi":[{"nome":"","quantita":"","reparto":""}]} con reparto tra: ${REPARTI.join(', ')}.\nPASTI SCELTI: ${JSON.stringify(scelti)}\nDIETE: ${JSON.stringify(diete)}\nSPESA: ${JSON.stringify(D.spesa.map(x => ({ nome: x.nome, quantita: x.quantita, comprato: x.comprato })))}\nCONTI: ${JSON.stringify(conti)}\nCONVERSAZIONE: ${JSON.stringify(chat.slice(-10, -1))}\nDOMANDA: ${q}` }]);
     chat[chat.length - 1].t = out.risposta;
     if (out.aggiungi?.length) {
       const righe = out.aggiungi.map(x => ({ id: uuid(), gruppo_id: G.id, nome: x.nome, quantita: x.quantita || '', reparto: REPARTI.includes(x.reparto) ? x.reparto : repartoDi(x.nome), comprato: false, aggiunto_da: CHI, created_at: new Date().toISOString() }));
